@@ -1,0 +1,51 @@
+﻿@using EmpresaAgendamento.Models.Enums
+@model IEnumerable<EmpresaAgendamento.Models.Agendamento>
+@{
+	ViewData["Title"] = "Agendamentos";
+}
+<div class="container mt-4">
+	<div class="d-flex justify-content-between align-items-center mb-3">
+		<h3 class="fw-bold">Agendamentos</h3>
+		<a asp-action="Create" class="btn btn-primary">+ Novo</a>
+	</div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover align-middle table-fixed">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 25%;">Cliente</th>
+                        <th style="width: 25%;">Serviço</th>
+                        <th style="width: 15%;">Preço</th>
+                        <th style="width: 20%;">Data</th>
+                        <th style="width: 20%;">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Cliente?.Nome</td>
+                            <td>@item.Servico?.Nome</td>
+                            <td>@item.Servico?.Preco.ToString("C")</td>
+                            <td>@item.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                @{
+                                    string badgeClass = item.Status switch
+                                    {
+                                        StatusAgendamento.Agendado => "bg-primary",
+                                        StatusAgendamento.Confirmado => "bg-success",
+                                        StatusAgendamento.Cancelado => "bg-danger",
+                                        StatusAgendamento.Finalizado => "bg-secondary",
+                                        _ => "bg-secondary"
+                                    };
+                                }
+                                <span class="badge @badgeClass">@item.Status</span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

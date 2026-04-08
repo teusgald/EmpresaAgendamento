@@ -1,0 +1,33 @@
+﻿@{
+    ViewData["Title"] = "Calendário";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+
+<h2 class="mb-4">Calendário de Agendamentos</h2>
+
+<div id="calendar"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var calendarEl = document.getElementById('calendar');
+
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'timeGridWeek',
+            locale: 'pt-br',
+            height: 'auto', // ajusta altura automática
+            events: '/Agendamentos/GetEventos',
+
+            dateClick: function(info) {
+                window.location.href = '/Agendamentos/Create?data=' + info.dateStr;
+            },
+
+            eventClick: function(info) {
+                window.location.href = '/Agendamentos/Edit/' + info.event.id;
+            }
+        });
+
+        calendar.render();
+    });
+</script>

@@ -1,0 +1,181 @@
+html {
+  font-size: 14px;
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+}
+
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+body {
+    margin: 0;
+    overflow-x: hidden;
+    background-color: #f1f5f9;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background: #111827;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    transition: left 0.3s ease;
+    z-index: 1000;
+    padding-top: 60px; /* espaço para topbar */
+}
+
+    .sidebar h4 {
+        font-weight: bold;
+        text-align: center;
+        padding: 1rem 0;
+    }
+
+    .sidebar hr {
+        border-color: #1f2937;
+    }
+
+    .sidebar .nav-link {
+        color: #9ca3af;
+        border-radius: 8px;
+        margin: 5px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+        .sidebar .nav-link:hover {
+            background: #1f2937;
+            color: #fff;
+        }
+
+    .sidebar .active {
+        background: #2563eb;
+        color: #fff !important;
+    }
+
+    /* LOGIN RODAPÉ */
+    .sidebar .sidebar-footer {
+        margin-top: auto;
+        padding: 1rem;
+        border-top: 1px solid #1f2937;
+    }
+
+/* CONTEÚDO */
+.content {
+    margin-left: 240px;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+    padding: 20px;
+}
+
+/* TOPBAR */
+/* --- TOPBAR --- */
+.topbar {
+    height: 60px;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    box-sizing: border-box;
+    z-index: 1100;
+}
+
+/* DESKTOP: topbar fica alinhada ao conteúdo, dentro do layout */
+@media (min-width: 769px) {
+    .topbar {
+        width: 100%;
+        position: relative; /* dentro do fluxo */
+    }
+}
+
+/* MOBILE: topbar ocupa 100% da tela e fica fixa */
+@media (max-width: 768px) {
+    .topbar {
+        width: 100%;
+        margin-left: 0;
+        position: fixed;
+        top: 0;
+        left: 0;
+        padding-left: 15px;
+        padding-right: 15px;
+    }
+}
+
+/* HAMBURGER */
+.hamburger {
+    display: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+
+/* CARDS */
+.card {
+    border: none;
+    border-radius: 12px;
+}
+
+/* RESPONSIVO MOBILE */
+@media (max-width: 768px) {
+    .sidebar {
+        left: -240px;
+    }
+
+        .sidebar.show {
+            left: 0;
+        }
+
+    .content {
+        margin-left: 0;
+    }
+
+    .hamburger {
+        display: block;
+    }
+    /* overlay */
+    #overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.3);
+        z-index: 1050;
+    }
+
+        #overlay.show {
+            display: block;
+        }
+}
+
+.table-fixed {
+    table-layout: fixed; /* força largura proporcional */
+    width: 100%;
+}
+
+    .table-fixed th, .table-fixed td {
+        overflow-wrap: break-word; /* quebra texto longo */
+        word-wrap: break-word;
+        white-space: normal;
+    }
+

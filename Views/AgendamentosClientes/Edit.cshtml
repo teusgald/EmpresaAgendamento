@@ -1,0 +1,46 @@
+﻿@model EmpresaAgendamento.Models.Agendamento
+
+@{
+    ViewData["Title"] = "Editar Agendamento";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4">Editar Agendamento</h4>
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="Id" />
+
+                <div class="mb-3">
+                    <label class="form-label">Empresa</label>
+                    <select asp-for="EmpresaId" class="form-select" asp-items="ViewBag.Empresas" id="empresaSelect">
+                        <option value="">Selecione</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Serviço</label>
+                    <select asp-for="ServicoId" class="form-select" asp-items="ViewBag.Servicos" id="servicoSelect">
+                        <option value="">Selecione</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Data e Hora</label>
+                    <input asp-for="DataHora" type="datetime-local" class="form-control"
+                           value="@Model.DataHora.ToString("yyyy-MM-ddTHH:mm")" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Observação</label>
+                    <input asp-for="Observacao" class="form-control" />
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

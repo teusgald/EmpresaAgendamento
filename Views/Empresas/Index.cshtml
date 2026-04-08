@@ -1,0 +1,52 @@
+﻿@model EmpresaAgendamento.Models.Empresa
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4">Configurações da Empresa</h4>
+
+            @if (ViewBag.Mensagem != null)
+            {
+                <div class="alert alert-success">@ViewBag.Mensagem</div>
+            }
+
+            <form asp-action="Index" method="post">
+                <input type="hidden" asp-for="Id" />
+
+                <div class="mb-3">
+                    <label class="form-label">Nome</label>
+                    <input asp-for="Nome" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Telefone</label>
+                    <input asp-for="Telefone" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input asp-for="Email" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Endereço</label>
+                    <input asp-for="Endereco" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Horário de Funcionamento</label>
+                    <input asp-for="HorarioFuncionamento" class="form-control" />
+                </div>
+
+                <div class="form-check mb-3">
+                    <input asp-for="Ativo" class="form-check-input" />
+                    <label class="form-check-label">Ativo (visível para clientes)</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

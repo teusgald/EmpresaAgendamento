@@ -1,0 +1,12 @@
+﻿@{
+    var isCliente = Context.User.IsInRole("Cliente");
+
+    if (isCliente)
+    {
+        Layout = "~/Views/Shared/_LayoutCliente.cshtml";
+    }
+    else
+    {
+        Layout = "~/Views/Shared/_Layout.cshtml";
+    }
+}

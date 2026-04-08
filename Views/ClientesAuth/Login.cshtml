@@ -1,0 +1,81 @@
+﻿@model ClienteLoginViewModel
+
+@{
+    Layout = "~/Views/Shared/_AuthLayout.cshtml";
+    ViewData["Title"] = "Login do Cliente";
+}
+
+
+<style>
+    body {
+        background: linear-gradient(135deg, #2563eb, #1e3a8a);
+        height: 100vh;
+    }
+
+    .login-container {
+        height: 100vh;
+    }
+
+    .login-card {
+        border: none;
+        border-radius: 16px;
+        padding: 30px;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .form-control {
+        border-radius: 10px;
+    }
+
+    .btn-primary {
+        border-radius: 10px;
+        background: #2563eb;
+        border: none;
+    }
+
+        .btn-primary:hover {
+            background: #1e40af;
+        }
+</style>
+<div class="container-fluid login-container d-flex align-items-center justify-content-center">
+    <div class="col-md-4">
+        <div class="login-card">
+
+            <div class="text-center mb-4">
+                <h3>👤 Cliente</h3>
+                <p class="text-muted">Acesse sua conta</p>
+            </div>
+
+            <div asp-validation-summary="All" class="text-danger mb-2"></div>
+            <form asp-action="Login" method="post">
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Email" class="form-control" placeholder="Email" />
+                    <label>Email</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Password" type="password" class="form-control" placeholder="Senha" />
+                    <label>Senha</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    Entrar
+                </button>
+
+                <div class="text-center">
+                    <a href="/cliente/registro">Criar conta</a>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

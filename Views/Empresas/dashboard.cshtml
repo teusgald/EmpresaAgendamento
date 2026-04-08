@@ -1,0 +1,148 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="container-fluid mt-4">
+
+    <!-- ========================= -->
+    <!-- Primeira Linha: Indicadores -->
+    <!-- ========================= -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3 text-center bg-light">
+                <h6 class="text-muted">Agendamentos Hoje</h6>
+                <h3 class="fw-bold">@ViewBag.TotalAgendamentosHoje</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3 text-center bg-light">
+                <h6 class="text-muted">Faturamento Mensal</h6>
+                <h3 class="text-success fw-bold">R$ @ViewBag.FaturamentoMensal</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3 text-center bg-light">
+                <h6 class="text-muted">Clientes Ativos</h6>
+                <h3 class="fw-bold">@ViewBag.TotalClientes</h3>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3 text-center bg-light">
+                <h6 class="text-muted">Crescimento</h6>
+                <h3 class="text-primary fw-bold">@Math.Round(Convert.ToDecimal(ViewBag.Crescimento ?? 0), 2)%</h3>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================= -->
+    <!-- Segunda Linha: Gráficos -->
+    <!-- ========================= -->
+    <div class="row g-3 mb-4">
+        <div class="col-lg-6 col-md-12">
+            <div class="card shadow-sm p-3">
+                <h6>Faturamento Mensal</h6>
+                <div style="height: 300px;">
+                    <canvas id="graficoFaturamento"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 col-md-12">
+            <div class="card shadow-sm p-3">
+                <h6>Serviços Populares</h6>
+                <div style="height: 300px;">
+                    <canvas id="graficoServicos"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================= -->
+    <!-- Terceira Linha: Agendamentos Hoje -->
+    <!-- ========================= -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm p-3">
+                <h6>Agendamentos de Hoje</h6>
+                <div style="max-height: 400px; overflow-y:auto;">
+                    <table class="table table-striped table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Hora</th>
+                                <th>Cliente</th>
+                                <th>Serviço</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var ag in ViewBag.AgendamentosHoje)
+                            {
+                                <tr>
+                                    <td>@ag.DataHora.ToString("HH:mm")</td>
+                                    <td>@ag.Cliente.Nome</td>
+                                    <td>@ag.Servico.Nome</td>
+                                    <td>@ag.Status</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        var meses = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+         ((IEnumerable<dynamic>)ViewBag.FaturamentoPorMes).Select(f => System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName((int)f.Mes))
+    ));
+        var faturamento = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        ((IEnumerable<dynamic>)ViewBag.FaturamentoPorMes).Select(f => f.Total)
+    ));
+        var servicos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        ((IEnumerable<dynamic>)ViewBag.ServicosPopulares).Select(s => s.Servico)
+    ));
+        var quantidadeServicos = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(
+        ((IEnumerable<dynamic>)ViewBag.ServicosPopulares).Select(s => s.Quantidade)
+    ));
+
+        // Gráfico Faturamento Mensal
+        new Chart(document.getElementById('graficoFaturamento').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: meses,
+                datasets: [{
+                    label: 'R$',
+                    data: faturamento,
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+
+        // Gráfico Serviços Populares
+        new Chart(document.getElementById('graficoServicos').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: servicos,
+                datasets: [{
+                    label: 'Quantidade',
+                    data: quantidadeServicos,
+                    backgroundColor: ['#007bff','#28a745','#ffc107','#dc3545','#6610f2','#fd7e14']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    </script>
+}

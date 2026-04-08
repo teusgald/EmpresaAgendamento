@@ -1,0 +1,37 @@
+﻿@model IEnumerable<EmpresaAgendamento.Models.Servico>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold">Serviços</h3>
+        <a asp-action="Create" class="btn btn-primary">+ Novo Serviço</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover table-fixed">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 40%;">Nome</th>
+                        <th style="width: 20%;">Preço</th>
+                        <th style="width: 20%;">Duração (min)</th>
+                        <th style="width: 20%;" class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Nome</td>
+                            <td>@item.Preco.ToString("C")</td>
+                            <td>@item.DuracaoMinutos</td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Excluir</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

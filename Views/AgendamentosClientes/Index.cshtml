@@ -1,0 +1,47 @@
+﻿@model IEnumerable<EmpresaAgendamento.Models.Agendamento>
+
+@{
+    ViewData["Title"] = "Meus Agendamentos";
+}
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold">Meus Agendamentos</h3>
+        <a asp-action="Create" class="btn btn-primary">+ Novo Agendamento</a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Empresa</th>
+                        <th>Serviço</th>
+                        <th>Preço</th>
+                        <th>Data e Hora</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ag in Model)
+                    {
+                        <tr>
+                            <td>@ag.Empresa?.Nome</td>
+                            <td>@ag.Servico?.Nome</td>
+                            <td>@ag.Servico?.Preco.ToString("C")</td>
+                            <td>@ag.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <span class="badge bg-success">@ag.Status</span>
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@ag.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+                                <a asp-action="Delete" asp-route-id="@ag.Id" class="btn btn-sm btn-outline-danger">Cancelar</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

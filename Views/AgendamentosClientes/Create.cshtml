@@ -1,0 +1,85 @@
+﻿@model EmpresaAgendamento.Models.Agendamento
+
+@{
+    ViewData["Title"] = "Novo Agendamento";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4">Novo Agendamento</h4>
+            <form asp-action="Create" method="post">
+                <div class="mb-3">
+                    <label class="form-label">Empresa</label>
+                    <select asp-for="EmpresaId" class="form-select" asp-items="ViewBag.Empresas" id="empresaSelect">
+                        <option value="">Selecione</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Serviço</label>
+                    <select asp-for="ServicoId" class="form-select" asp-items="ViewBag.Servicos" id="servicoSelect">
+                        <option value="">Selecione</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Data e Hora</label>
+                    <input asp-for="DataHora" type="datetime-local" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Observação</label>
+                    <input asp-for="Observacao" class="form-control" />
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">Agendar</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const empresaSelect = document.getElementById("empresaSelect");
+        const servicoSelect = document.getElementById("servicoSelect");
+
+        if (!empresaSelect) return;
+
+        empresaSelect.addEventListener("change", function () {
+
+            const empresaId = this.value;
+
+            if (!empresaId) {
+                servicoSelect.innerHTML = '<option value="">Selecione</option>';
+                return;
+            }
+
+            servicoSelect.innerHTML = '<option value="">Carregando...</option>';
+
+            fetch(`/cliente/agendamentos/servicos/${empresaId}`)
+                .then(response => response.json())
+                .then(data => {
+
+                    servicoSelect.innerHTML = '<option value="">Selecione</option>';
+
+                    data.forEach(function (servico) {
+                        const option = document.createElement("option");
+                        option.value = servico.id;
+                        option.text = servico.nome;
+                        servicoSelect.appendChild(option);
+                    });
+
+                })
+                .catch(error => {
+                    console.error("Erro ao carregar serviços:", error);
+                    servicoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                });
+
+        });
+
+    });
+</script>

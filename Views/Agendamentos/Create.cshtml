@@ -1,0 +1,50 @@
+﻿@model EmpresaAgendamento.Models.Agendamento
+@{
+    ViewData["Title"] = "Agendamentos";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4">Novo Agendamento</h4>
+            <form asp-action="Create">
+                <div class="mb-3">
+                    <label class="form-label">Cliente</label>
+                    <select asp-for="ClienteId" class="form-select">
+                        <option value="">Selecione</option>
+                        @foreach (var cliente in ViewBag.Clientes)
+                        {
+                            <option value="@cliente.Id">@cliente.Nome</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Serviço</label>
+                    <select asp-for="ServicoId" class="form-select">
+                        <option value="">Selecione</option>
+                        @foreach (var servico in ViewBag.Servicos)
+                        {
+                            <option value="@servico.Id">@servico.Nome</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Data e Hora</label>
+                    <input asp-for="DataHora" type="datetime-local" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Observação</label>
+                    <input asp-for="Observacao" class="form-control" />
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">Salvar</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,90 @@
+﻿@page
+@model RegisterModel
+
+@{
+    Layout = null;
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cadastro Empresa</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-premium {
+            border-radius: 18px;
+            padding: 30px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .form-control {
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        .btn-primary {
+            border-radius: 10px;
+            padding: 12px;
+        }
+
+        h3 {
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="card card-premium bg-white">
+
+        <div class="text-center mb-4">
+            <i class="bi bi-building fs-1 text-primary"></i>
+            <h3>Cadastro de Empresa</h3>
+            <p class="text-muted">Crie sua conta empresarial</p>
+        </div>
+
+        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        <form method="post">
+            <div class="mb-3">
+                <label>Nome da Empresa</label>
+                <input asp-for="Input.NomeEmpresa" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label>Email</label>
+                <input asp-for="Input.Email" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label>Senha</label>
+                <input asp-for="Input.Password" type="password" class="form-control" />
+            </div>
+
+            <div class="mb-3">
+                <label>Confirmar Senha</label>
+                <input asp-for="Input.ConfirmPassword" type="password" class="form-control" />
+            </div>
+
+            <button class="btn btn-primary w-100">
+                Criar Conta
+            </button>
+        </form>
+
+    </div>
+
+</body>
+</html>

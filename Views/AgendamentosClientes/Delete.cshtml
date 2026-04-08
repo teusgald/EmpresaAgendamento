@@ -1,0 +1,22 @@
+﻿@model EmpresaAgendamento.Models.Agendamento
+
+@{
+    ViewData["Title"] = "Cancelar Agendamento";
+}
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4 text-danger">Cancelar Agendamento</h4>
+            <p>Tem certeza que deseja cancelar o agendamento de <strong>@Model.Servico?.Nome</strong> na empresa <strong>@Model.Empresa?.Nome</strong> no dia <strong>@Model.DataHora.ToString("dd/MM/yyyy HH:mm")</strong>?</p>
+
+            <form asp-action="Delete" method="post">
+                <input type="hidden" asp-for="Id" />
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">Cancelar</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>@ViewData["Title"] - EmpresaAgendamento</title>
+
+	<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+	<link rel="stylesheet" href="~/css/site.css" />
+
+	<script>
+		document.getElementById("empresaSelect").addEventListener("change", function () {
+			var empresaId = this.value;
+
+			var servicoSelect = document.getElementById("servicoSelect");
+			servicoSelect.innerHTML = '<option value="">Carregando...</option>';
+
+			fetch('/AgendamentosCliente/GetServicosByEmpresa?empresaId=' + empresaId)
+				.then(response => response.json())
+				.then(data => {
+					servicoSelect.innerHTML = '<option value="">Selecione</option>';
+
+					data.forEach(function (servico) {
+						var option = document.createElement("option");
+						option.value = servico.id;
+						option.text = servico.nome;
+						servicoSelect.appendChild(option);
+					});
+				});
+		});
+	</script>
+</head>
+<body>
+
+	<!-- SIDEBAR -->
+	<div class="sidebar" id="sidebar">
+		<h4>🚀 Sistema</h4>
+		<hr />
+		<ul class="nav flex-column">
+
+			<li>
+				<a class="nav-link" asp-controller="Empresas" asp-action="Dashboard">
+					<i class="bi bi-bar-chart"></i> <span class="link-text">Dashboard</span>
+				</a>
+			</li>
+
+			<li>
+				<a class="nav-link" asp-controller="Agendamentos" asp-action="Calendario">
+					<i class="bi bi-calendar"></i> <span class="link-text">Calendário</span>
+				</a>
+			</li>
+
+			<li>
+				<a class="nav-link" asp-controller="Agendamentos" asp-action="Index">
+					<i class="bi bi-list-check"></i> <span class="link-text">Agendamentos</span>
+				</a>
+			</li>
+
+			<li>
+				<a class="nav-link" asp-controller="Clientes" asp-action="Index">
+					<i class="bi bi-people"></i> <span class="link-text">Clientes</span>
+				</a>
+			</li>
+
+			<li>
+				<a class="nav-link" asp-controller="Servicos" asp-action="Index">
+					<i class="bi bi-scissors"></i> <span class="link-text">Serviços</span>
+				</a>
+			</li>
+
+			<li>
+				<a class="nav-link" asp-controller="Empresas" asp-action="Index">
+					<i class="bi bi-building"></i> <span class="link-text">Empresas</span>
+				</a>
+			</li>
+
+		</ul>
+
+		<div class="sidebar-footer">
+			<span class="me-2">👤 @User.Identity?.Name</span>
+			<form asp-area="Identity" asp-page="/Account/Logout" method="post" style="display:inline;">
+				<button class="btn btn-sm btn-outline-danger w-100">Sair</button>
+			</form>
+		</div>
+	</div>
+
+	<!-- CONTEÚDO -->
+	<div class="content" id="content">
+
+		<!-- TOPBAR -->
+		<div class="topbar">
+			<span class="hamburger" id="hamburger"><i class="bi bi-list"></i></span>
+			<h5 class="mb-0">@ViewData["Title"]</h5>
+		</div>
+
+		<!-- CORPO -->
+		<div class="mt-5 p-4">
+			@RenderBody()
+		</div>
+
+	</div>
+
+	<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+	<script>
+		const sidebar = document.getElementById('sidebar');
+		const hamburger = document.getElementById('hamburger');
+		const overlay = document.getElementById('overlay');
+
+		// Toggle sidebar
+		hamburger.addEventListener('click', () => {
+			sidebar.classList.toggle('show');
+			overlay.classList.toggle('show');
+		});
+
+		// Fechar sidebar ao clicar no overlay
+		overlay.addEventListener('click', () => {
+			sidebar.classList.remove('show');
+			overlay.classList.remove('show');
+		});
+	</script>
+
+	@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

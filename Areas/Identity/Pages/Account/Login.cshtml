@@ -1,0 +1,110 @@
+﻿@page
+@model LoginModel
+
+@{
+    Layout = "/Areas/Identity/Pages/Shared/_AuthLayout.cshtml"; // 🔥 ISSO REMOVE O _Layout.cshtml
+    ViewData["Title"] = "Login";
+}
+
+<style>
+    body {
+        background: linear-gradient(135deg, #2563eb, #1e3a8a);
+        height: 100vh;
+    }
+
+    .login-container {
+        height: 100vh;
+    }
+
+    .login-card {
+        border: none;
+        border-radius: 16px;
+        padding: 30px;
+        background: #ffffff;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+
+    .form-control {
+        border-radius: 10px;
+    }
+
+    .btn-primary {
+        border-radius: 10px;
+        background: #2563eb;
+        border: none;
+    }
+
+        .btn-primary:hover {
+            background: #1e40af;
+        }
+</style>
+
+<div class="container-fluid login-container d-flex align-items-center justify-content-center">
+
+    <div class="col-md-4">
+
+        <div class="login-card">
+
+            <div class="text-center mb-4">
+                <h3>🚀 Empresa</h3>
+                <p class="text-muted">Acesse sua conta</p>
+            </div>
+
+            <form id="account" method="post">
+
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Email" class="form-control" placeholder="email" />
+                    <label>Email</label>
+                </div>
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Password" class="form-control" placeholder="senha" />
+                    <label>Senha</label>
+                </div>
+
+                <div class="form-check mb-3">
+                    <input asp-for="Input.RememberMe" class="form-check-input" />
+                    <label class="form-check-label">Lembrar-me</label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 mb-3">
+                    Entrar
+                </button>
+
+                <div class="text-center">
+                    <a asp-page="./ForgotPassword">Esqueceu a senha?</a>
+                </div>
+
+                <div class="text-center mt-2">
+                    <a asp-page="./Register">Criar conta</a>
+                </div>
+
+            </form>
+
+            <hr />
+
+            <!-- LOGIN EXTERNO -->
+            @if ((Model.ExternalLogins?.Count ?? 0) > 0)
+            {
+                <form asp-page="./ExternalLogin" method="post">
+                    @foreach (var provider in Model.ExternalLogins!)
+                    {
+                        <button type="submit" class="btn btn-outline-dark w-100 mb-2"
+                                name="provider" value="@provider.Name">
+                            Entrar com @provider.DisplayName
+                        </button>
+                    }
+                </form>
+            }
+
+        </div>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
