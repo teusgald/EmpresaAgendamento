@@ -38,6 +38,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 // 🔥 SERVICES
 // =========================
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IEmpresaService, EmpresaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 

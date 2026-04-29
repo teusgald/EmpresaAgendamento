@@ -48,7 +48,7 @@
             </div>
 
             <div asp-validation-summary="All" class="text-danger mb-2"></div>
-            <form asp-action="Login" method="post">
+            <form method="post" id="clienteLoginForm">
 
                 <div class="form-floating mb-3">
                     <input asp-for="Email" class="form-control" placeholder="Email" />
@@ -65,7 +65,13 @@
                 </button>
 
                 <div class="text-center">
-                    <a href="/cliente/registro">Criar conta</a>
+                    <a href="#" class="text-muted small switch-mode" data-mode="register">Criar conta</a>
+                </div>
+
+                <div class="text-center mt-2">
+                    <a href="#" class="text-muted small" id="forgotPassword">
+                        Esqueci minha senha
+                    </a>
                 </div>
 
             </form>

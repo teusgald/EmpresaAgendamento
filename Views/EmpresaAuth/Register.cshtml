@@ -1,29 +1,18 @@
-﻿@model ClienteRegisterViewModel
-
-@{
-    Layout = null;
-}
+﻿@model EmpresaRegisterViewModel
 
 <div class="auth-card">
 
-    <!-- HEADER -->
     <div class="text-center mb-4">
-        <i class="bi bi-person-circle auth-icon"></i>
-        <h4 class="auth-title">Cadastro de Cliente</h4>
-        <p class="auth-subtitle">Crie sua conta para agendar serviços</p>
+        <i class="bi bi-building auth-icon"></i>
+        <h4 class="auth-title">Cadastro Empresa</h4>
     </div>
 
-    <!-- FORM -->
-    <form method="post" id="clienteRegisterForm">
+    <form method="post" id="empresaRegisterForm">
 
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
         <div class="mb-3">
-            <input asp-for="Nome" class="form-control" placeholder="Nome completo" />
-        </div>
-
-        <div class="mb-3">
-            <input asp-for="Telefone" class="form-control" placeholder="Telefone" />
+            <input asp-for="NomeEmpresa" class="form-control" placeholder="Nome da empresa" />
         </div>
 
         <div class="mb-3">
@@ -41,7 +30,6 @@
         <div class="text-center mt-3">
             <a href="#" class="text-muted small switch-mode" data-mode="login">Já tem conta? Entrar</a>
         </div>
-
     </form>
 
 </div>

@@ -79,8 +79,10 @@
 
 		<div class="sidebar-footer">
 			<span class="me-2">👤 @User.Identity?.Name</span>
-			<form asp-area="Identity" asp-page="/Account/Logout" method="post" style="display:inline;">
-				<button class="btn btn-sm btn-outline-danger w-100">Sair</button>
+			<form method="post" action="/logout">
+				<button class="btn btn-sm btn-outline-danger">
+					Sair
+				</button>
 			</form>
 		</div>
 	</div>

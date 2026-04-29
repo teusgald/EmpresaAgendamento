@@ -144,10 +144,10 @@ public class ClientesAuthController : Controller
     // =========================
     // LOGOUT
     // =========================
-    [HttpGet("logout")]
-    public async Task<IActionResult> Logout()
+    
+    public async Task<IActionResult> Logout([FromServices] SignInManager<ApplicationUser> signInManager)
     {
-        await _signInManager.SignOutAsync();
-        return RedirectToAction("Login", "ClientesAuth");
+        await signInManager.SignOutAsync();
+        return RedirectToAction("Index", "Home");
     }
 }

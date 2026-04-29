@@ -479,10 +479,96 @@
             .hero img:hover {
                 transform: scale(1.02);
             }
+
+        /* CONTAINER DAS TABS */
+        #loginTabs {
+            background: #f3f4f6;
+            padding: 5px;
+            border-radius: 14px;
+        }
+
+            /* BOTÕES */
+            #loginTabs .nav-link {
+                border-radius: 12px;
+                font-weight: 500;
+                color: #6b7280;
+                background: transparent;
+                transition: all 0.3s ease;
+            }
+
+                /* HOVER */
+                #loginTabs .nav-link:hover {
+                    background: #e5e7eb;
+                    color: #111827;
+                }
+
+                /* ATIVO (SELECIONADO) */
+                #loginTabs .nav-link.active {
+                    background: #ffffff;
+                    color: #111827;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+                }
+
+        .modal .btn-close {
+            transform: scale(0.75);
+            opacity: 0.5;
+        }
+
+            .modal .btn-close:hover {
+                opacity: 1;
+                transform: scale(0.85);
+            }
     </style>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
+
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-4">
+
+                <!-- HEADER -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0">Acessar conta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+
+                <!-- TABS -->
+                <ul class="nav nav-pills mb-3" id="loginTabs" role="tablist">
+                    <li class="nav-item w-50">
+                        <button class="nav-link active w-100"
+                                data-bs-toggle="tab"
+                                data-bs-target="#empresaTab">
+                            Sou Empresa
+                        </button>
+                    </li>
+                    <li class="nav-item w-50">
+                        <button class="nav-link w-100"
+                                data-bs-toggle="tab"
+                                data-bs-target="#clienteTab">
+                            Sou Cliente
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- CONTEÚDO -->
+                <div class="tab-content">
+
+                    <!-- EMPRESA -->
+                    <div class="tab-pane fade show active" id="empresaTab">
+                        <div id="empresaContent"></div>
+                    </div>
+
+                    <!-- CLIENTE -->
+                    <div class="tab-pane fade" id="clienteTab">
+                        <div id="clienteContent"></div>
+                    </div>
+
+                </div>
+
+            </div>
+        </div>
+    </div>
 
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-light fixed-top navbar-custom">
@@ -509,8 +595,16 @@
 
                 <!-- AÇÕES DIREITA -->
                 <div class="nav-actions d-flex gap-2">
-                    <a href="/ClientesAuth/Login" class="btn btn-login">Login</a>
-                    <a href="/Identity/Account/Register" class="btn btn-cta">Começar</a>
+                    <a href="#" class="btn btn-login" data-bs-toggle="modal" data-bs-target="#loginModal">
+                        Login
+                    </a>
+                    <a href="#"
+                       class="btn btn-cta"
+                       data-bs-toggle="modal"
+                       data-bs-target="#loginModal"
+                       id="openRegisterModal">
+                        Começar
+                    </a>
                 </div>
 
             </div>
@@ -843,7 +937,22 @@
 
         </div>
     </footer>
+    <!-- MODAL ESCOLHA -->
+    <div class="modal fade" id="loginTypeModal" tabindex="-1">
+        ...
+    </div>
 
+    <!-- MODAL LOGIN -->
+    <div class="modal fade" id="loginModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content p-4">
+                <div id="loginContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener("click", function (e) {
@@ -852,6 +961,146 @@
                     .scrollIntoView({ behavior: "smooth" });
             });
         });
+
+                let mode = "login"; // login | register
+
+        function loadEmpresa() {
+            const url = mode === "login"
+                ? "/empresa/login"
+                : "/empresa/registro";
+
+            fetch(url)
+                .then(res => res.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    const content =
+                        doc.querySelector('.auth-card') ||   // ✅ EMPRESA
+                        doc.querySelector('.login-card') ||
+                        doc.querySelector('.card-premium');
+
+                    document.getElementById('empresaContent').innerHTML =
+                        content ? content.outerHTML : "<p>Erro ao carregar empresa</p>";
+                })
+                .catch(() => {
+                    document.getElementById('empresaContent').innerHTML = "<p>Erro na requisição</p>";
+                });
+        }
+
+        function loadCliente() {
+            const url = mode === "login"
+                ? "/cliente/login"
+                : "/cliente/registro";
+
+            fetch(url)
+                .then(res => res.text())
+                .then(html => {
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+
+                    const content =
+                        doc.querySelector('.login-card') ||
+                        doc.querySelector('.auth-card');
+
+                    document.getElementById('clienteContent').innerHTML =
+                        content ? content.outerHTML : "<p>Erro ao carregar cliente</p>";
+                })
+                .catch(() => {
+                    document.getElementById('clienteContent').innerHTML = "<p>Erro na requisição</p>";
+                });
+        }
+
+        function loadAll() {
+            loadEmpresa();
+            loadCliente();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            // 🔥 carrega ao abrir modal (melhor)
+            const modal = document.getElementById("loginModal");
+
+            if (modal) {
+                modal.addEventListener("shown.bs.modal", function () {
+                    loadAll();
+                });
+            }
+
+            // 🔁 toggle login/register
+            const toggle = document.getElementById("toggleMode");
+
+            if (toggle) {
+                toggle.addEventListener("click", function () {
+
+                    mode = mode === "login" ? "register" : "login";
+
+                    this.innerText = mode === "login"
+                        ? "Criar conta"
+                        : "Já tenho conta";
+
+                    loadAll();
+                });
+            }
+
+            // 🚀 botão "Começar"
+            const openRegister = document.getElementById("openRegisterModal");
+
+            if (openRegister) {
+                openRegister.addEventListener("click", function () {
+
+                    mode = "register";
+
+                    const modalInstance = new bootstrap.Modal(modal);
+                    modalInstance.show();
+
+                    setTimeout(() => {
+                        loadAll();
+                    }, 200);
+                });
+            }
+
+        });
+
+                document.addEventListener("submit", function (e) {
+
+            if (e.target.id === "empresaLoginForm") {
+                e.preventDefault();
+
+                const form = e.target;
+                const formData = new FormData(form);
+
+                fetch("/empresa/login", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(data => {
+
+                    if (data.success) {
+                        // login OK → redireciona
+                        window.location.href = "/Empresas/Dashboard";
+                    } else {
+                        showError(form, data.error);
+                    }
+
+                });
+            }
+
+        });
+
+                function showError(form, message) {
+
+            let errorDiv = form.querySelector(".custom-error");
+
+            if (!errorDiv) {
+                errorDiv = document.createElement("div");
+                errorDiv.className = "alert alert-danger custom-error mt-2";
+                form.prepend(errorDiv);
+            }
+
+            errorDiv.innerText = message;
+        }
+
+        form.querySelector("button").innerText = "Entrando...";
     </script>
 
 </body>

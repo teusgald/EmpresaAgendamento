@@ -2,7 +2,7 @@
 
 namespace EmpresaAgendamento.Controllers
 {
-    [Route("empresa")]
+    [Route("empresa/inativo")]
     public class EmpresaController : Controller
     {
         [HttpGet("registro")]

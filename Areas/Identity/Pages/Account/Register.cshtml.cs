@@ -1,6 +1,7 @@
 ﻿using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -8,6 +9,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EmpresaAgendamento.Areas.Identity.Pages.Account
 {
+    [AllowAnonymous]
     public class RegisterModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
