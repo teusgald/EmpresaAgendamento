@@ -3,50 +3,263 @@
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-body">
+
             <h4 class="mb-4">Configurações da Empresa</h4>
 
             @if (ViewBag.Mensagem != null)
             {
-                <div class="alert alert-success">@ViewBag.Mensagem</div>
+                <div class="alert alert-success">
+                    @ViewBag.Mensagem
+                </div>
             }
 
             <form asp-action="Index" method="post">
+                @Html.AntiForgeryToken()
+
                 <input type="hidden" asp-for="Id" />
 
-                <div class="mb-3">
-                    <label class="form-label">Nome</label>
-                    <input asp-for="Nome" class="form-control" />
+                <!-- ===================== IDENTIDADE ===================== -->
+                <h5 class="mt-3">Identidade</h5>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nome</label>
+                        <input asp-for="Nome" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nome Fantasia</label>
+                        <input asp-for="NomeFantasia" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Slogan</label>
+                        <input asp-for="Slogan" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">CPF / CNPJ</label>
+                        <input asp-for="DocumentoNumero" class="form-control" />
+                    </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Telefone</label>
-                    <input asp-for="Telefone" class="form-control" />
+                    <label class="form-label">Descrição</label>
+                    <textarea asp-for="Descricao" class="form-control"></textarea>
+                </div>
+
+                <!-- ===================== MÍDIA ===================== -->
+                <h5 class="mt-4">Marca</h5>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Logo URL</label>
+                        <input asp-for="LogoUrl" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Banner URL</label>
+                        <input asp-for="CapaBannerUrl" class="form-control" />
+                    </div>
+                </div>
+
+                <!-- ===================== DIGITAL ===================== -->
+                <h5 class="mt-4">Presença Digital</h5>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Slug</label>
+                        <input asp-for="Slug" class="form-control" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">WhatsApp</label>
+                        <input asp-for="WhatsApp" class="form-control" />
+                    </div>
+                    @if (!string.IsNullOrEmpty(Model.Slug))
+                    {
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Link da Página Pública</label>
+
+                            <div class="input-group">
+                                <input id="publicUrl"
+                                       class="form-control"
+                                       readonly
+                                       value="@($"{Context.Request.Scheme}://{Context.Request.Host}/{Model.Slug}")" />
+
+                                <button type="button"
+                                        class="btn btn-outline-secondary d-flex align-items-center gap-1"
+                                        onclick="copyPublicUrl()"
+                                        title="Copiar link">
+                                    <span style="font-size:16px;">📋</span>
+                                </button>
+                            </div>
+
+                            <small class="text-muted">
+                                Este é o link público da sua empresa
+                            </small>
+                        </div>
+                    }
+                </div>
+
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Instagram</label>
+                        <input asp-for="Instagram" class="form-control" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Facebook</label>
+                        <input asp-for="Facebook" class="form-control" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Site</label>
+                        <input asp-for="Site" class="form-control" />
+                    </div>
+                </div>
+
+                <!-- ===================== ENDEREÇO ===================== -->
+                <h5 class="mt-4">Endereço</h5>
+
+                <div class="row">
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Número</label>
+                        <input asp-for="Numero" class="form-control" />
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Complemento</label>
+                        <input asp-for="Complemento" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Bairro</label>
+                        <input asp-for="Bairro" class="form-control" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">CEP</label>
+                        <input asp-for="CEP" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-5 mb-3">
+                        <label class="form-label">Cidade</label>
+                        <input asp-for="Cidade" class="form-control" />
+                    </div>
+
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">UF</label>
+                        <input asp-for="UF" class="form-control" maxlength="2" />
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">Latitude</label>
+                        <input asp-for="Latitude" class="form-control" />
+                    </div>
+
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label">Longitude</label>
+                        <input asp-for="Longitude" class="form-control" />
+                    </div>
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input asp-for="Email" class="form-control" />
+                    <label class="form-label">Link Google Maps</label>
+                    <input asp-for="LinkMaps" class="form-control" />
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Endereço</label>
-                    <input asp-for="Endereco" class="form-control" />
+                <!-- ===================== PAGAMENTOS ===================== -->
+                <h5 class="mt-4">Pagamentos</h5>
+
+                <div class="row">
+                    <div class="col-md-3 form-check">
+                        <input asp-for="AceitaPix" class="form-check-input" />
+                        <label class="form-check-label">PIX</label>
+                    </div>
+
+                    <div class="col-md-3 form-check">
+                        <input asp-for="AceitaDinheiro" class="form-check-input" />
+                        <label class="form-check-label">Dinheiro</label>
+                    </div>
+
+                    <div class="col-md-3 form-check">
+                        <input asp-for="AceitaCartaoDebito" class="form-check-input" />
+                        <label class="form-check-label">Débito</label>
+                    </div>
+
+                    <div class="col-md-3 form-check">
+                        <input asp-for="AceitaCartaoCredito" class="form-check-input" />
+                        <label class="form-check-label">Crédito</label>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label">Horário de Funcionamento</label>
-                    <input asp-for="HorarioFuncionamento" class="form-control" />
+                <div class="col-md-3 mt-3">
+                    <label class="form-label">Parcelamento Máximo</label>
+                    <input asp-for="ParcelamentoMaximo" class="form-control" />
                 </div>
 
-                <div class="form-check mb-3">
+                <!-- ===================== COMODIDADES ===================== -->
+                <h5 class="mt-4">Comodidades</h5>
+
+                <div class="row">
+                    <div class="col-md-3 form-check">
+                        <input asp-for="TemWifi" class="form-check-input" />
+                        <label class="form-check-label">Wi-Fi</label>
+                    </div>
+
+                    <div class="col-md-3 form-check">
+                        <input asp-for="TemEstacionamento" class="form-check-input" />
+                        <label class="form-check-label">Estacionamento</label>
+                    </div>
+
+                    <div class="col-md-3 form-check">
+                        <input asp-for="TemAcessibilidade" class="form-check-input" />
+                        <label class="form-check-label">Acessibilidade</label>
+                    </div>
+
+                    <div class="col-md-3 form-check">
+                        <input asp-for="TemArCondicionado" class="form-check-input" />
+                        <label class="form-check-label">Ar-condicionado</label>
+                    </div>
+                </div>
+
+                <div class="form-check mt-2">
+                    <input asp-for="AtendimentoOnline" class="form-check-input" />
+                    <label class="form-check-label">Atendimento Online</label>
+                </div>
+
+                <!-- ===================== CONTROLE ===================== -->
+                <div class="form-check mt-4">
                     <input asp-for="Ativo" class="form-check-input" />
                     <label class="form-check-label">Ativo (visível para clientes)</label>
                 </div>
 
-                <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-success">Salvar</button>
-                </div>
+                <button type="submit" class="btn btn-success mt-3">
+                    Salvar
+                </button>
+
             </form>
+
         </div>
     </div>
 </div>
+
+<script>
+        function copyPublicUrl() {
+        const input = document.getElementById("publicUrl");
+        navigator.clipboard.writeText(input.value);
+
+        const btn = event.currentTarget;
+        const original = btn.innerHTML;
+
+        btn.innerHTML = "✔";
+        setTimeout(() => {
+            btn.innerHTML = "📋";
+        }, 1200);
+    }
+</script>

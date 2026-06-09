@@ -1,37 +1,215 @@
 ﻿@model IEnumerable<EmpresaAgendamento.Models.Servico>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold">Serviços</h3>
-        <a asp-action="Create" class="btn btn-primary">+ Novo Serviço</a>
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+
+        <h3 class="fw-bold mb-0">Serviços</h3>
+
+        <a asp-action="Create" class="btn btn-primary">
+            + Novo Serviço
+        </a>
+
     </div>
 
-    <div class="card shadow-sm">
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
         <div class="card-body">
-            <table class="table table-hover table-fixed">
+
+            <table class="table table-hover align-middle">
+
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 40%;">Nome</th>
-                        <th style="width: 20%;">Preço</th>
-                        <th style="width: 20%;">Duração (min)</th>
-                        <th style="width: 20%;" class="text-end">Ações</th>
+                        <th>Nome</th>
+                        <th>Preço</th>
+                        <th>Duração</th>
+                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
+
                 <tbody>
+
                     @foreach (var item in Model)
                     {
                         <tr>
+
                             <td>@item.Nome</td>
+
                             <td>@item.Preco.ToString("C")</td>
-                            <td>@item.DuracaoMinutos</td>
+
+                            <td>@item.DuracaoMinutos min</td>
+
                             <td class="text-end">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Excluir</a>
+
+                                <a asp-action="Edit"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-outline-primary">
+                                    Editar
+                                </a>
+
+                                <form asp-action="ToggleAtivo"
+                                      method="post"
+                                      class="d-inline">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                           name="id"
+                                           value="@item.Id" />
+
+                                    @if (item.Ativo)
+                                    {
+                                        <button type="submit"
+                                                class="btn btn-sm btn-success">
+                                            Ativo
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-secondary">
+                                            Inativo
+                                        </button>
+                                    }
+
+                                </form>
+
                             </td>
+
                         </tr>
                     }
+
                 </tbody>
+
             </table>
+
         </div>
     </div>
+
+    <!-- MOBILE -->
+    <div class="d-lg-none">
+
+        @foreach (var item in Model)
+        {
+            <div class="card mobile-card mb-3">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+
+                        <h6 class="fw-bold mb-0">
+                            @item.Nome
+                        </h6>
+
+                        @if (item.Ativo)
+                        {
+                            <span class="badge bg-success">
+                                Ativo
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">
+                                Inativo
+                            </span>
+                        }
+
+                    </div>
+
+                    <div class="mobile-info">
+                        <label>Preço</label>
+                        <span>@item.Preco.ToString("C")</span>
+                    </div>
+
+                    <div class="mobile-info">
+                        <label>Duração</label>
+                        <span>@item.DuracaoMinutos min</span>
+                    </div>
+
+                    <div class="mobile-actions">
+
+                        <a asp-action="Edit"
+                           asp-route-id="@item.Id"
+                           class="btn btn-outline-primary">
+                            Editar
+                        </a>
+
+                        <form asp-action="ToggleAtivo"
+                              method="post">
+
+                            @Html.AntiForgeryToken()
+
+                            <input type="hidden"
+                                   name="id"
+                                   value="@item.Id" />
+
+                            @if (item.Ativo)
+                            {
+                                <button type="submit"
+                                        class="btn btn-warning w-100 mt-2">
+                                    Inativar
+                                </button>
+                            }
+                            else
+                            {
+                                <button type="submit"
+                                        class="btn btn-success w-100 mt-2">
+                                    Ativar
+                                </button>
+                            }
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            </div>
+        }
+
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+
+            <nav>
+                <ul class="pagination">
+
+                    <!-- ANTERIOR -->
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage - 1)">
+                            Anterior
+                        </a>
+                    </li>
+
+                    <!-- PÁGINAS -->
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@i">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <!-- PRÓXIMO -->
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage + 1)">
+                            Próximo
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+
+        </div>
+    }
+
 </div>

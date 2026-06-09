@@ -1,0 +1,33 @@
+﻿<div class="auth-card">
+
+    <div class="text-center mb-4">
+        <h4>Recuperar senha</h4>
+        <p class="text-muted">
+            Digite seu email para receber o link
+        </p>
+    </div>
+
+    <form id="forgotForm"
+          data-type="empresa-forgot">
+
+        <input type="email"
+               name="Email"
+               class="form-control mb-3"
+               placeholder="Email"
+               required />
+
+        <button type="submit"
+                class="btn btn-dark w-100">
+            Enviar link
+        </button>
+
+        <div class="text-center mt-3">
+            <a href="#"
+               onclick="backToLogin(); return false;">
+                Voltar para login
+            </a>
+        </div>
+
+    </form>
+
+</div>

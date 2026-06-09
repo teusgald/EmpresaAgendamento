@@ -1,0 +1,46 @@
+﻿@model EmpresaAgendamento.Models.Funcionario
+
+<div class="container mt-4">
+
+    ```
+    <div class="card shadow-sm">
+
+        <div class="card-body">
+
+            <h3 class="mb-3">@Model.Nome</h3>
+
+            <p><strong>Cargo:</strong> @Model.Cargo</p>
+            <p><strong>Email:</strong> @Model.Email</p>
+            <p><strong>Telefone:</strong> @Model.Telefone</p>
+            <p><strong>Observações:</strong> @Model.Observacoes</p>
+
+            <hr />
+
+            <h5>Serviços</h5>
+
+            @if (Model.Servicos.Any())
+            {
+                @foreach (var s in Model.Servicos)
+                {
+                    <span class="badge bg-light text-dark border me-1">
+                        @s.Servico.Nome
+                    </span>
+                }
+            }
+            else
+            {
+                <span class="text-muted">Nenhum serviço vinculado</span>
+            }
+
+            <hr />
+
+            <a asp-action="Index" class="btn btn-secondary">
+                Voltar
+            </a>
+
+        </div>
+
+    </div>
+    ```
+
+</div>

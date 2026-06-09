@@ -1,5 +1,6 @@
 ﻿using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,6 +24,16 @@ namespace EmpresaAgendamento.Services
 
         public async Task<(bool Success, string Error)> RegisterAsync(EmpresaRegisterViewModel model)
         {
+            var empresaExistente = _userManager.Users
+                .Any(x =>
+                    x.Email == model.Email &&
+                    x.EmpresaId != null);
+
+            if (empresaExistente)
+            {
+                return (false, "Já existe uma empresa cadastrada com este e-mail.");
+            }
+
             var user = new ApplicationUser
             {
                 UserName = $"empresa-{Guid.NewGuid()}",
@@ -32,11 +43,16 @@ namespace EmpresaAgendamento.Services
             var result = await _userManager.CreateAsync(user, model.Password);
 
             if (!result.Succeeded)
-                return (false, result.Errors.First().Description);
+            {
+                return (
+                    false,
+                    string.Join("<br>",
+                        result.Errors.Select(x => x.Description))
+                );
+            }
 
             await _userManager.AddToRoleAsync(user, "Empresa");
 
-            // 🔥 cria empresa
             var empresa = new Empresa
             {
                 Nome = model.NomeEmpresa,
@@ -46,8 +62,8 @@ namespace EmpresaAgendamento.Services
             _context.Empresas.Add(empresa);
             await _context.SaveChangesAsync();
 
-            // 🔥 vincula user com empresa
             user.EmpresaId = empresa.Id;
+
             await _userManager.UpdateAsync(user);
 
             await _signInManager.SignInAsync(user, false);

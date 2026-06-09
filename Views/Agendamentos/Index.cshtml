@@ -1,51 +1,430 @@
 ﻿@using EmpresaAgendamento.Models.Enums
 @model IEnumerable<EmpresaAgendamento.Models.Agendamento>
-@{
-	ViewData["Title"] = "Agendamentos";
-}
-<div class="container mt-4">
-	<div class="d-flex justify-content-between align-items-center mb-3">
-		<h3 class="fw-bold">Agendamentos</h3>
-		<a asp-action="Create" class="btn btn-primary">+ Novo</a>
-	</div>
 
-    <div class="card shadow-sm">
+@{
+    ViewData["Title"] = "Agendamentos";
+}
+
+<div class="card shadow-sm mb-3">
+    <div class="card-body">
+
+        <form method="get">
+
+            <div class="row g-2">
+
+                <div class="col-lg-4">
+                    <input type="text"
+                           name="cliente"
+                           value="@ViewBag.Cliente"
+                           class="form-control"
+                           placeholder="Cliente ou cliente avulso" />
+                </div>
+
+                <div class="col-lg-2">
+
+                    <select name="status"
+                            class="form-select">
+
+                        <option value="">
+                            Todos Status
+                        </option>
+
+                        @foreach (var status in Enum.GetValues<StatusAgendamento>())
+                        {
+                            <option value="@status"
+                                    selected="@(ViewBag.Status?.ToString() == status.ToString())">
+
+                                @status
+
+                            </option>
+                        }
+
+                    </select>
+
+                </div>
+
+                <div class="col-lg-2">
+                    <input type="date"
+                           name="dataInicial"
+                           value="@ViewBag.DataInicial?.ToString("yyyy-MM-dd")"
+                           class="form-control" />
+                </div>
+
+                <div class="col-lg-2">
+                    <input type="date"
+                           name="dataFinal"
+                           value="@ViewBag.DataFinal?.ToString("yyyy-MM-dd")"
+                           class="form-control" />
+                </div>
+
+                <div class="col-lg-2 d-grid">
+                    <button class="btn btn-primary">
+                        Filtrar
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+
+    <a asp-action="Create" class="btn btn-primary">
+        + Novo Agendamento
+    </a>
+
+</div>
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
         <div class="card-body">
-            <table class="table table-hover align-middle table-fixed">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 25%;">Cliente</th>
-                        <th style="width: 25%;">Serviço</th>
-                        <th style="width: 15%;">Preço</th>
-                        <th style="width: 20%;">Data</th>
-                        <th style="width: 20%;">Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model)
+
+            <table class="table table-hover align-middle">
+
+            <thead class="table-light">
+                <tr>
+                    <th>Cliente</th>
+                    <th>Profissional</th>
+                    <th>Serviço</th>
+                    <th>Valor</th>
+                    <th>Data</th>
+                    <th>Status</th>
+                    <th>WhatsApp</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                @foreach (var item in Model)
+                {
+                    string badgeClass = item.Status switch
                     {
-                        <tr>
-                            <td>@item.Cliente?.Nome</td>
-                            <td>@item.Servico?.Nome</td>
-                            <td>@item.Servico?.Preco.ToString("C")</td>
-                            <td>@item.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
-                            <td>
-                                @{
-                                    string badgeClass = item.Status switch
+                        StatusAgendamento.Agendado => "bg-primary",
+                        StatusAgendamento.Confirmado => "bg-success",
+                        StatusAgendamento.Cancelado => "bg-danger",
+                        StatusAgendamento.Finalizado => "bg-secondary",
+                        _ => "bg-secondary"
+                    };
+
+                    <tr>
+
+                        <td>
+
+                            @(item.Cliente?.Nome
+                                ?? item.NomeClienteAvulso
+                                ?? "-")
+
+                            @if (item.ClienteAvulso)
+                            {
+                                <span class="badge bg-warning text-dark ms-1">
+                                    AVULSO
+                                </span>
+                            }
+
+                        </td>
+
+                        <td>
+                            @(item.Funcionario?.Nome ?? "-")
+                        </td>
+
+                        <td>
+                            @item.Servico?.Nome
+                        </td>
+
+                        <td>
+                            @item.Servico?.Preco.ToString("C")
+                        </td>
+
+                        <td>
+                            @item.DataHora.ToString("dd/MM/yyyy HH:mm")
+                        </td>
+
+                        <td>
+
+                            @{
+                                string statusClass = item.Status switch
+                                {
+                                    StatusAgendamento.Agendado => "btn-primary",
+                                    StatusAgendamento.Confirmado => "btn-success",
+                                    StatusAgendamento.Cancelado => "btn-danger",
+                                    StatusAgendamento.Finalizado => "btn-secondary",
+                                    _ => "btn-secondary"
+                                };
+                            }
+
+                            <div class="dropdown">
+
+                                <button class="btn btn-sm rounded-pill @statusClass dropdown-toggle"
+                                        data-bs-toggle="dropdown">
+
+                                    @item.Status
+
+                                </button>
+
+                                <ul class="dropdown-menu shadow-sm">
+
+                                    @foreach (var status in Enum.GetValues<StatusAgendamento>())
                                     {
-                                        StatusAgendamento.Agendado => "bg-primary",
-                                        StatusAgendamento.Confirmado => "bg-success",
-                                        StatusAgendamento.Cancelado => "bg-danger",
-                                        StatusAgendamento.Finalizado => "bg-secondary",
-                                        _ => "bg-secondary"
-                                    };
-                                }
-                                <span class="badge @badgeClass">@item.Status</span>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
+                                        <li>
+
+                                            <form asp-action="AlterarStatus"
+                                                  method="post">
+
+                                                @Html.AntiForgeryToken()
+
+                                                <input type="hidden"
+                                                       name="id"
+                                                       value="@item.Id" />
+
+                                                <input type="hidden"
+                                                       name="status"
+                                                       value="@status" />
+
+                                                <button type="submit"
+                                                        class="dropdown-item">
+
+                                                    @status
+
+                                                </button>
+
+                                            </form>
+
+                                        </li>
+                                    }
+
+                                </ul>
+
+                            </div>
+
+                        </td>
+
+                        <td>
+
+                            @if (item.ClienteAvulso &&
+                           !string.IsNullOrWhiteSpace(item.TelefoneClienteAvulso))
+                            {
+                                var telefone = item.TelefoneClienteAvulso
+                                .Replace("(", "")
+                                .Replace(")", "")
+                                .Replace("-", "")
+                                .Replace(" ", "");
+
+                                <a href="@($"https://wa.me/55{telefone}")"
+                                   target="_blank"
+                                   class="btn btn-success btn-sm">
+
+                                    <i class="bi bi-whatsapp"></i>
+
+                                </a>
+                            }
+
+                        </td>
+
+                        <td class="text-end">
+
+                            <a asp-action="Edit"
+                               asp-route-id="@item.Id"
+                               class="btn btn-sm btn-outline-primary">
+
+                                Editar
+
+                            </a>
+
+                        </td>
+
+                    </tr>
+                }
+
+            </tbody>
+
             </table>
+
         </div>
     </div>
+
+    <!-- MOBILE / TABLET -->
+<div class="d-lg-none">
+
+    @foreach (var item in Model)
+    {
+        string badgeClass = item.Status switch
+        {
+            StatusAgendamento.Agendado => "bg-primary",
+            StatusAgendamento.Confirmado => "bg-success",
+            StatusAgendamento.Cancelado => "bg-danger",
+            StatusAgendamento.Finalizado => "bg-secondary",
+            _ => "bg-secondary"
+        };
+
+        <div class="card mobile-card mb-3 shadow-sm">
+
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-start mb-3">
+
+                    <div>
+
+                        <h6 class="fw-bold mb-1">
+
+                            @(item.Cliente?.Nome
+                                ?? item.NomeClienteAvulso
+                                ?? "-")
+
+                        </h6>
+
+                        @if (item.ClienteAvulso)
+                        {
+                            <span class="badge bg-warning text-dark">
+                                Cliente Avulso
+                            </span>
+                        }
+
+                    </div>
+
+                    <span class="badge @badgeClass">
+                        @item.Status
+                    </span>
+
+                </div>
+
+                <div class="mobile-info">
+                    <label>Profissional</label>
+                    <span>
+                        @(item.Funcionario?.Nome ?? "-")
+                    </span>
+                </div>
+
+                <div class="mobile-info">
+                    <label>Serviço</label>
+                    <span>@item.Servico?.Nome</span>
+                </div>
+
+                <div class="mobile-info">
+                    <label>Valor</label>
+                    <span>
+                        @item.Servico?.Preco.ToString("C")
+                    </span>
+                </div>
+
+                <div class="mobile-info">
+                    <label>Data</label>
+                    <span>
+                        @item.DataHora.ToString("dd/MM/yyyy HH:mm")
+                    </span>
+                </div>
+
+                <div class="mobile-info">
+
+                    <label>Status</label>
+
+                    <form asp-action="AlterarStatus"
+                          method="post"
+                          class="w-100">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="id"
+                               value="@item.Id" />
+
+                        <select name="status"
+                                class="form-select form-select-sm"
+                                onchange="this.form.submit()">
+
+                            @foreach (var status in Enum.GetValues<StatusAgendamento>())
+                            {
+                                <option value="@status"
+                                        selected="@(item.Status == status)">
+                                    @status
+                                </option>
+                            }
+
+                        </select>
+
+                    </form>
+
+                </div>
+
+                <div class="mobile-actions mt-3">
+
+                    <a asp-action="Edit"
+                       asp-route-id="@item.Id"
+                       class="btn btn-outline-primary">
+
+                        Editar
+
+                    </a>
+
+                    @if (item.ClienteAvulso &&
+                   !string.IsNullOrWhiteSpace(item.TelefoneClienteAvulso))
+                    {
+                        var telefone = item.TelefoneClienteAvulso
+                        .Replace("(", "")
+                        .Replace(")", "")
+                        .Replace("-", "")
+                        .Replace(" ", "");
+
+                        <a href="@($"https://wa.me/55{telefone}")"
+                           target="_blank"
+                           class="btn btn-success">
+
+                            <i class="bi bi-whatsapp"></i>
+
+                        </a>
+                    }
+
+                </div>
+
+            </div>
+
+        </div>
+    }
+
+</div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+
+            <nav>
+                <ul class="pagination">
+
+                    <!-- ANTERIOR -->
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage - 1)">
+                            Anterior
+                        </a>
+                    </li>
+
+                    <!-- PÁGINAS -->
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@i">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <!-- PRÓXIMO -->
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage + 1)">
+                            Próximo
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+
+        </div>
+    }
+
 </div>

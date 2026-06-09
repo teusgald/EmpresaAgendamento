@@ -1,5 +1,6 @@
 ﻿using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -63,7 +64,11 @@ public class ClientesAuthController : Controller
             user, model.Password, isPersistent: false, lockoutOnFailure: false);
 
         if (result.Succeeded)
-            return RedirectToAction("Index", "AgendamentosClientes");
+                return Json(new
+                {
+                    success = true,
+                    redirect = "/Cliente/Agendamentos"
+                });
 
         ModelState.AddModelError("", "Email ou senha inválidos.");
         return View(model);
@@ -79,28 +84,65 @@ public class ClientesAuthController : Controller
     public async Task<IActionResult> Register(ClienteRegisterViewModel model)
     {
         if (!ModelState.IsValid)
-            return View(model);
+        {
+            return Json(new
+            {
+                success = false,
+                error = "Preencha todos os campos corretamente."
+            });
+        }
 
-        // 🔹 Cria usuário com UserName único (não importa se email existe em outra role)
+        // =====================================
+        // VALIDAR EMAIL DUPLICADO
+        // =====================================
+
+        var emailExistente = _userManager.Users
+            .FirstOrDefault(x => x.Email == model.Email &&
+                    x.Cliente.Id != null);
+
+        if (emailExistente != null)
+        {
+            return Json(new
+            {
+                success = false,
+                error = "Já existe uma conta cadastrada com este e-mail."
+            });
+        }
+
+        // =====================================
+        // CRIAR USUÁRIO
+        // =====================================
+
         var user = new ApplicationUser
         {
             UserName = $"cliente-{Guid.NewGuid()}",
             Email = model.Email
         };
 
-        var result = await _userManager.CreateAsync(user, model.Password);
+        var result = await _userManager.CreateAsync(
+            user,
+            model.Password);
 
         if (!result.Succeeded)
         {
-            foreach (var error in result.Errors)
-                ModelState.AddModelError("", error.Description);
-            return View(model);
+            return Json(new
+            {
+                success = false,
+                error = string.Join("<br>",
+                    result.Errors.Select(x => x.Description))
+            });
         }
 
-        // 🔹 Adiciona role Cliente
+        // =====================================
+        // ROLE
+        // =====================================
+
         await _userManager.AddToRoleAsync(user, "Cliente");
 
-        // 🔹 Cria entidade Cliente
+        // =====================================
+        // CLIENTE
+        // =====================================
+
         var cliente = new Cliente
         {
             Nome = model.Nome,
@@ -112,42 +154,201 @@ public class ClientesAuthController : Controller
         _context.Clientes.Add(cliente);
         await _context.SaveChangesAsync();
 
-        // 🔹 Vincula ClienteId ao usuário
-        user.ClienteId = cliente.Id;
+        user.Cliente.Id = cliente.Id;
+
         await _userManager.UpdateAsync(user);
 
-        // 🔹 Envio de email de boas-vindas
+        // =====================================
+        // EMAIL BOAS VINDAS
+        // =====================================
+
+        bool emailEnviado = false;
+        string erroEmail = "";
+
         try
         {
-            string subject = "Bem-vindo ao Sistema de Agendamento!";
-            string message = $@"
-                Olá {cliente.Nome},<br/><br/>
-                Parabéns! Sua conta de cliente foi criada com sucesso.<br/>
-                Agora você pode acessar o sistema e agendar seus serviços.<br/><br/>
-                Atenciosamente,<br/>
-                Equipe EmpresaAgendamento
-            ";
-            await _emailService.SendEmailAsync(user.Email, subject, message);
+            await _emailService.SendEmailAsync(
+                user.Email,
+                "Bem-vindo ao Sistema",
+                $@"
+            <h2>Olá {cliente.Nome}</h2>
+
+            <p>Sua conta foi criada com sucesso.</p>
+
+            <p>Agora você já pode acessar o sistema e realizar seus agendamentos.</p>
+            ");
+
+            emailEnviado = true;
         }
         catch (Exception ex)
         {
-            // Apenas loga o erro sem quebrar o fluxo
-            Console.WriteLine($"Erro ao enviar email: {ex.Message}");
+            erroEmail = ex.Message;
         }
 
-        // 🔹 Login automático
-        await _signInManager.SignInAsync(user, isPersistent: false);
+        // =====================================
+        // LOGIN AUTOMÁTICO
+        // =====================================
 
-        return RedirectToAction("Index", "AgendamentosClientes");
+        await _signInManager.SignInAsync(
+            user,
+            isPersistent: false);
+
+        return Json(new
+        {
+            success = true,
+            redirect = "/Cliente/Agendamentos",
+            emailEnviado,
+            erroEmail
+        });
     }
 
     // =========================
     // LOGOUT
     // =========================
-    
+    [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromServices] SignInManager<ApplicationUser> signInManager)
     {
         await signInManager.SignOutAsync();
         return RedirectToAction("Index", "Home");
+    }
+
+    [HttpGet("forgot")]
+    public IActionResult Forgot() => View();
+
+    [HttpPost("forgot")]
+    public async Task<IActionResult> Forgot(ForgotViewModel model)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Email inválido"
+                });
+            }
+
+            var user = _userManager.Users
+                .FirstOrDefault(x =>
+                    x.Email == model.Email &&
+                    x.Cliente.Id != null);
+
+            if (user == null)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Email não encontrado"
+                });
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var link =
+                     $"{Request.Scheme}://{Request.Host}/" +
+                     $"?mode=reset" +
+                     $"&type=cliente" +
+                     $"&email={Uri.EscapeDataString(model.Email)}" +
+                     $"&token={Uri.EscapeDataString(token)}";
+
+            await _emailService.SendEmailAsync(
+                model.Email,
+                "Recuperação de Senha",
+                $@"
+            <h2>Recuperação de Senha</h2>
+
+            <p>Recebemos uma solicitação para redefinir sua senha.</p>
+
+            <p>
+                <a href='{link}'>
+                    Clique aqui para redefinir sua senha
+                </a>
+            </p>
+
+            <p>Se você não solicitou esta alteração, ignore este email.</p>"
+            );
+
+            return Json(new { success = true });
+        }
+        catch (Exception ex)
+        {
+            return Json(new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
+    }
+
+    [HttpGet("ResetPassword")]
+    public IActionResult ResetPassword(string email, string token)
+    {
+        return View(new ResetPasswordViewModel
+        {
+            Email = email,
+            Token = token
+        });
+    }
+
+    [HttpPost("resetpassword")]
+    public async Task<IActionResult> ResetPassword(
+      ResetPasswordViewModel model)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Dados inválidos"
+                });
+            }
+
+            var user = _userManager.Users
+                .FirstOrDefault(x =>
+                    x.Email == model.Email &&
+                    x.Cliente.Id != null);
+
+            if (user == null)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Usuário não encontrado"
+                });
+            }
+            var token = Uri.UnescapeDataString(model.Token);
+            var result = await _userManager.ResetPasswordAsync(
+                user,
+                model.Token,
+                model.Password);
+
+            if (result.Succeeded)
+            {
+                return Json(new
+                {
+                    success = true,
+                    redirect = "/?login=true&type=cliente&reset=success"
+                });
+            }
+
+            return Json(new
+            {
+                success = false,
+                error = string.Join(
+                    "<br>",
+                    result.Errors.Select(x => x.Description))
+            });
+        }
+        catch (Exception ex)
+        {
+            return Json(new
+            {
+                success = false,
+                error = ex.Message
+            });
+        }
     }
 }

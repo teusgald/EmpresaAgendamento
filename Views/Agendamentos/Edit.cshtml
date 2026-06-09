@@ -1,42 +1,220 @@
 ﻿@model EmpresaAgendamento.Models.Agendamento
+
 @{
-    ViewData["Title"] = "Agendamentos";
+    ViewData["Title"] = "Editar Agendamento";
 }
+
 <div class="container mt-4">
     <div class="card shadow-sm">
         <div class="card-body">
+
             <h4 class="mb-4">Editar Agendamento</h4>
+
             <div asp-validation-summary="All" class="text-danger"></div>
 
             <form asp-action="Edit" method="post">
+
                 <input type="hidden" asp-for="Id" />
 
-                <div class="mb-3">
-                    <label class="form-label">Cliente</label>
-                    <select asp-for="ClienteId" asp-items="@(new SelectList(ViewBag.Clientes, "Id", "Nome", Model?.ClienteId))" class="form-select"></select>
-                </div>
+                <!-- CLIENTE CADASTRADO -->
 
                 <div class="mb-3">
-                    <label class="form-label">Serviço</label>
-                    <select asp-for="ServicoId" asp-items="@(new SelectList(ViewBag.Servicos, "Id", "Nome", Model?.ServicoId))" class="form-select"></select>
+                    <label class="form-label">
+                        Cliente cadastrado
+                    </label>
+
+                    <select asp-for="ClienteId" class="form-select">
+
+                        <option value="">
+                            Selecione
+                        </option>
+
+                        @foreach (var cliente in ViewBag.Clientes)
+                        {
+                            <option value="@cliente.Id"
+                                    selected="@(Model.ClienteId == cliente.Id)">
+                                @cliente.Nome
+                            </option>
+                        }
+
+                    </select>
                 </div>
 
+                <!-- CLIENTE AVULSO -->
+
+                <div class="form-check mb-3">
+
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="clienteAvulso"
+                           name="clienteAvulso"
+                           value="true"
+                    @(Model.ClienteAvulso ? "checked" : "") />
+
+                    <label class="form-check-label">
+                        Cliente não cadastrado
+                    </label>
+
+                </div>
+
+                <div id="avulsoBox"
+                     class="border rounded p-3 mb-3 @(Model.ClienteAvulso ? "" : "d-none")">
+
+                    <div class="mb-2">
+                        <label class="form-label">
+                            Nome do Cliente
+                        </label>
+
+                        <input asp-for="NomeClienteAvulso"
+                               class="form-control" />
+                    </div>
+
+                    <div>
+                        <label class="form-label">
+                            Telefone
+                        </label>
+
+                        <input asp-for="TelefoneClienteAvulso"
+                               class="form-control" />
+                    </div>
+
+                </div>
+
+                <!-- SERVIÇO -->
+
                 <div class="mb-3">
-                    <label class="form-label">Data e Hora</label>
-                    <input asp-for="DataHora" type="datetime-local" class="form-control"
+                    <label class="form-label">
+                        Serviço
+                    </label>
+
+                    <select asp-for="ServicoId"
+                            class="form-select">
+
+                        @foreach (var servico in ViewBag.Servicos)
+                        {
+                            <option value="@servico.Id"
+                                    selected="@(Model.ServicoId == servico.Id)">
+                                @servico.Nome
+                            </option>
+                        }
+
+                    </select>
+                </div>
+
+                <!-- FUNCIONÁRIO -->
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Funcionário
+                    </label>
+
+                    <select asp-for="FuncionarioId"
+                            class="form-select">
+
+                        <option value="">
+                            Selecione
+                        </option>
+
+                        @foreach (var funcionario in ViewBag.Funcionarios)
+                        {
+                            <option value="@funcionario.Id"
+                                    selected="@(Model.FuncionarioId == funcionario.Id)">
+                                @funcionario.Nome
+                            </option>
+                        }
+
+                    </select>
+
+                </div>
+
+                <div class="form-check mb-3">
+
+                    <input class="form-check-input"
+                           type="checkbox"
+                           id="funcionarioAleatorio"
+                           name="funcionarioAleatorio"
+                           value="true" />
+
+                    <label class="form-check-label">
+                        Escolher funcionário automaticamente
+                    </label>
+
+                </div>
+
+                <!-- DATA -->
+
+                <div class="mb-3">
+
+                    <label class="form-label">
+                        Data e Hora
+                    </label>
+
+                    <input asp-for="DataHora"
+                           type="datetime-local"
+                           class="form-control"
                            value="@Model.DataHora.ToString("yyyy-MM-ddTHH:mm")" />
+
                 </div>
 
+                <!-- OBSERVAÇÃO -->
+
                 <div class="mb-3">
-                    <label class="form-label">Observação</label>
-                    <input asp-for="Observacao" class="form-control" />
+
+                    <label class="form-label">
+                        Observação
+                    </label>
+
+                    <textarea asp-for="Observacao"
+                              class="form-control"
+                              rows="3"></textarea>
+
                 </div>
 
                 <div class="d-flex gap-2">
-                    <button type="submit" class="btn btn-success">Salvar</button>
-                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+
+                    <button type="submit"
+                            class="btn btn-success">
+                        Salvar
+                    </button>
+
+                    <a asp-action="Index"
+                       class="btn btn-outline-secondary">
+                        Voltar
+                    </a>
+
                 </div>
+
             </form>
+
         </div>
     </div>
 </div>
+
+@section Scripts
+{
+    <script>
+
+        const checkCliente =
+            document.getElementById("clienteAvulso");
+
+        const avulsoBox =
+            document.getElementById("avulsoBox");
+
+        function toggleClienteAvulso()
+        {
+            avulsoBox.classList.toggle(
+                "d-none",
+                !checkCliente.checked
+            );
+        }
+
+        checkCliente.addEventListener(
+            "change",
+            toggleClienteAvulso
+        );
+
+        toggleClienteAvulso();
+
+    </script>
+}

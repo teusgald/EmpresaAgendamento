@@ -1,4 +1,4 @@
-﻿namespace EmpresaAgendamento.Models
+﻿namespace EmpresaAgendamento.Models.ViewModels
 {
     public class EmpresaLoginViewModel
     {

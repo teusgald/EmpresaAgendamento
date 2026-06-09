@@ -3,31 +3,122 @@
 }
 
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+<style>
+
+    #calendar {
+        min-height: 700px;
+    }
+
+    .fc-toolbar {
+        gap: .5rem;
+    }
+
+    .fc-toolbar-title {
+        font-size: 1.2rem !important;
+        font-weight: 600;
+    }
+
+    @@media (max-width: 768px) {
+
+        .fc-header-toolbar {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 10px;
+        }
+
+        .fc-toolbar-chunk {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+
+        .fc-toolbar-title {
+            font-size: 1rem !important;
+            text-align: center;
+        }
+
+        .fc-button {
+            padding: .25rem .5rem !important;
+            font-size: .75rem !important;
+        }
+
+        #calendar {
+            min-height: 550px;
+        }
+    }
+
+</style>
 
 <h2 class="mb-4">Calendário de Agendamentos</h2>
 
-<div id="calendar"></div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <div id="calendar"></div>
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        var calendarEl = document.getElementById('calendar');
 
-        var calendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'timeGridWeek',
-            locale: 'pt-br',
-            height: 'auto', // ajusta altura automática
-            events: '/Agendamentos/GetEventos',
+       document.addEventListener('DOMContentLoaded', function () {
 
-            dateClick: function(info) {
-                window.location.href = '/Agendamentos/Create?data=' + info.dateStr;
-            },
+        const mobile = window.innerWidth < 768;
 
-            eventClick: function(info) {
-                window.location.href = '/Agendamentos/Edit/' + info.event.id;
-            }
-        });
+        const calendar = new FullCalendar.Calendar(
+            document.getElementById('calendar'),
+            {
+
+                locale: 'pt-br',
+
+                initialView: mobile
+                    ? 'timeGridDay'
+                    : 'timeGridWeek',
+
+                nowIndicator: true,
+
+                selectable: true,
+
+                height: 'auto',
+
+                slotMinTime: '06:00:00',
+
+                slotMaxTime: '22:00:00',
+
+                headerToolbar: {
+                    left: 'prev,next',
+                    center: 'title',
+                    right: mobile
+                        ? 'today'
+                        : 'today dayGridMonth,timeGridWeek,timeGridDay'
+                },
+
+                buttonText: {
+                    today: 'Hoje',
+                    month: 'Mês',
+                    week: 'Semana',
+                    day: 'Dia'
+                },
+
+                events: '/agendamentos/eventos',
+
+                dateClick: function (info) {
+
+                    window.location.href =
+                        '/Agendamentos/Create?data=' +
+                        encodeURIComponent(info.dateStr);
+                },
+
+                eventClick: function (info) {
+
+                    window.location.href =
+                        '/Agendamentos/Edit/' +
+                        info.event.id;
+                }
+            });
 
         calendar.render();
     });
+
 </script>

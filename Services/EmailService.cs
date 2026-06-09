@@ -10,7 +10,7 @@ namespace EmpresaAgendamento.Services
         {
             var message = new MailMessage
             {
-                From = new MailAddress("seuemail@gmail.com"),
+                From = new MailAddress("mateus.gald@gmail.com"),
                 Subject = subject,
                 Body = htmlMessage,
                 IsBodyHtml = true
@@ -20,7 +20,10 @@ namespace EmpresaAgendamento.Services
 
             using var smtp = new SmtpClient("smtp.gmail.com", 587)
             {
-                Credentials = new NetworkCredential("mateus.gald@gmail.com", "dvgs apnr avmm jpax"),
+                Credentials = new NetworkCredential(
+                    "mateus.gald@gmail.com",
+                    "kujl tkjz xscc lsid"
+                ),
                 EnableSsl = true
             };
 

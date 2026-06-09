@@ -1,37 +1,250 @@
 ﻿@model IEnumerable<EmpresaAgendamento.Models.Cliente>
 
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold">Clientes</h3>
-        <a asp-action="Create" class="btn btn-primary">+ Novo Cliente</a>
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+
+        <h3 class="fw-bold mb-0">Clientes</h3>
+
+        <a asp-action="Create" class="btn btn-primary">
+            + Novo Cliente
+        </a>
+
     </div>
 
-    <div class="card shadow-sm">
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
         <div class="card-body">
-            <table class="table table-hover table-fixed">
+
+            <table class="table table-hover align-middle">
+
                 <thead class="table-light">
                     <tr>
-                        <th style="width: 35%;">Nome</th>
-                        <th style="width: 25%;">Telefone</th>
-                        <th style="width: 25%;">Email</th>
-                        <th style="width: 15%;" class="text-end">Ações</th>
+                        <th>Nome</th>
+                        <th>WhatsApp</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
+
                 <tbody>
+
                     @foreach (var item in Model)
                     {
-                        <tr>
-                            <td>@item.Nome</td>
-                            <td>@item.Telefone</td>
-                            <td>@item.Email</td>
-                            <td class="text-end">
-                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger">Excluir</a>
+                        var telefoneLimpo = new string(
+                            (item.Telefone ?? "")
+                            .Where(char.IsDigit)
+                            .ToArray()
+                        );
+
+                            <tr>
+
+                                <td>@item.Nome</td>
+
+                            <td>
+                                <a href="https://wa.me/55@(telefoneLimpo)"
+                                   target="_blank"
+                                   class="text-success fs-4">
+                                    <i class="bi bi-whatsapp"></i>
+                                </a>
                             </td>
-                        </tr>
+
+                                <td>@item.Email</td>
+
+                                <td>
+                                @if (item.Ativo)
+                                {
+                                            <span class="badge bg-success">Ativo</span>
+                                }
+                                else
+                                {
+                                            <span class="badge bg-secondary">Inativo</span>
+                                }
+                                </td>
+
+                                <td class="text-end">
+
+                                    <a asp-action="Edit"
+                                       asp-route-id="@item.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Editar
+                                    </a>
+
+                                    <form asp-action="ToggleAtivo"
+                                          method="post"
+                                          class="d-inline">
+
+                                    @Html.AntiForgeryToken()
+
+                                        <input type="hidden"
+                                               name="id"
+                                               value="@item.Id" />
+
+                                    @if (item.Ativo)
+                                    {
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-warning">
+                                                    Inativar
+                                                </button>
+                                    }
+                                    else
+                                    {
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-success">
+                                                    Ativar
+                                                </button>
+                                    }
+
+                                    </form>
+
+                                </td>
+
+                            </tr>
                     }
+
                 </tbody>
+
             </table>
+
         </div>
     </div>
+
+    <!-- MOBILE -->
+    <div class="d-lg-none">
+
+        @foreach (var item in Model)
+        {
+            var telefoneLimpo = new string(
+                (item.Telefone ?? "")
+                .Where(char.IsDigit)
+                .ToArray()
+            );
+
+                <div class="card mobile-card mb-3">
+
+                    <div class="card-body">
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+
+                            <h6 class="fw-bold mb-0">
+                            @item.Nome
+                            </h6>
+
+                        @if (item.Ativo)
+                        {
+                                    <span class="badge bg-success">
+                                        Ativo
+                                    </span>
+                        }
+                        else
+                        {
+                                    <span class="badge bg-secondary">
+                                        Inativo
+                                    </span>
+                        }
+
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>Email</label>
+                            <span>@item.Email</span>
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>WhatsApp</label>
+
+                            <a href="https://wa.me/55@telefoneLimpo"
+                               target="_blank"
+                               class="text-success fs-4">
+                                <i class="bi bi-whatsapp"></i>
+                            </a>
+                        </div>
+
+                        <div class="mobile-actions">
+
+                            <a asp-action="Edit"
+                               asp-route-id="@item.Id"
+                               class="btn btn-outline-primary">
+                                Editar
+                            </a>
+
+                            <form asp-action="ToggleAtivo"
+                                  method="post">
+
+                            @Html.AntiForgeryToken()
+
+                                <input type="hidden"
+                                       name="id"
+                                       value="@item.Id" />
+
+                            @if (item.Ativo)
+                            {
+                                        <button type="submit"
+                                                class="btn btn-warning w-100 mt-2">
+                                            Inativar
+                                        </button>
+                            }
+                            else
+                            {
+                                        <button type="submit"
+                                                class="btn btn-success w-100 mt-2">
+                                            Ativar
+                                        </button>
+                            }
+
+                            </form>
+
+                        </div>
+
+                    </div>
+
+                </div>
+        }
+
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+
+            <nav>
+                <ul class="pagination">
+
+                    <!-- ANTERIOR -->
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage - 1)">
+                            Anterior
+                        </a>
+                    </li>
+
+                    <!-- PÁGINAS -->
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@i">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <!-- PRÓXIMO -->
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage + 1)">
+                            Próximo
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+
+        </div>
+    }
+
 </div>

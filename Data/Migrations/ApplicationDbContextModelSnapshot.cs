@@ -35,19 +35,36 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasColumnType("bit")
                         .HasDefaultValue(true);
 
-                    b.Property<int>("ClienteId")
+                    b.Property<bool>("ClienteAvulso")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("ClienteId")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("DataAtualizacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DataCancelamento")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("DataCriacao")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2")
-                        .HasDefaultValueSql("GETDATE()");
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime>("DataHora")
                         .HasColumnType("datetime2");
 
                     b.Property<int>("EmpresaId")
                         .HasColumnType("int");
+
+                    b.Property<int?>("FuncionarioId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("MotivoCancelamento")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("NomeClienteAvulso")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Observacao")
                         .HasMaxLength(500)
@@ -61,15 +78,51 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
+                    b.Property<string>("TelefoneClienteAvulso")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClienteId");
 
                     b.HasIndex("EmpresaId");
 
+                    b.HasIndex("FuncionarioId");
+
                     b.HasIndex("ServicoId");
 
+                    b.HasIndex("EmpresaId", "DataHora");
+
                     b.ToTable("Agendamentos");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.AgendamentoFuncionario", b =>
+                {
+                    b.Property<int>("AgendamentoId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FuncionarioId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal?>("PercentualComissao")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<bool>("ResponsavelPrincipal")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal?>("ValorComissao")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<decimal?>("ValorRecebido")
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("AgendamentoId", "FuncionarioId");
+
+                    b.HasIndex("FuncionarioId");
+
+                    b.ToTable("AgendamentosFuncionarios");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.ApplicationUser", b =>
@@ -80,12 +133,15 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
 
-                    b.Property<int?>("ClienteId")
-                        .HasColumnType("int");
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DataCadastro")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("Email")
                         .HasMaxLength(256)
@@ -103,6 +159,9 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("NomeCompleto")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
@@ -113,6 +172,9 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PerfilUsuario")
+                        .HasColumnType("int");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("nvarchar(max)");
@@ -153,8 +215,15 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("DataCadastro")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<int?>("EmpresaId")
                         .HasColumnType("int");
@@ -165,7 +234,8 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("Telefone")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)");
 
                     b.Property<string>("UserId")
                         .HasColumnType("nvarchar(450)");
@@ -189,32 +259,171 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("AceitaCartaoCredito")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AceitaCartaoDebito")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AceitaDinheiro")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("AceitaPix")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("AnoFundacao")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("AtendimentoOnline")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("Ativo")
                         .HasColumnType("bit");
+
+                    b.Property<string>("Bairro")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CEP")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CapaBannerUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Cidade")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ComodidadesExtras")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Complemento")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("DataCadastro")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(5000)
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DocumentoNumero")
+                        .IsRequired()
+                        .HasMaxLength(18)
+                        .HasColumnType("nvarchar(18)");
+
+                    b.Property<string>("DocumentoTipo")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
                     b.Property<string>("Email")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("EmailContato")
-                        .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("Endereco")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Facebook")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("HorarioFuncionamento")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Instagram")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Latitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
+
+                    b.Property<string>("LinkAgendamentoExterno")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LinkMaps")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LogoUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal?>("Longitude")
+                        .HasPrecision(9, 6)
+                        .HasColumnType("decimal(9,6)");
 
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("NomeFantasia")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<double?>("NotaMedia")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Numero")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ParcelamentoMaximo")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PlanoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SegmentoAtuacao")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Site")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Slogan")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("Slug")
+                        .HasColumnType("nvarchar(450)");
+
                     b.Property<string>("Telefone")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("TemAcessibilidade")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TemArCondicionado")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TemEstacionamento")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("TemWifi")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("TikTok")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("TotalAvaliacoes")
+                        .HasColumnType("int");
+
+                    b.Property<string>("UF")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("WhatsApp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("YouTube")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("DocumentoNumero")
+                        .IsUnique();
+
+                    b.HasIndex("PlanoId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique()
+                        .HasFilter("[Slug] IS NOT NULL");
 
                     b.ToTable("Empresas");
                 });
@@ -234,6 +443,172 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.ToTable("EmpresaClientes");
                 });
 
+            modelBuilder.Entity("EmpresaAgendamento.Models.Funcionario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Cargo")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("DataCadastro")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DataDemissao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("EmpresaId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FotoUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("Observacoes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal?>("PercentualComissaoPadrao")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("decimal(5,2)");
+
+                    b.Property<string>("Telefone")
+                        .HasMaxLength(25)
+                        .HasColumnType("nvarchar(25)");
+
+                    b.Property<string>("UserId")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<decimal?>("ValorComissaoFixa")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EmpresaId");
+
+                    b.HasIndex("UserId")
+                        .IsUnique()
+                        .HasFilter("[UserId] IS NOT NULL");
+
+                    b.ToTable("Funcionarios");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.FuncionarioHorario", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DiaSemana")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan?>("FimIntervalo")
+                        .HasColumnType("time");
+
+                    b.Property<int>("FuncionarioId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("HoraFim")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan>("HoraInicio")
+                        .HasColumnType("time");
+
+                    b.Property<TimeSpan?>("InicioIntervalo")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("TrabalhaNoDia")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FuncionarioId");
+
+                    b.ToTable("FuncionariosHorarios");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.FuncionarioServico", b =>
+                {
+                    b.Property<int>("FuncionarioId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ServicoId")
+                        .HasColumnType("int");
+
+                    b.HasKey("FuncionarioId", "ServicoId");
+
+                    b.HasIndex("ServicoId");
+
+                    b.ToTable("FuncionariosServicos");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.Plano", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LimiteAgendamentosMes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("LimiteFuncionarios")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("PermiteAPI")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PermiteFinanceiro")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PermiteLandingPage")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PermiteMultiFuncionarios")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PermiteRelatorios")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("PermiteWhatsapp")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("ValorMensal")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Planos");
+                });
+
             modelBuilder.Entity("EmpresaAgendamento.Models.Servico", b =>
                 {
                     b.Property<int>("Id")
@@ -241,6 +616,20 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("CorAgenda")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<DateTime>("DataCadastro")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Descricao")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int>("DuracaoMinutos")
                         .HasColumnType("int");
@@ -252,6 +641,9 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("OrdemExibicao")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("Preco")
                         .HasPrecision(10, 2)
@@ -402,14 +794,17 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.HasOne("EmpresaAgendamento.Models.Cliente", "Cliente")
                         .WithMany("Agendamentos")
                         .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
                         .WithMany("Agendamentos")
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("EmpresaAgendamento.Models.Funcionario", "Funcionario")
+                        .WithMany()
+                        .HasForeignKey("FuncionarioId");
 
                     b.HasOne("EmpresaAgendamento.Models.Servico", "Servico")
                         .WithMany("Agendamentos")
@@ -421,7 +816,28 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.Navigation("Empresa");
 
+                    b.Navigation("Funcionario");
+
                     b.Navigation("Servico");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.AgendamentoFuncionario", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Agendamento", "Agendamento")
+                        .WithMany("Funcionarios")
+                        .HasForeignKey("AgendamentoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EmpresaAgendamento.Models.Funcionario", "Funcionario")
+                        .WithMany("Agendamentos")
+                        .HasForeignKey("FuncionarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Agendamento");
+
+                    b.Navigation("Funcionario");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.ApplicationUser", b =>
@@ -448,6 +864,16 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("EmpresaAgendamento.Models.Empresa", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Plano", "Plano")
+                        .WithMany("Empresas")
+                        .HasForeignKey("PlanoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Plano");
+                });
+
             modelBuilder.Entity("EmpresaAgendamento.Models.EmpresaCliente", b =>
                 {
                     b.HasOne("EmpresaAgendamento.Models.Cliente", "Cliente")
@@ -465,6 +891,54 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("Cliente");
 
                     b.Navigation("Empresa");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.Funcionario", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
+                        .WithMany("Funcionarios")
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EmpresaAgendamento.Models.ApplicationUser", "User")
+                        .WithOne("Funcionario")
+                        .HasForeignKey("EmpresaAgendamento.Models.Funcionario", "UserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Empresa");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.FuncionarioHorario", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Funcionario", "Funcionario")
+                        .WithMany("Horarios")
+                        .HasForeignKey("FuncionarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Funcionario");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.FuncionarioServico", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Funcionario", "Funcionario")
+                        .WithMany("Servicos")
+                        .HasForeignKey("FuncionarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EmpresaAgendamento.Models.Servico", "Servico")
+                        .WithMany("Funcionarios")
+                        .HasForeignKey("ServicoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Funcionario");
+
+                    b.Navigation("Servico");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Servico", b =>
@@ -529,9 +1003,16 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("EmpresaAgendamento.Models.Agendamento", b =>
+                {
+                    b.Navigation("Funcionarios");
+                });
+
             modelBuilder.Entity("EmpresaAgendamento.Models.ApplicationUser", b =>
                 {
                     b.Navigation("Cliente");
+
+                    b.Navigation("Funcionario");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Cliente", b =>
@@ -549,14 +1030,32 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.Navigation("EmpresaClientes");
 
+                    b.Navigation("Funcionarios");
+
                     b.Navigation("Servicos");
 
                     b.Navigation("Usuarios");
                 });
 
+            modelBuilder.Entity("EmpresaAgendamento.Models.Funcionario", b =>
+                {
+                    b.Navigation("Agendamentos");
+
+                    b.Navigation("Horarios");
+
+                    b.Navigation("Servicos");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.Plano", b =>
+                {
+                    b.Navigation("Empresas");
+                });
+
             modelBuilder.Entity("EmpresaAgendamento.Models.Servico", b =>
                 {
                     b.Navigation("Agendamentos");
+
+                    b.Navigation("Funcionarios");
                 });
 #pragma warning restore 612, 618
         }

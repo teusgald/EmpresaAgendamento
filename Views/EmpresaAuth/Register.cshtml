@@ -1,4 +1,5 @@
-﻿@model EmpresaRegisterViewModel
+﻿@using EmpresaAgendamento.Models.ViewModels
+@model EmpresaRegisterViewModel
 
 <div class="auth-card">
 
@@ -7,7 +8,7 @@
         <h4 class="auth-title">Cadastro Empresa</h4>
     </div>
 
-    <form method="post" id="empresaRegisterForm">
+    <form id="empresaRegisterForm"  data-type="empresa-register">
 
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
 

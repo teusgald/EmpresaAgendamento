@@ -1,0 +1,115 @@
+﻿@model EmpresaAgendamento.ViewModels.FuncionarioViewModel
+
+<div class="container-fluid mt-4">
+
+    <h3 class="fw-bold mb-3">Editar Funcionário</h3>
+
+    <form asp-action="Edit" method="post">
+
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+
+        <div class="row">
+
+            <!-- COL ESQUERDA -->
+            <div class="col-lg-8">
+
+                <!-- CARD PRINCIPAL (PADRÃO SERVIÇO) -->
+                <div class="card shadow-sm">
+                    <div class="card-body">
+
+                        <div class="row g-3">
+
+                            <div class="col-md-6">
+                                <label class="form-label">Nome</label>
+                                <input asp-for="Nome" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Cargo</label>
+                                <input asp-for="Cargo" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Telefone</label>
+                                <input asp-for="Telefone" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input asp-for="Email" class="form-control" />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Observações</label>
+                                <textarea asp-for="Observacoes" class="form-control"></textarea>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Comissão %</label>
+                                <input asp-for="PercentualComissaoPadrao" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Comissão Fixa</label>
+                                <input asp-for="ValorComissaoFixa" class="form-control" />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label">Foto (URL)</label>
+                                <input asp-for="FotoUrl" class="form-control" />
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <!-- CARD SERVIÇOS (IGUAL SERVIÇO EDIT STYLE) -->
+                <div class="card shadow-sm mt-3">
+                    <div class="card-body">
+
+                        <h5 class="mb-3">Serviços</h5>
+
+                        @foreach (var item in Model.ServicosDisponiveis)
+                        {
+                            var isChecked = Model.ServicosSelecionados.Contains(int.Parse(item.Value));
+
+                            <div class="form-check">
+
+                                <input class="form-check-input"
+                                       type="checkbox"
+                                       name="ServicosSelecionados"
+                                       value="@item.Value"
+                                @(isChecked ? "checked" : "") />
+
+                                <label class="form-check-label">
+                                    @item.Text
+                                </label>
+
+                            </div>
+                        }
+
+                        <!-- COL DIREITA (PADRÃO SERVIÇO) -->
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                Atualizar
+                            </button>
+
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                Voltar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+           
+
+        </div>
+
+    </form>
+
+</div>

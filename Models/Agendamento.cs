@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using EmpresaAgendamento.Models.Enums;
+using EmpresaAgendamento.Models;
 
 namespace EmpresaAgendamento.Models
 {
@@ -21,8 +22,7 @@ namespace EmpresaAgendamento.Models
         // 🔗 RELACIONAMENTOS
         // =========================
 
-        [Required]
-        public int ClienteId { get; set; }
+        public int? ClienteId { get; set; }
 
         [Required]
         public int ServicoId { get; set; }
@@ -35,21 +35,36 @@ namespace EmpresaAgendamento.Models
         // 📅 CONTROLE
         // =========================
 
-        public DateTime DataCriacao { get; set; } = DateTime.Now;
-
+        public DateTime DataCriacao { get; set; }
+    = DateTime.UtcNow;
+        public DateTime? DataAtualizacao { get; set; }
+        public DateTime? DataCancelamento { get; set; }
+        [MaxLength(500)]
+        public string? MotivoCancelamento { get; set; }
         public bool Ativo { get; set; } = true;
+
+        public int? FuncionarioId { get; set; }
+        public Funcionario? Funcionario { get; set; }
+
+        public string? NomeClienteAvulso { get; set; }
+        public string? TelefoneClienteAvulso { get; set; }
+
+        public bool ClienteAvulso { get; set; }
 
         // =========================
         // 🔁 NAVIGATION
         // =========================
 
         [ValidateNever]
-        public Cliente Cliente { get; set; }
+        public Cliente? Cliente { get; set; }
 
         [ValidateNever]
-        public Servico Servico { get; set; }
+        public Servico Servico { get; set; } = null!;
 
         [ValidateNever]
-        public Empresa Empresa { get; set; }
+        public Empresa Empresa { get; set; } = null!;
+
+        public ICollection<AgendamentoFuncionario> Funcionarios { get; set; }
+    = new List<AgendamentoFuncionario>();
     }
 }

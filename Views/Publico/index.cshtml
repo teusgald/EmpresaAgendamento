@@ -1,0 +1,623 @@
+﻿@model EmpresaAgendamento.ViewModels.EmpresaPublicaViewModel
+
+@{
+
+    var empresa = Model.Empresa;
+    string nome = empresa.NomeFantasia ?? empresa.Nome;
+
+    ViewData["Title"] = nome;
+}
+
+@section Navbar {
+    <a class="navbar-brand d-flex align-items-center" href="/">
+        <img id="logoSite"
+             src="~/img/logocliente.png"
+             alt="Logo"
+             class="navbar-logo me-2" />
+    </a>
+
+        </div>
+
+    <div class="nav-links">
+        <a href="#">Início</a>
+        <a href="#servicos">Serviços</a>
+        <a href="#contato">Contato</a>
+    </div>
+
+    <button class="btn-cta">Entrar</button>
+}
+
+<div class="hero">
+
+    <div class="hero-header">
+
+        <div class="hero-identity">
+            <div class="logo-ring">
+                <img src="@empresa.LogoUrl" />
+            </div>
+
+            <div class="hero-name">
+                <h1>@nome</h1>
+
+                <div class="segment">
+                    @empresa.SegmentoAtuacao
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-actions">
+            <button class="btn-agendar">Agendar agora</button>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="layout">
+    <input type="hidden"
+           id="EmpresaId"
+           value="@Model.Empresa.Id" />
+
+    <div class="left-col">
+
+        <p class="desc-text" id="desc">
+            @empresa.Descricao
+        </p>
+
+        <button class="toggle-desc" onclick="toggleDesc()">Ver mais</button>
+
+        <!-- Comodidades -->
+        <!-- Comodidades -->
+        <div>
+            <div class="section-title">Comodidades</div>
+            <div class="section-sub">Clique no item para obter informações</div>
+
+            <div class="amenities-grid">
+
+                <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
+                     title="Wi-Fi gratuito disponível">
+                    <div class="icon">📶</div>
+                    <div class="label">Wi-Fi</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
+                     title="Estacionamento disponível">
+                    <div class="icon">🚗</div>
+                    <div class="label">Estacionamento</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemAcessibilidade ? "" : "off")"
+                     title="Acessibilidade no local">
+                    <div class="icon">♿</div>
+                    <div class="label">Acessibilidade</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemArCondicionado ? "" : "off")"
+                     title="Ambiente climatizado">
+                    <div class="icon">❄️</div>
+                    <div class="label">Ar-condicionado</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.AtendimentoOnline ? "" : "off")"
+                     title="Atendimento online disponível">
+                    <div class="icon">💻</div>
+                    <div class="label">Atendimento online</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
+                     title="Ambiente com conexão disponível">
+                    <div class="icon">☕</div>
+                    <div class="label">Café / Wi-Fi</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
+                     title="Ambiente seguro e estruturado">
+                    <div class="icon">🔒</div>
+                    <div class="label">Segurança</div>
+                </div>
+
+                <div class="amenity @(string.IsNullOrEmpty(Model.Empresa.ComodidadesExtras) ? "off" : "")"
+                     title="@Model.Empresa.ComodidadesExtras">
+                    <div class="icon">➕</div>
+                    <div class="label">Extras</div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="servicos">
+
+            <div class="section-title">Serviços</div>
+
+            <div class="search-box">
+                <input type="search"
+                       placeholder="Pesquisar serviço"
+                       id="searchInput"
+                       oninput="filterServices()" />
+            </div>
+
+            <div class="services-list">
+
+                @if (Model.Servicos != null && Model.Servicos.Any())
+                {
+                    foreach (var s in Model.Servicos)
+                    {
+                        <div class="service-item" data-name="@s.Nome.ToLower()">
+
+                            <div class="service-img">💇</div>
+
+                            <div class="service-info">
+                                <div class="name">@s.Nome</div>
+
+                                @if (!string.IsNullOrEmpty(s.Descricao))
+                                {
+                                    <div class="desc">@s.Descricao</div>
+                                }
+
+                                <div class="meta">
+                                    <span class="price">R$ @s.Preco.ToString("F2")</span>
+                                    <span class="duration">🕐 @s.DuracaoMinutos min</span>
+                                </div>
+                            </div>
+
+                            <button class="btn-schedule"
+                                    data-servico="@s.Id"
+                                    data-servico-nome="@s.Nome">
+                                Agendar
+                            </button>
+
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p style="color:var(--text2)">
+                        Nenhum serviço disponível.
+                    </p>
+                }
+
+            </div>
+        </div>
+
+    </div>
+
+    <aside class="sidebar">
+
+        <!-- Localização -->
+        <div class="sidebar-section" id="contato">
+            <h3>📍 Localização</h3>
+
+            @{
+                var enderecoCompleto =
+                $"{empresa.Endereco}, {empresa.Numero}" +
+                (!string.IsNullOrEmpty(empresa.Complemento) ? $" - {empresa.Complemento}" : "") +
+                (!string.IsNullOrEmpty(empresa.Bairro) ? $" - {empresa.Bairro}" : "") +
+                $"<br>{empresa.Cidade} / {empresa.UF}" +
+                (!string.IsNullOrEmpty(empresa.CEP) ? $" — CEP {empresa.CEP}" : "");
+
+                var queryMaps = Uri.EscapeDataString(
+                $"{empresa.Endereco}, {empresa.Numero}, {empresa.Bairro}, {empresa.Cidade}, {empresa.UF}, {empresa.CEP}"
+                );
+
+                var mapsUrl = $"https://www.google.com/maps/search/?api=1&query={queryMaps}";
+            }
+
+            <div class="location-row">
+                <p>
+                    @Html.Raw(enderecoCompleto)
+                </p>
+
+                <a href="@mapsUrl"
+                   target="_blank"
+                   class="map-btn"
+                   title="Ver no mapa">
+                    🗺️
+                </a>
+            </div>
+        </div>
+
+        <div class="sidebar-section">
+            <h3>🕐 Horário</h3>
+            <p>@empresa.HorarioFuncionamento</p>
+        </div>
+
+        <!-- Formas de Pagamento -->
+        <div class="sidebar-section">
+            <h3>💳 Formas de pagamento</h3>
+
+            <div class="payment-tags">
+
+                @if (empresa.AceitaDinheiro)
+                {
+                    <span class="payment-tag">💵 Dinheiro</span>
+                }
+
+                @if (empresa.AceitaPix)
+                {
+                    <span class="payment-tag">📱 Pix</span>
+                }
+
+                @if (empresa.AceitaCartaoDebito)
+                {
+                    <span class="payment-tag">💳 Débito</span>
+                }
+
+                @if (empresa.AceitaCartaoCredito)
+                {
+                    <span class="payment-tag">💳 Crédito</span>
+                }
+
+                @if (empresa.ParcelamentoMaximo != null && empresa.ParcelamentoMaximo > 1)
+                {
+                    <span class="payment-tag">🔄 Em até @empresa.ParcelamentoMaximo x</span>
+                }
+
+            </div>
+        </div>
+
+        <!-- Redes Sociais -->
+        <!-- Redes Sociais -->
+        <div class="sidebar-section">
+            <h3>🌐 Redes Sociais</h3>
+
+            <div class="social-row">
+
+                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
+                {
+                    var whatsappLink = empresa.WhatsApp.StartsWith("http")
+                    ? empresa.WhatsApp
+                    : $"https://wa.me/{empresa.WhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "")}";
+
+                    <a href="@whatsappLink" target="_blank" class="social-btn" title="WhatsApp">
+                        <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+                            <path d="M19.11 17.47c-.29-.15-1.72-.85-1.99-.95-.27-.1-.47-.15-.67.15-.2.29-.77.95-.94 1.14-.17.2-.35.22-.64.07-.29-.15-1.23-.45-2.34-1.43-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.6.13-.13.29-.35.44-.53.15-.17.2-.29.29-.48.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.29-1.04 1.02-1.04 2.49s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.07 4.48.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.08 1.72-.7 1.97-1.37.24-.67.24-1.24.17-1.37-.07-.12-.27-.2-.56-.35z" />
+                            <path d="M16 3C9.37 3 4 8.37 4 15c0 2.11.55 4.17 1.6 6L4 29l8.3-1.55C14.06 28.46 15.02 28.6 16 28.6c6.63 0 12-5.37 12-12S22.63 3 16 3zm0 22.6c-1.05 0-2.08-.17-3.06-.51l-.44-.15-4.93.92.95-4.81-.18-.46C7.31 19.25 6.6 17.15 6.6 15 6.6 9.76 10.76 5.6 16 5.6S25.4 9.76 25.4 15 21.24 25.6 16 25.6z" />
+                        </svg>
+                    </a>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Instagram))
+                {
+                    var insta = empresa.Instagram.StartsWith("http")
+                    ? empresa.Instagram
+                    : $"https://instagram.com/{empresa.Instagram.Replace("@", "")}";
+
+                    <a href="@insta" target="_blank" class="social-btn" title="Instagram">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M7 2C4.24 2 2 4.24 2 7v10c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5H7zm10 2c1.65 0 3 1.35 3 3v10c0 1.65-1.35 3-3 3H7c-1.65 0-3-1.35-3-3V7c0-1.65 1.35-3 3-3h10z" />
+                            <path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6z" />
+                            <circle cx="17.5" cy="6.5" r="1.2" />
+                        </svg>
+                    </a>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Facebook))
+                {
+                    var fb = empresa.Facebook.StartsWith("http")
+                    ? empresa.Facebook
+                    : $"https://facebook.com/{empresa.Facebook}";
+
+                    <a href="@fb" target="_blank" class="social-btn" title="Facebook">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M22 12a10 10 0 10-11.5 9.95v-7.05H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.75-1.6 1.5v1.8H17l-.4 2.9h-2.4V22A10 10 0 0022 12z" />
+                        </svg>
+                    </a>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Site))
+                {
+                    var site = empresa.Site.StartsWith("http")
+                    ? empresa.Site
+                    : $"https://{empresa.Site}";
+
+                    <a href="@site" target="_blank" class="social-btn" title="Site oficial">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18c-1.3 0-3.2-2.8-3.6-7H15.6c-.4 4.2-2.3 7-3.6 7zm-3.7-9c.3-4.2 2.2-7 3.7-7s3.4 2.8 3.7 7H8.3zM4.1 13H2.1a8 8 0 011.5-6h2.2c-.9 1.8-1.5 3.8-1.7 6zm15.8 0c-.2-2.2-.8-4.2-1.7-6h2.2a8 8 0 011.5 6h-2zM5.9 15c.4 2.3 1.2 4.2 2.3 5.5A8 8 0 014.1 15h1.8zm10.2 0h1.8a8 8 0 01-4.1 5.5c1.1-1.3 1.9-3.2 2.3-5.5z" />
+                        </svg>
+                    </a>
+                }
+
+            </div>
+        </div>
+
+        <!-- Contato -->
+        <div class="sidebar-section">
+            <h3>📞 Contato</h3>
+
+            <div class="contact-items">
+
+                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
+                {
+                    <div class="contact-item" onclick="copyText('@empresa.WhatsApp', this)">
+                        <div class="left">
+                            <div class="icon-wrap">📲</div>
+                            <span class="val">@empresa.WhatsApp</span>
+                        </div>
+                        <span class="copy-icon">⧉</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Telefone))
+                {
+                    <div class="contact-item" onclick="copyText('@empresa.Telefone', this)">
+                        <div class="left">
+                            <div class="icon-wrap">📞</div>
+                            <span class="val">@empresa.Telefone</span>
+                        </div>
+                        <span class="copy-icon">⧉</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Email))
+                {
+                    <div class="contact-item" onclick="copyText('@empresa.Email', this)">
+                        <div class="left">
+                            <div class="icon-wrap">✉️</div>
+                            <span class="val">@empresa.Email</span>
+                        </div>
+                        <span class="copy-icon">⧉</span>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+    </aside>
+
+</div>
+
+@section Footer {
+    <div class="footer-bottom">
+        <span>© @DateTime.Now.Year @nome</span>
+    </div>
+}
+
+<div class="modal fade"
+     id="agendamentoModal"
+     tabindex="-1">
+
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Agendar Serviço</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <input type="hidden" id="ServicoId" />
+
+                <div class="mb-3">
+                    <label>Nome</label>
+                    <input type="text"
+                           id="NomeCliente"
+                           class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Telefone</label>
+                    <input type="text"
+                           id="TelefoneCliente"
+                           class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Profissional</label>
+
+                    <select id="FuncionarioId"
+                            class="form-select">
+                        <option value="">
+                            Qualquer profissional
+                        </option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label>Data</label>
+
+                    <input type="date"
+                           id="DataAgendamento"
+                           class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Horário</label>
+
+                    <select id="Horario"
+                            class="form-select">
+                    </select>
+                </div>
+
+                <hr />
+
+                <div class="text-center">
+
+                    <small>
+                        Possui cadastro?
+                    </small>
+
+                    <br />
+
+                    <a href="/Identity/Account/Login">
+                        Entrar
+                    </a>
+
+                    |
+
+                    <a href="/Identity/Account/Register">
+                        Criar Conta
+                    </a>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary"
+                        id="btnConfirmarAgendamento">
+                    Confirmar Agendamento
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function toggleDesc() {
+            document.getElementById('desc')?.classList.toggle('expanded');
+        }
+
+        function filterServices() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+
+            document.querySelectorAll('.service-item').forEach(item => {
+                item.style.display = item.dataset.name.includes(q) ? '' : 'none';
+            });
+        }
+
+                document.querySelectorAll('.btn-schedule')
+            .forEach(btn => {
+
+                btn.addEventListener('click', async function () {
+
+                    const empresaId =
+                        document.getElementById('EmpresaId').value;
+
+                    const servicoId =
+                        this.dataset.servico;
+
+                    document
+                        .getElementById('ServicoId')
+                        .value = servicoId;
+
+                    const response =
+                        await fetch(`/Publico/Funcionarios/${empresaId}`);
+
+                    const funcionarios =
+                        await response.json();
+
+                    const select =
+                        document.getElementById('FuncionarioId');
+
+                    select.innerHTML =
+                        '<option value="">Qualquer profissional</option>';
+
+                    funcionarios.forEach(f => {
+
+                        select.innerHTML +=
+                            `<option value="${f.id}">
+                                ${f.nome}
+                            </option>`;
+                    });
+
+                    const modal =
+                        new bootstrap.Modal(
+                            document.getElementById('agendamentoModal'));
+
+                    modal.show();
+                });
+            });
+
+        async function carregarHorarios() {
+
+            const empresaId =
+                document.getElementById('EmpresaId').value;
+
+            const funcionarioId =
+                document.getElementById('FuncionarioId').value;
+
+            const data =
+                document.getElementById('DataAgendamento').value;
+
+            if (!data)
+                return;
+
+            const response =
+                await fetch(
+                    `/Publico/HorariosDisponiveis?empresaId=${empresaId}&funcionarioId=${funcionarioId}&data=${data}`);
+
+            const horarios =
+                await response.json();
+
+            const select =
+                document.getElementById('Horario');
+
+            select.innerHTML = '';
+
+            horarios.forEach(h => {
+
+                select.innerHTML +=
+                    `<option value="${h}">
+                        ${h}
+                    </option>`;
+            });
+        }
+
+        document
+            .getElementById('FuncionarioId')
+            .addEventListener('change', carregarHorarios);
+
+        document
+            .getElementById('DataAgendamento')
+            .addEventListener('change', carregarHorarios);
+
+        document
+            .getElementById('btnConfirmarAgendamento')
+            .addEventListener('click', async () => {
+
+                const data =
+                    document.getElementById('DataAgendamento').value;
+
+                const hora =
+                    document.getElementById('Horario').value;
+
+                const payload = {
+
+                    empresaId:
+                        parseInt(document.getElementById('EmpresaId').value),
+
+                    servicoId:
+                        parseInt(document.getElementById('ServicoId').value),
+
+                    funcionarioId:
+                        document.getElementById('FuncionarioId').value || null,
+
+                    nome:
+                        document.getElementById('NomeCliente').value,
+
+                    telefone:
+                        document.getElementById('TelefoneCliente').value,
+
+                    dataHora:
+                        `${data}T${hora}:00`
+                };
+
+                const response =
+                    await fetch('/Publico/Agendar', {
+
+                        method: 'POST',
+
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+
+                        body: JSON.stringify(payload)
+                    });
+
+                const result =
+                    await response.json();
+
+                if (result.sucesso) {
+
+                    alert(result.mensagem);
+
+                    location.reload();
+                }
+            });
+    </script>
+}

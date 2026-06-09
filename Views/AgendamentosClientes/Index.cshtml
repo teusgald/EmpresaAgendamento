@@ -1,47 +1,162 @@
-﻿@model IEnumerable<EmpresaAgendamento.Models.Agendamento>
+﻿@using EmpresaAgendamento.Models.Enums
+@model IEnumerable<EmpresaAgendamento.Models.Agendamento>
 
 @{
     ViewData["Title"] = "Meus Agendamentos";
 }
 
 <div class="container mt-4">
+
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="fw-bold">Meus Agendamentos</h3>
-        <a asp-action="Create" class="btn btn-primary">+ Novo Agendamento</a>
+        <a asp-action="Create" class="btn btn-primary">
+            + Novo Agendamento
+        </a>
     </div>
 
-    <div class="card shadow-sm">
+
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-md-block">
         <div class="card-body">
-            <table class="table table-hover align-middle">
+
+            <table class="table table-hover align-middle table-fixed">
+
                 <thead class="table-light">
                     <tr>
-                        <th>Empresa</th>
-                        <th>Serviço</th>
-                        <th>Preço</th>
-                        <th>Data e Hora</th>
-                        <th>Status</th>
-                        <th class="text-end">Ações</th>
+                        <th style="width:25%">Empresa</th>
+                        <th style="width:20%">Serviço</th>
+                        <th style="width:10%">Preço</th>
+                        <th style="width:20%">Data</th>
+                        <th style="width:10%">Status</th>
+                        <th style="width:15%" class="text-end">Ações</th>
                     </tr>
                 </thead>
+
                 <tbody>
-                    @foreach (var ag in Model)
+
+                    @foreach (var item in Model)
                     {
+                        string badgeClass = item.Status switch
+                        {
+                            StatusAgendamento.Agendado => "bg-primary",
+                            StatusAgendamento.Confirmado => "bg-success",
+                            StatusAgendamento.Cancelado => "bg-danger",
+                            StatusAgendamento.Finalizado => "bg-secondary",
+                            _ => "bg-secondary"
+                        };
+
                         <tr>
-                            <td>@ag.Empresa?.Nome</td>
-                            <td>@ag.Servico?.Nome</td>
-                            <td>@ag.Servico?.Preco.ToString("C")</td>
-                            <td>@ag.DataHora.ToString("dd/MM/yyyy HH:mm")</td>
+
+                            <td>@item.Empresa?.Nome</td>
+
+                            <td>@item.Servico?.Nome</td>
+
                             <td>
-                                <span class="badge bg-success">@ag.Status</span>
+                                @item.Servico?.Preco.ToString("C")
                             </td>
+
+                            <td>
+                                @item.DataHora.ToString("dd/MM/yyyy HH:mm")
+                            </td>
+
+                            <td>
+                                <span class="badge @badgeClass">
+                                    @item.Status
+                                </span>
+                            </td>
+
                             <td class="text-end">
-                                <a asp-action="Edit" asp-route-id="@ag.Id" class="btn btn-sm btn-outline-primary">Editar</a>
-                                <a asp-action="Delete" asp-route-id="@ag.Id" class="btn btn-sm btn-outline-danger">Cancelar</a>
+
+                                <a asp-action="Edit"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-outline-primary">
+                                    Editar
+                                </a>
+
+                                <a asp-action="Delete"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-outline-danger">
+                                    Cancelar
+                                </a>
+
                             </td>
+
                         </tr>
                     }
+
                 </tbody>
+
             </table>
+
         </div>
     </div>
+
+    <!-- MOBILE -->
+    <div class="d-md-none">
+
+        @foreach (var item in Model)
+        {
+            string badgeClass = item.Status switch
+            {
+                StatusAgendamento.Agendado => "bg-primary",
+                StatusAgendamento.Confirmado => "bg-success",
+                StatusAgendamento.Cancelado => "bg-danger",
+                StatusAgendamento.Finalizado => "bg-secondary",
+                _ => "bg-secondary"
+            };
+
+            <div class="card border-0 shadow-sm mb-3">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+
+                        <div>
+                            <h6 class="fw-bold mb-1">
+                                @item.Empresa?.Nome
+                            </h6>
+
+                            <small class="text-muted">
+                                @item.Servico?.Nome
+                            </small>
+                        </div>
+
+                        <span class="badge @badgeClass">
+                            @item.Status
+                        </span>
+
+                    </div>
+
+                    <div class="small text-muted mb-1">
+                        <strong>Preço:</strong>
+                        @item.Servico?.Preco.ToString("C")
+                    </div>
+
+                    <div class="small text-muted mb-3">
+                        <strong>Data:</strong>
+                        @item.DataHora.ToString("dd/MM/yyyy HH:mm")
+                    </div>
+
+                    <div class="d-flex gap-2">
+
+                        <a asp-action="Edit"
+                           asp-route-id="@item.Id"
+                           class="btn btn-outline-primary btn-sm flex-fill">
+                            Editar
+                        </a>
+
+                        <a asp-action="Delete"
+                           asp-route-id="@item.Id"
+                           class="btn btn-outline-danger btn-sm flex-fill">
+                            Cancelar
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+        }
+
+    </div>
+
 </div>

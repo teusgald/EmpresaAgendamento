@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-[Route("cliente/agendamentos")]
+[Route("Cliente/Agendamentos")]
 [Authorize(Roles = "Cliente")]
 public class AgendamentosClientesController : Controller
 {
@@ -30,17 +30,18 @@ public class AgendamentosClientesController : Controller
     }
 
     // 📋 LISTA
+    [Route("Index")]
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
-        if (user.ClienteId == null) return RedirectToAction("Login", "ClientesAuth");
+        if (user.Cliente.Id == null) return RedirectToAction("Login", "ClientesAuth");
 
         var agendamentos = await _context.Agendamentos
             .AsNoTracking()
             .Include(a => a.Servico)
             .Include(a => a.Empresa)
-            .Where(a => a.ClienteId == user.ClienteId)
+            .Where(a => a.ClienteId == user.Cliente.Id)
             .OrderByDescending(a => a.DataCriacao)
             .ToListAsync();
 
@@ -67,9 +68,9 @@ public class AgendamentosClientesController : Controller
     public async Task<IActionResult> Create(Agendamento agendamento)
     {
         var user = await GetCurrentUserAsync();
-        if (user.ClienteId == null) return RedirectToAction("Login", "ClientesAuth");
+        if (user.Cliente.Id == null) return RedirectToAction("Login", "ClientesAuth");
 
-        agendamento.ClienteId = user.ClienteId.Value;
+        agendamento.ClienteId = user.Cliente.Id;
 
         if (!ModelState.IsValid)
         {
@@ -91,7 +92,7 @@ public class AgendamentosClientesController : Controller
         var user = await GetCurrentUserAsync();
         var agendamento = await _context.Agendamentos.FindAsync(id);
 
-        if (agendamento == null || agendamento.ClienteId != user.ClienteId)
+        if (agendamento == null || agendamento.ClienteId != user.Cliente.Id)
             return NotFound();
 
         ViewBag.Empresas = new SelectList(await _context.Empresas.Where(e => e.Ativo).ToListAsync(), "Id", "Nome", agendamento.EmpresaId);
@@ -108,7 +109,7 @@ public class AgendamentosClientesController : Controller
         var user = await GetCurrentUserAsync();
         if (id != agendamento.Id) return NotFound();
 
-        agendamento.ClienteId = user.ClienteId.Value;
+        agendamento.ClienteId = user.Cliente.Id;
 
         if (!ModelState.IsValid)
         {
@@ -133,7 +134,7 @@ public class AgendamentosClientesController : Controller
             .Include(a => a.Servico)
             .Include(a => a.Empresa)
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id && a.ClienteId == user.ClienteId);
+            .FirstOrDefaultAsync(a => a.Id == id && a.ClienteId == user.Cliente.Id);
 
         if (agendamento == null) return NotFound();
 
@@ -147,7 +148,7 @@ public class AgendamentosClientesController : Controller
         var user = await GetCurrentUserAsync();
         var agendamento = await _context.Agendamentos.FindAsync(id);
 
-        if (agendamento != null && agendamento.ClienteId == user.ClienteId)
+        if (agendamento != null && agendamento.ClienteId == user.Cliente.Id)
         {
             _context.Remove(agendamento);
             await _context.SaveChangesAsync();

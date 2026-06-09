@@ -1,4 +1,4 @@
-﻿using EmpresaAgendamento.Models;
+﻿using EmpresaAgendamento.Models.ViewModels;
 
 namespace EmpresaAgendamento.Services
 {
