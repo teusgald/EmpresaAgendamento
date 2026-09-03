@@ -1,45 +1,35 @@
 ﻿@model ClienteRegisterViewModel
-
 @{
     Layout = null;
 }
 
 <div class="auth-card">
 
-    <!-- HEADER -->
     <div class="text-center mb-4">
-        <i class="bi bi-person-circle auth-icon"></i>
-        <h4 class="auth-title">Cadastro de Cliente</h4>
-        <p class="auth-subtitle">Crie sua conta para agendar serviços</p>
+        <h4>Criar conta</h4>
+        <p class="text-muted">Cadastro de cliente</p>
     </div>
 
-    <!-- FORM -->
     <form id="clienteRegisterForm" data-type="cliente-register">
 
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
-        <div class="mb-3">
-            <input asp-for="Nome" class="form-control" placeholder="Nome completo" />
-        </div>
+        <input asp-for="Nome" class="form-control mb-3" placeholder="Nome completo" />
 
-        <div class="mb-3">
-            <input asp-for="Telefone" class="form-control" placeholder="Telefone" />
-        </div>
+        <input asp-for="Telefone" class="form-control mb-3" placeholder="Telefone" />
 
-        <div class="mb-3">
-            <input asp-for="Email" class="form-control" placeholder="Email" />
-        </div>
+        <input asp-for="Email" class="form-control mb-3" placeholder="Email" />
 
-        <div class="mb-3">
-            <input asp-for="Password" type="password" class="form-control" placeholder="Senha" />
-        </div>
+        <input asp-for="Password" type="password" class="form-control mb-3" placeholder="Senha" />
 
-        <button class="btn btn-dark w-100">
-            Criar Conta
+        <button class="btn btn-dark w-100 mb-3">
+            Criar conta
         </button>
 
-        <div class="text-center mt-3">
-            <a href="#" class="text-muted small switch-mode" data-mode="login">Já tem conta? Entrar</a>
+        <div class="text-center">
+            <a href="#" class="switch-mode" data-mode="login">
+                Já tenho conta
+            </a>
         </div>
 
     </form>

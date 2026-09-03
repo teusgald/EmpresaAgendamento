@@ -1025,4 +1025,19 @@ body.light-theme {
     object-fit: contain;
     transition: opacity 0.2s ease;
 }
+#agendamentoModal .modal-content {
+    background: #fff;
+}
 
+#agendamentoModal label,
+#agendamentoModal h5,
+#agendamentoModal small {
+    color: #212529 !important;
+}
+#agendamentoModal .text-center small {
+    color: #212529 !important;
+}
+
+#agendamentoModal .text-center a {
+    color: #0d6efd !important;
+}

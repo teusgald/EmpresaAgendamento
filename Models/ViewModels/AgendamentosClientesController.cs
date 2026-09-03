@@ -2,8 +2,8 @@
 using EmpresaAgendamento.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 [Route("Cliente/Agendamentos")]
@@ -24,58 +24,70 @@ public class AgendamentosClientesController : Controller
         _signInManager = signInManager;
     }
 
-    private async Task<ApplicationUser> GetCurrentUserAsync()
-    {
-        return await _userManager.GetUserAsync(User);
-    }
+    private async Task<ApplicationUser?> GetCurrentUserAsync()
+        => await _userManager.GetUserAsync(User);
 
-    // 📋 LISTA
-    [Route("Index")]
+    private IActionResult RedirectLogin()
+        => RedirectToAction("Login", "ClientesAuth");
+
+    // =========================
+    // LISTA
+    // =========================
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
         var user = await GetCurrentUserAsync();
-        if (user.Cliente.Id == null) return RedirectToAction("Login", "ClientesAuth");
+
+        if (user == null || user.ClienteId == null)
+            return RedirectLogin();
 
         var agendamentos = await _context.Agendamentos
             .AsNoTracking()
             .Include(a => a.Servico)
             .Include(a => a.Empresa)
-            .Where(a => a.ClienteId == user.Cliente.Id)
+            .Where(a => a.ClienteId == user.ClienteId)
             .OrderByDescending(a => a.DataCriacao)
             .ToListAsync();
 
         return View(agendamentos);
     }
 
-    // ➕ FORM CRIAR
+    // =========================
+    // FORM CRIAR (NORMAL)
+    // =========================
     [HttpGet("novo")]
     public async Task<IActionResult> Create()
     {
+        var user = await GetCurrentUserAsync();
+
+        if (user == null || user.ClienteId == null)
+            return RedirectLogin();
+
         ViewBag.Empresas = new SelectList(
-            await _context.Empresas.Where(e => e.Ativo).AsNoTracking().ToListAsync(),
+            await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
             "Id", "Nome"
         );
-
-        ViewBag.Servicos = new SelectList(Enumerable.Empty<Servico>(), "Id", "Nome");
 
         return View();
     }
 
-    // 💾 SALVAR
+    // =========================
+    // CRIAR (NORMAL)
+    // =========================
     [HttpPost("novo")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Agendamento agendamento)
     {
         var user = await GetCurrentUserAsync();
-        if (user.Cliente.Id == null) return RedirectToAction("Login", "ClientesAuth");
 
-        agendamento.ClienteId = user.Cliente.Id;
+        if (user == null || user.ClienteId == null)
+            return RedirectLogin();
+
+        agendamento.ClienteId = user.ClienteId.Value;
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Empresas = new SelectList(await _context.Empresas.Where(e => e.Ativo).ToListAsync(), "Id", "Nome");
-            ViewBag.Servicos = new SelectList(await _context.Servicos.Where(s => s.EmpresaId == agendamento.EmpresaId).ToListAsync(), "Id", "Nome");
+            ViewBag.Empresas = await _context.Empresas.ToListAsync();
             return View(agendamento);
         }
 
@@ -85,96 +97,111 @@ public class AgendamentosClientesController : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // ✏️ EDITAR
+    // =========================
+    // EDITAR
+    // =========================
     [HttpGet("editar/{id}")]
     public async Task<IActionResult> Edit(int id)
     {
         var user = await GetCurrentUserAsync();
-        var agendamento = await _context.Agendamentos.FindAsync(id);
 
-        if (agendamento == null || agendamento.ClienteId != user.Cliente.Id)
+        if (user == null || user.ClienteId == null)
+            return RedirectLogin();
+
+        var agendamento = await _context.Agendamentos
+            .FirstOrDefaultAsync(x => x.Id == id && x.ClienteId == user.ClienteId);
+
+        if (agendamento == null)
             return NotFound();
 
-        ViewBag.Empresas = new SelectList(await _context.Empresas.Where(e => e.Ativo).ToListAsync(), "Id", "Nome", agendamento.EmpresaId);
-        ViewBag.Servicos = new SelectList(await _context.Servicos.Where(s => s.EmpresaId == agendamento.EmpresaId).ToListAsync(), "Id", "Nome", agendamento.ServicoId);
+        ViewBag.Empresas = await _context.Empresas.ToListAsync();
 
         return View(agendamento);
     }
 
-    // 💾 SALVAR EDIÇÃO
-    [HttpPost("editar/{id}")]
+    // =========================
+    // DELETE
+    // =========================
+    [HttpPost("excluir/{id}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Agendamento agendamento)
-    {
-        var user = await GetCurrentUserAsync();
-        if (id != agendamento.Id) return NotFound();
-
-        agendamento.ClienteId = user.Cliente.Id;
-
-        if (!ModelState.IsValid)
-        {
-            ViewBag.Empresas = new SelectList(await _context.Empresas.Where(e => e.Ativo).ToListAsync(), "Id", "Nome", agendamento.EmpresaId);
-            ViewBag.Servicos = new SelectList(await _context.Servicos.Where(s => s.EmpresaId == agendamento.EmpresaId).ToListAsync(), "Id", "Nome", agendamento.ServicoId);
-            return View(agendamento);
-        }
-
-        _context.Update(agendamento);
-        await _context.SaveChangesAsync();
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    // ❌ EXCLUIR
-    [HttpGet("excluir/{id}")]
     public async Task<IActionResult> Delete(int id)
     {
         var user = await GetCurrentUserAsync();
 
+        if (user == null || user.ClienteId == null)
+            return RedirectLogin();
+
         var agendamento = await _context.Agendamentos
-            .Include(a => a.Servico)
-            .Include(a => a.Empresa)
-            .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id && a.ClienteId == user.Cliente.Id);
+            .FirstOrDefaultAsync(x => x.Id == id && x.ClienteId == user.ClienteId);
 
-        if (agendamento == null) return NotFound();
-
-        return View(agendamento);
-    }
-
-    [HttpPost("excluir/{id}")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int id)
-    {
-        var user = await GetCurrentUserAsync();
-        var agendamento = await _context.Agendamentos.FindAsync(id);
-
-        if (agendamento != null && agendamento.ClienteId == user.Cliente.Id)
+        if (agendamento != null)
         {
-            _context.Remove(agendamento);
+            _context.Agendamentos.Remove(agendamento);
             await _context.SaveChangesAsync();
         }
 
         return RedirectToAction(nameof(Index));
     }
 
-    // 🔄 AJAX: Buscar serviços por empresa
+    // =========================
+    // AJAX SERVIÇOS
+    // =========================
     [HttpGet("servicos/{empresaId}")]
-    public async Task<IActionResult> GetServicosByEmpresa(int empresaId)
+    public async Task<IActionResult> Servicos(int empresaId)
     {
         var servicos = await _context.Servicos
-            .Where(s => s.EmpresaId == empresaId)
-            .Select(s => new { s.Id, s.Nome })
+            .Where(x => x.EmpresaId == empresaId)
+            .Select(x => new { x.Id, x.Nome })
             .ToListAsync();
 
         return Json(servicos);
     }
 
-    // 🔒 LOGOUT
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Logout()
+    // =========================
+    // 🔥 NOVO: AGENDAMENTO PÚBLICO (SEM LOGIN)
+    // =========================
+    [AllowAnonymous]
+    [HttpGet("publico/{empresaId}")]
+    public async Task<IActionResult> Publico(int empresaId)
     {
-        await _signInManager.SignOutAsync();
-        return RedirectToAction("Login", "ClientesAuth");
+        var empresa = await _context.Empresas
+            .FirstOrDefaultAsync(x => x.Id == empresaId && x.Ativo);
+
+        if (empresa == null)
+            return NotFound();
+
+        ViewBag.Empresa = empresa;
+
+        ViewBag.Servicos = await _context.Servicos
+            .Where(x => x.EmpresaId == empresaId)
+            .ToListAsync();
+
+        return View("PublicoAgendamento");
+    }
+
+    // =========================
+    // 🔥 CRIAR AGENDAMENTO PÚBLICO
+    // =========================
+    [AllowAnonymous]
+    [HttpPost("publico")]
+    public async Task<IActionResult> PublicoCreate(Agendamento agendamento)
+    {
+        if (!ModelState.IsValid)
+            return RedirectToAction("Publico", new { empresaId = agendamento.EmpresaId });
+
+        agendamento.ClienteId = null; // cliente opcional
+        agendamento.DataCriacao = DateTime.UtcNow;
+
+        _context.Agendamentos.Add(agendamento);
+        await _context.SaveChangesAsync();
+
+        return RedirectToAction("PublicoConfirmacao");
+    }
+
+    [AllowAnonymous]
+    [HttpGet("publico-confirmacao")]
+    public IActionResult PublicoConfirmacao()
+    {
+        return View();
     }
 }

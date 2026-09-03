@@ -23,6 +23,8 @@ namespace EmpresaAgendamento.Models
 
         public Cliente? Cliente { get; set; }
 
+        public int? ClienteId { get; set; }
+
         #endregion
 
         #region Funcionário

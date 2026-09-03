@@ -16,7 +16,7 @@
              class="navbar-logo me-2" />
     </a>
 
-        </div>
+
 
     <div class="nav-links">
         <a href="#">Início</a>
@@ -24,7 +24,16 @@
         <a href="#contato">Contato</a>
     </div>
 
-    <button class="btn-cta">Entrar</button>
+    <div id="areaClienteNavbar">
+
+        <button class="btn-cta"
+                id="btnEntrarCliente"
+                data-bs-toggle="modal"
+                data-bs-target="#clienteLoginModal">
+            Entrar
+        </button>
+
+    </div>
 }
 
 <div class="hero">
@@ -390,18 +399,21 @@
 
                 <input type="hidden" id="ServicoId" />
 
-                <div class="mb-3">
-                    <label>Nome</label>
-                    <input type="text"
-                           id="NomeCliente"
-                           class="form-control" />
-                </div>
+                <input type="hidden" id="ClienteId" />
 
-                <div class="mb-3">
-                    <label>Telefone</label>
-                    <input type="text"
-                           id="TelefoneCliente"
-                           class="form-control" />
+                <div id="blocoDadosCliente">
+
+                    <div class="mb-3">
+                        <label>Nome</label>
+                        <input id="NomeCliente"
+                               class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Telefone</label>
+                        <input id="TelefoneCliente"
+                               class="form-control">
+                    </div>
                 </div>
 
                 <div class="mb-3">
@@ -441,13 +453,16 @@
 
                     <br />
 
-                    <a href="/Identity/Account/Login">
+                    <a href="#"
+                       id="abrirLoginCliente">
                         Entrar
                     </a>
 
                     |
 
-                    <a href="/Identity/Account/Register">
+                    <a href="#"
+                       data-bs-toggle="modal"
+                       data-bs-target="#clienteLoginModal">
                         Criar Conta
                     </a>
 
@@ -466,158 +481,684 @@
     </div>
 </div>
 
+<div class="modal fade"
+     id="clienteLoginModal"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content p-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+
+                <h5 class="mb-0">
+                    Entrar
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div id="clienteLoginContent"></div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
 @section Scripts {
+
     <script>
+
+        // ==========================================
+        // MODO LOGIN / REGISTRO / RECUPERAR SENHA
+        // ==========================================
+
+        let modoCliente = "login";
+
+        // ==========================================
+        // DESCRIÇÃO EMPRESA
+        // ==========================================
+
         function toggleDesc() {
-            document.getElementById('desc')?.classList.toggle('expanded');
+
+            document.getElementById("desc")
+                ?.classList.toggle("expanded");
         }
+
+        // ==========================================
+        // FILTRO DE SERVIÇOS
+        // ==========================================
 
         function filterServices() {
-            const q = document.getElementById('searchInput').value.toLowerCase();
 
-            document.querySelectorAll('.service-item').forEach(item => {
-                item.style.display = item.dataset.name.includes(q) ? '' : 'none';
-            });
+            const q =
+                document.getElementById("searchInput")
+                    .value
+                    .toLowerCase();
+
+            document.querySelectorAll(".service-item")
+                .forEach(item => {
+
+                    item.style.display =
+                        item.dataset.name.includes(q)
+                            ? ""
+                            : "none";
+                });
         }
 
-                document.querySelectorAll('.btn-schedule')
-            .forEach(btn => {
+        // ==========================================
+        // EMPRESA
+        // ==========================================
 
-                btn.addEventListener('click', async function () {
+        const empresaId =
+            document.getElementById("EmpresaId").value;
 
-                    const empresaId =
-                        document.getElementById('EmpresaId').value;
+        // ==========================================
+        // CARREGA LOGIN / REGISTRO / FORGOT
+        // ==========================================
 
-                    const servicoId =
-                        this.dataset.servico;
+        function loadClienteLogin(mode = "login") {
 
-                    document
-                        .getElementById('ServicoId')
-                        .value = servicoId;
+            modoCliente = mode;
+
+            let url = "/cliente/login";
+
+            if (mode === "register")
+                url = "/cliente/registro";
+
+            if (mode === "forgot")
+                url = "/cliente/forgot";
+
+            fetch(url)
+                .then(res => res.text())
+                .then(html => {
+
+                    const doc =
+                        new DOMParser()
+                            .parseFromString(html, "text/html");
+
+                    const content =
+                        doc.querySelector(".auth-card")
+                        || doc.querySelector(".login-card")
+                        || doc.body;
+
+                    document.getElementById(
+                        "clienteLoginContent"
+                    ).innerHTML =
+                        content.outerHTML;
+
+                    const form =
+                        document.querySelector(
+                            "#clienteLoginContent form"
+                        );
+
+                    if (
+                        form &&
+                        !form.querySelector(
+                            'input[name="Origem"]'
+                        )
+                    ) {
+
+                        form.insertAdjacentHTML(
+                            "beforeend",
+                            `
+                            <input type="hidden"
+                                   name="Origem"
+                                   value="publico" />
+                            `
+                        );
+                    }
+                });
+        }
+
+        // ==========================================
+        // TROCAR TELA LOGIN / REGISTRO / FORGOT
+        // ==========================================
+
+        document.addEventListener(
+            "click",
+            function (e) {
+
+                const btn =
+                    e.target.closest(".switch-mode");
+
+                if (!btn)
+                    return;
+
+                e.preventDefault();
+
+                const mode =
+                    btn.dataset.mode;
+
+                loadClienteLogin(mode);
+            }
+        );
+
+        // ==========================================
+        // ABRIR MODAL LOGIN
+        // ==========================================
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            () => {
+
+                const loginModal =
+                    document.getElementById(
+                        "clienteLoginModal"
+                    );
+
+                if (!loginModal)
+                    return;
+
+                loginModal.addEventListener(
+                    "shown.bs.modal",
+                    () => loadClienteLogin("login")
+                );
+            }
+        );
+
+        // ==========================================
+        // SUBMIT LOGIN / REGISTRO / FORGOT
+        // ==========================================
+
+        document.body.addEventListener(
+            "submit",
+            async function (e) {
+
+                const form = e.target;
+
+                if (
+                    !form.closest(
+                        "#clienteLoginContent"
+                    )
+                )
+                    return;
+
+                e.preventDefault();
+
+                const formData =
+                    new FormData(form);
+
+                try {
 
                     const response =
-                        await fetch(`/Publico/Funcionarios/${empresaId}`);
+                        await fetch(
+                            form.action,
+                            {
+                                method: "POST",
+                                body: formData
+                            });
 
-                    const funcionarios =
-                        await response.json();
+                    const contentType =
+                        response.headers.get(
+                            "content-type"
+                        );
 
-                    const select =
-                        document.getElementById('FuncionarioId');
+                    if (
+                        contentType &&
+                        contentType.includes(
+                            "application/json"
+                        )
+                    ) {
 
-                    select.innerHTML =
-                        '<option value="">Qualquer profissional</option>';
+                        const data =
+                            await response.json();
 
-                    funcionarios.forEach(f => {
+                        if (data.success) {
 
-                        select.innerHTML +=
-                            `<option value="${f.id}">
-                                ${f.nome}
-                            </option>`;
-                    });
+                            if (data.reload) {
 
-                    const modal =
+                                bootstrap.Modal
+                                    .getInstance(
+                                        document.getElementById(
+                                            "clienteLoginModal"
+                                        )
+                                    )
+                                    ?.hide();
+
+                                location.reload();
+
+                                return;
+                            }
+
+                            if (data.redirect) {
+
+                                window.location.href =
+                                    data.redirect;
+
+                                return;
+                            }
+
+                            location.reload();
+
+                            return;
+                        }
+
+                        alert(
+                            data.error ||
+                            "Erro ao processar."
+                        );
+
+                        return;
+                    }
+
+                    const html =
+                        await response.text();
+
+                    const doc =
+                        new DOMParser()
+                            .parseFromString(
+                                html,
+                                "text/html"
+                            );
+
+                    const content =
+                        doc.querySelector(".auth-card")
+                        || doc.querySelector(".login-card")
+                        || doc.body;
+
+                    document.getElementById(
+                        "clienteLoginContent"
+                    ).innerHTML =
+                        content.outerHTML;
+                }
+                catch (err) {
+
+                    console.error(err);
+
+                    alert(
+                        "Erro ao processar a solicitação."
+                    );
+                }
+            }
+        );
+
+        // ==========================================
+        // VERIFICA CLIENTE LOGADO
+        // ==========================================
+
+        async function verificarClienteLogado() {
+
+            const bloco =
+                document.getElementById(
+                    "blocoDadosCliente"
+                );
+
+            const clienteId =
+                document.getElementById(
+                    "ClienteId"
+                );
+
+            const nome =
+                document.getElementById(
+                    "NomeCliente"
+                );
+
+            const telefone =
+                document.getElementById(
+                    "TelefoneCliente"
+                );
+
+            if (clienteId)
+                clienteId.value = "";
+
+            if (nome)
+                nome.value = "";
+
+            if (telefone)
+                telefone.value = "";
+
+            if (bloco)
+                bloco.style.display = "block";
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/cliente/me"
+                    );
+
+                if (!response.ok)
+                    return false;
+
+                const cliente =
+                    await response.json();
+
+                if (!cliente.autenticado)
+                    return false;
+
+                clienteId.value =
+                    cliente.clienteId;
+
+                nome.value =
+                    cliente.nome;
+
+                telefone.value =
+                    cliente.telefone;
+
+                bloco.style.display =
+                    "none";
+                            const areaNavbar =
+            document.getElementById(
+                "areaClienteNavbar"
+            );
+
+        if (areaNavbar)
+        {
+            areaNavbar.innerHTML = `
+                <div class="dropdown">
+
+                    <button
+                        class="btn-cta dropdown-toggle"
+                        data-bs-toggle="dropdown">
+
+                        👤 ${cliente.nome}
+                    </button>
+
+                    <ul class="dropdown-menu">
+
+                        <li>
+                            <a class="dropdown-item"
+                               href="/Cliente/Agendamentos">
+
+                                Meus Agendamentos
+                            </a>
+                        </li>
+
+                        <li>
+                            <a class="dropdown-item text-danger"
+                               href="/cliente/logout">
+
+                                Sair
+                            </a>
+                        </li>
+
+                    </ul>
+
+                </div>
+            `;
+        }
+                return true;
+            }
+            catch {
+
+                bloco.style.display =
+                    "block";
+
+                return false;
+            }
+        }
+
+        // ==========================================
+        // ABRIR MODAL AGENDAMENTO
+        // ==========================================
+
+        document
+            .querySelectorAll(".btn-schedule")
+            .forEach(btn => {
+
+                btn.addEventListener(
+                    "click",
+                    async function () {
+
+                        const servicoId =
+                            this.dataset.servico;
+
+                        document.getElementById(
+                            "ServicoId"
+                        ).value =
+                            servicoId;
+
+                        const response =
+                            await fetch(
+                                `/Publico/Funcionarios/${empresaId}`
+                            );
+
+                        const funcionarios =
+                            await response.json();
+
+                        const select =
+                            document.getElementById(
+                                "FuncionarioId"
+                            );
+
+                        select.innerHTML =
+                            '<option value="">Qualquer profissional</option>';
+
+                        funcionarios.forEach(f => {
+
+                            select.innerHTML += `
+                                <option value="${f.id}">
+                                    ${f.nome}
+                                </option>
+                            `;
+                        });
+
+                        await verificarClienteLogado();
+
                         new bootstrap.Modal(
-                            document.getElementById('agendamentoModal'));
-
-                    modal.show();
-                });
+                            document.getElementById(
+                                "agendamentoModal"
+                            )
+                        ).show();
+                    }
+                );
             });
+
+        // ==========================================
+        // HORÁRIOS
+        // ==========================================
 
         async function carregarHorarios() {
 
-            const empresaId =
-                document.getElementById('EmpresaId').value;
-
             const funcionarioId =
-                document.getElementById('FuncionarioId').value;
+                document.getElementById(
+                    "FuncionarioId"
+                ).value;
 
             const data =
-                document.getElementById('DataAgendamento').value;
+                document.getElementById(
+                    "DataAgendamento"
+                ).value;
 
             if (!data)
                 return;
 
             const response =
                 await fetch(
-                    `/Publico/HorariosDisponiveis?empresaId=${empresaId}&funcionarioId=${funcionarioId}&data=${data}`);
+                    `/Publico/HorariosDisponiveis?empresaId=${empresaId}&funcionarioId=${funcionarioId}&data=${data}`
+                );
 
             const horarios =
                 await response.json();
 
             const select =
-                document.getElementById('Horario');
+                document.getElementById(
+                    "Horario"
+                );
 
-            select.innerHTML = '';
+            select.innerHTML = "";
 
             horarios.forEach(h => {
 
-                select.innerHTML +=
-                    `<option value="${h}">
+                select.innerHTML += `
+                    <option value="${h}">
                         ${h}
-                    </option>`;
+                    </option>
+                `;
             });
         }
 
-        document
-            .getElementById('FuncionarioId')
-            .addEventListener('change', carregarHorarios);
+        document.getElementById("FuncionarioId")
+            ?.addEventListener(
+                "change",
+                carregarHorarios
+            );
 
-        document
-            .getElementById('DataAgendamento')
-            .addEventListener('change', carregarHorarios);
+        document.getElementById("DataAgendamento")
+            ?.addEventListener(
+                "change",
+                carregarHorarios
+            );
 
-        document
-            .getElementById('btnConfirmarAgendamento')
-            .addEventListener('click', async () => {
+        // ==========================================
+        // CONFIRMAR AGENDAMENTO
+        // ==========================================
+
+        document.getElementById(
+            "btnConfirmarAgendamento"
+        )
+        ?.addEventListener(
+            "click",
+            async () => {
 
                 const data =
-                    document.getElementById('DataAgendamento').value;
+                    document.getElementById(
+                        "DataAgendamento"
+                    ).value;
 
                 const hora =
-                    document.getElementById('Horario').value;
+                    document.getElementById(
+                        "Horario"
+                    ).value;
+
+                if (!data || !hora) {
+
+                    alert(
+                        "Selecione data e horário."
+                    );
+
+                    return;
+                }
 
                 const payload = {
 
                     empresaId:
-                        parseInt(document.getElementById('EmpresaId').value),
+                        parseInt(
+                            document.getElementById(
+                                "EmpresaId"
+                            ).value
+                        ),
 
                     servicoId:
-                        parseInt(document.getElementById('ServicoId').value),
+                        parseInt(
+                            document.getElementById(
+                                "ServicoId"
+                            ).value
+                        ),
 
                     funcionarioId:
-                        document.getElementById('FuncionarioId').value || null,
+                        document.getElementById(
+                            "FuncionarioId"
+                        ).value
+                            ? parseInt(
+                                document.getElementById(
+                                    "FuncionarioId"
+                                ).value
+                            )
+                            : null,
+
+                    clienteId:
+                        document.getElementById(
+                            "ClienteId"
+                        ).value
+                            ? parseInt(
+                                document.getElementById(
+                                    "ClienteId"
+                                ).value
+                            )
+                            : null,
 
                     nome:
-                        document.getElementById('NomeCliente').value,
+                        document.getElementById(
+                            "NomeCliente"
+                        ).value,
 
                     telefone:
-                        document.getElementById('TelefoneCliente').value,
+                        document.getElementById(
+                            "TelefoneCliente"
+                        ).value,
 
                     dataHora:
                         `${data}T${hora}:00`
                 };
 
                 const response =
-                    await fetch('/Publico/Agendar', {
-
-                        method: 'POST',
-
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-
-                        body: JSON.stringify(payload)
-                    });
+                    await fetch(
+                        "/Publico/Agendar",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+                            body:
+                                JSON.stringify(
+                                    payload
+                                )
+                        });
 
                 const result =
                     await response.json();
 
                 if (result.sucesso) {
 
-                    alert(result.mensagem);
+                    alert(
+                        result.mensagem
+                    );
 
                     location.reload();
                 }
-            });
+                else {
+
+                    alert(
+                        result.mensagem ||
+                        "Erro ao realizar agendamento."
+                    );
+                }
+            }
+        );
+
+        // ==========================================
+        // ABRIR LOGIN A PARTIR AGENDAMENTO
+        // ==========================================
+
+        document.getElementById(
+            "abrirLoginCliente"
+        )
+        ?.addEventListener(
+            "click",
+            function (e) {
+
+                e.preventDefault();
+
+                bootstrap.Modal
+                    .getInstance(
+                        document.getElementById(
+                            "agendamentoModal"
+                        )
+                    )
+                    ?.hide();
+
+                new bootstrap.Modal(
+                    document.getElementById(
+                        "clienteLoginModal"
+                    )
+                ).show();
+            }
+        );
+            document.addEventListener(
+        "DOMContentLoaded",
+        async () => {
+
+            await verificarClienteLogado();
+        });
     </script>
+
 }

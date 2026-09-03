@@ -3,6 +3,7 @@ using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.ViewModels;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,10 +13,14 @@ namespace EmpresaAgendamento.Controllers
     public class PublicoController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly UserManager<ApplicationUser> _userManager;
+        private readonly SignInManager<ApplicationUser> _signInManager;
 
-        public PublicoController(ApplicationDbContext context)
+        public PublicoController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
         {
             _context = context;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
 
         [HttpGet("{slug}")]
@@ -141,19 +146,99 @@ namespace EmpresaAgendamento.Controllers
 
             return Json(horariosDisponiveis);
         }
+        [HttpGet("login")]
+        public IActionResult Login(int? empresaId)
+        {
+            var model = new ClienteLoginViewModel
+            {
+                EmpresaId = empresaId
+            };
 
-        [HttpPost("Publico/Agendar")]
-        public async Task<IActionResult> Agendar(
-     [FromBody] AgendamentoPublicoViewModel model)
+            return View(model);
+        }
+
+        [HttpPost("login")]
+        public async Task<IActionResult> Login(ClienteLoginViewModel model)
         {
             if (!ModelState.IsValid)
+                return Json(new
+                {
+                    success = false,
+                    error = "Dados inválidos."
+                });
+
+            var users = await _userManager.Users
+                .Where(u => u.Email == model.Email)
+                .ToListAsync();
+
+            ApplicationUser? user = null;
+
+            foreach (var u in users)
+            {
+                if (await _userManager.IsInRoleAsync(u, "Cliente"))
+                {
+                    user = u;
+                    break;
+                }
+            }
+
+            if (user == null)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Usuário não encontrado."
+                });
+            }
+
+            var result = await _signInManager.PasswordSignInAsync(
+                user,
+                model.Password,
+                false,
+                false);
+
+            if (!result.Succeeded)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Email ou senha inválidos."
+                });
+            }
+
+            // LOGIN PELO SITE PÚBLICO
+            if (model.EmpresaId.HasValue)
+            {
+                return Json(new
+                {
+                    success = true,
+                    redirect = $"/Cliente/Agendamentos?empresaId={model.EmpresaId}"
+                });
+            }
+
+            // LOGIN NORMAL
+            return Json(new
+            {
+                success = true,
+                redirect = "/Cliente/Agendamentos"
+            });
+        }
+
+        [HttpPost("Publico/Agendar")]
+        public async Task<IActionResult> Agendar( [FromBody] AgendamentoPublicoViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
                 return BadRequest(new
                 {
                     sucesso = false,
                     mensagem = "Dados inválidos."
                 });
+            }
 
-            // Se escolheu "Qualquer profissional"
+            // ======================================
+            // QUALQUER PROFISSIONAL
+            // ======================================
             if (!model.FuncionarioId.HasValue)
             {
                 model.FuncionarioId = await _context.Funcionarios
@@ -174,7 +259,9 @@ namespace EmpresaAgendamento.Controllers
                 }
             }
 
-            // Validação final de conflito
+            // ======================================
+            // CONFLITO DE HORÁRIO
+            // ======================================
             var conflito = await _context.Agendamentos
                 .AnyAsync(a =>
                     a.EmpresaId == model.EmpresaId &&
@@ -191,27 +278,51 @@ namespace EmpresaAgendamento.Controllers
                 });
             }
 
+            // ======================================
+            // CLIENTE LOGADO
+            // ======================================
+            int? clienteId = null;
+
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var userId = _userManager.GetUserId(User);
+
+                var user = await _userManager.Users
+                    .FirstOrDefaultAsync(x =>
+                        x.Id == userId &&
+                        x.ClienteId.HasValue);
+
+                if (user != null)
+                {
+                    clienteId = user.ClienteId;
+                }
+            }
+
+            // ======================================
+            // AGENDAMENTO
+            // ======================================
             var agendamento = new Agendamento
             {
                 EmpresaId = model.EmpresaId,
                 ServicoId = model.ServicoId,
-
                 FuncionarioId = model.FuncionarioId,
-
                 DataHora = model.DataHora,
 
                 Status = StatusAgendamento.Agendado,
 
-                ClienteAvulso = true,
+                ClienteId = clienteId,
 
-                ClienteId = null,
+                ClienteAvulso = clienteId == null,
 
-                NomeClienteAvulso = model.Nome,
+                NomeClienteAvulso = clienteId == null
+                    ? model.Nome
+                    : null,
 
-                TelefoneClienteAvulso = model.Telefone,
+                TelefoneClienteAvulso = clienteId == null
+                    ? model.Telefone
+                    : null,
 
                 DataCriacao = DateTime.UtcNow,
-
                 Ativo = true
             };
 

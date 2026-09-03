@@ -7,4 +7,6 @@ public class ClienteLoginViewModel
 
     [Required]
     public string Password { get; set; }
+
+    public int? EmpresaId { get; set; }
 }

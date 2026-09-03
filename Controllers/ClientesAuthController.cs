@@ -33,18 +33,31 @@ public class ClientesAuthController : Controller
     public IActionResult Login() => View();
 
     [HttpPost("login")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(ClienteLoginViewModel model)
     {
-        if (!ModelState.IsValid)
-            return View(model);
+        var origem = Request.Form["Origem"].ToString();
 
-        // 🔹 Busca todos os usuários com o email informado
+        if (!ModelState.IsValid)
+        {
+            if (origem == "publico")
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Dados inválidos."
+                });
+            }
+
+            return View(model);
+        }
+
         var users = await _userManager.Users
             .Where(u => u.Email == model.Email)
             .ToListAsync();
 
-        // 🔹 Filtra pelo usuário que é Cliente
-        ApplicationUser user = null;
+        ApplicationUser? user = null;
+
         foreach (var u in users)
         {
             if (await _userManager.IsInRoleAsync(u, "Cliente"))
@@ -56,22 +69,54 @@ public class ClientesAuthController : Controller
 
         if (user == null)
         {
-            ModelState.AddModelError("", "Usuário não encontrado ou não é cliente.");
+            if (origem == "publico")
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Usuário não encontrado."
+                });
+            }
+
+            ModelState.AddModelError("", "Usuário não encontrado.");
             return View(model);
         }
 
         var result = await _signInManager.PasswordSignInAsync(
-            user, model.Password, isPersistent: false, lockoutOnFailure: false);
+            user,
+            model.Password,
+            false,
+            false);
 
-        if (result.Succeeded)
+        if (!result.Succeeded)
+        {
+            if (origem == "publico")
+            {
                 return Json(new
                 {
-                    success = true,
-                    redirect = "/Cliente/Agendamentos"
+                    success = false,
+                    error = "Email ou senha inválidos."
                 });
+            }
 
-        ModelState.AddModelError("", "Email ou senha inválidos.");
-        return View(model);
+            ModelState.AddModelError("", "Email ou senha inválidos.");
+            return View(model);
+        }
+
+        // LOGIN VIA MODAL PÚBLICO
+        if (origem == "publico")
+        {
+            return Json(new
+            {
+                success = true,
+                reload = true
+            });
+        }
+
+        // LOGIN NORMAL HOME 
+        return RedirectToAction(
+            "Agendamentos",
+            "Cliente");
     }
 
     // =========================
@@ -351,4 +396,37 @@ public class ClientesAuthController : Controller
             });
         }
     }
+
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        if (!User.Identity!.IsAuthenticated)
+        {
+            return Json(new
+            {
+                autenticado = false
+            });
+        }
+
+        var user =
+            await _userManager.GetUserAsync(User);
+
+        if (user == null)
+        {
+            return Json(new
+            {
+                autenticado = false
+            });
+        }
+
+        return Json(new
+        {
+            autenticado = true,
+            clienteId = user.ClienteId,
+            nome = user.Cliente.Nome,
+            telefone = user.PhoneNumber
+        });
+    }
+
+
 }
