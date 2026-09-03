@@ -15,17 +15,20 @@ using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace EmpresaAgendamento.Areas.Identity.Pages.Account
 {
     public class LoginModel : PageModel
     {
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly UserManager<ApplicationUser> _userManager;
         private readonly ILogger<LoginModel> _logger;
 
-        public LoginModel(SignInManager<ApplicationUser> signInManager, ILogger<LoginModel> logger)
+        public LoginModel(SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager, ILogger<LoginModel> logger)
         {
             _signInManager = signInManager;
+            _userManager = userManager;
             _logger = logger;
         }
 
@@ -110,9 +113,31 @@ namespace EmpresaAgendamento.Areas.Identity.Pages.Account
 
             if (ModelState.IsValid)
             {
+                // 🔹 Busca todos os usuários com o email informado
+                var users = await _userManager.Users
+                    .Where(u => u.Email == Input.Email)
+                    .ToListAsync();
+
+                // 🔹 Filtra pelo usuário que é Empresa
+                ApplicationUser user = null;
+                foreach (var u in users)
+                {
+                    if (await _userManager.IsInRoleAsync(u, "Empresa"))
+                    {
+                        user = u;
+                        break;
+                    }
+                }
+
+                if (user == null)
+                {
+                    ModelState.AddModelError(string.Empty, "Usuário não encontrado ou não é empresa.");
+                    return Page();
+                }
+
                 // This doesn't count login failures towards account lockout
                 // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: false);
+                var result = await _signInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("Usuario logou.");

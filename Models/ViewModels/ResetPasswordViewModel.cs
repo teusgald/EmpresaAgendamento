@@ -5,18 +5,17 @@ namespace EmpresaAgendamento.Models.ViewModels
     public class ResetPasswordViewModel
     {
         [Required]
-        public string Email { get; set; }
+        public string UserId { get; set; }
 
         [Required]
         public string Token { get; set; }
 
-        [Required(ErrorMessage = "Informe a nova senha")]
+        [Required]
         [DataType(DataType.Password)]
         public string Password { get; set; }
 
-        [Required(ErrorMessage = "Confirme a senha")]
         [DataType(DataType.Password)]
-        [Compare("Password", ErrorMessage = "As senhas não conferem")]
+        [Compare("Password", ErrorMessage = "As senhas não coincidem.")]
         public string ConfirmPassword { get; set; }
     }
 }
