@@ -33,11 +33,12 @@ namespace EmpresaAgendamento.Models
         // ─────────────────────────────────────────────
 
         /// <summary>
-        /// CPF ou CNPJ do responsável ou empresa
+        /// CPF ou CNPJ do responsável ou empresa. Opcional no cadastro
+        /// inicial (o formulário de registro não coleta esse dado) —
+        /// preenchido depois em Configurações da Empresa.
         /// </summary>
-        [Required]
         [StringLength(18)]
-        public string DocumentoNumero { get; set; } = null!;
+        public string? DocumentoNumero { get; set; }
 
         /// <summary>
         /// CPF ou CNPJ (identifica o tipo)

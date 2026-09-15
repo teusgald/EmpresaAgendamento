@@ -83,9 +83,12 @@ namespace EmpresaAgendamento.Data
                 .HasIndex(e => e.Slug)
                 .IsUnique();
 
+            // Único só quando preenchido — o cadastro inicial não coleta
+            // CPF/CNPJ, então várias empresas podem ficar sem ele por enquanto.
             builder.Entity<Empresa>()
                 .HasIndex(e => e.DocumentoNumero)
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("[DocumentoNumero] IS NOT NULL");
 
             builder.Entity<Empresa>()
     .Property(x => x.Latitude)
