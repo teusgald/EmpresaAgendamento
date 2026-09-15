@@ -2,6 +2,7 @@
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Models.ViewModels;
+using EmpresaAgendamento.Services;
 using EmpresaAgendamento.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,12 +16,18 @@ namespace EmpresaAgendamento.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IFinanceiroService _financeiroService;
 
-        public PublicoController(ApplicationDbContext context, UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager)
+        public PublicoController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            SignInManager<ApplicationUser> signInManager,
+            IFinanceiroService financeiroService)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
+            _financeiroService = financeiroService;
         }
 
         [HttpGet("{slug}")]
@@ -237,6 +244,24 @@ namespace EmpresaAgendamento.Controllers
             }
 
             // ======================================
+            // SERVIÇO (precisa pertencer à empresa informada)
+            // ======================================
+            var servico = await _context.Servicos
+                .FirstOrDefaultAsync(s =>
+                    s.Id == model.ServicoId &&
+                    s.EmpresaId == model.EmpresaId &&
+                    s.Ativo);
+
+            if (servico == null)
+            {
+                return BadRequest(new
+                {
+                    sucesso = false,
+                    mensagem = "Serviço não encontrado."
+                });
+            }
+
+            // ======================================
             // QUALQUER PROFISSIONAL
             // ======================================
             if (!model.FuncionarioId.HasValue)
@@ -258,16 +283,40 @@ namespace EmpresaAgendamento.Controllers
                     });
                 }
             }
+            else
+            {
+                // Funcionário informado precisa pertencer à mesma empresa
+                var funcionarioValido = await _context.Funcionarios
+                    .AnyAsync(f =>
+                        f.Id == model.FuncionarioId &&
+                        f.EmpresaId == model.EmpresaId &&
+                        f.Ativo);
+
+                if (!funcionarioValido)
+                {
+                    return BadRequest(new
+                    {
+                        sucesso = false,
+                        mensagem = "Profissional não encontrado."
+                    });
+                }
+            }
 
             // ======================================
-            // CONFLITO DE HORÁRIO
+            // CONFLITO DE HORÁRIO (overlap real, considerando a duração do serviço)
             // ======================================
+            var inicio = model.DataHora;
+            var fim = inicio.AddMinutes(servico.DuracaoMinutos);
+
             var conflito = await _context.Agendamentos
+                .Include(a => a.Servico)
                 .AnyAsync(a =>
                     a.EmpresaId == model.EmpresaId &&
                     a.FuncionarioId == model.FuncionarioId &&
-                    a.DataHora == model.DataHora &&
-                    a.Status != StatusAgendamento.Cancelado);
+                    a.Ativo &&
+                    a.Status != StatusAgendamento.Cancelado &&
+                    inicio < a.DataHora.AddMinutes(a.Servico.DuracaoMinutos) &&
+                    fim > a.DataHora);
 
             if (conflito)
             {
@@ -329,6 +378,17 @@ namespace EmpresaAgendamento.Controllers
             _context.Agendamentos.Add(agendamento);
 
             await _context.SaveChangesAsync();
+
+            // Todo agendamento já entra no financeiro como previsão de receita
+            // (Contas a Receber pendente) — mesmo criado pelo cliente aqui.
+            try
+            {
+                await _financeiroService.GerarContaReceberDeAgendamentoAsync(agendamento.Id);
+            }
+            catch
+            {
+                // Não bloqueia o agendamento do cliente por um problema no financeiro.
+            }
 
             return Ok(new
             {

@@ -109,7 +109,7 @@ public class ClientesAuthController : Controller
             return Json(new
             {
                 success = true,
-                reload = true
+                redirect = "/Cliente/Agendamentos"
             });
         }
 
@@ -199,7 +199,7 @@ public class ClientesAuthController : Controller
         _context.Clientes.Add(cliente);
         await _context.SaveChangesAsync();
 
-        user.Cliente.Id = cliente.Id;
+        user.ClienteId = cliente.Id;
 
         await _userManager.UpdateAsync(user);
 
@@ -411,7 +411,18 @@ public class ClientesAuthController : Controller
         var user =
             await _userManager.GetUserAsync(User);
 
-        if (user == null)
+        if (user == null || user.ClienteId == null)
+        {
+            return Json(new
+            {
+                autenticado = false
+            });
+        }
+
+        var cliente = await _context.Clientes
+            .FirstOrDefaultAsync(c => c.Id == user.ClienteId);
+
+        if (cliente == null)
         {
             return Json(new
             {
@@ -423,8 +434,8 @@ public class ClientesAuthController : Controller
         {
             autenticado = true,
             clienteId = user.ClienteId,
-            nome = user.Cliente.Nome,
-            telefone = user.PhoneNumber
+            nome = cliente.Nome,
+            telefone = cliente.Telefone
         });
     }
 

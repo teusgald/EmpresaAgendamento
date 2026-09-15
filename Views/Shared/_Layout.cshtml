@@ -8,11 +8,13 @@
 @{
 	var userId = UserManager.GetUserId(User);
 
-	var nomeUsuario = await _context.Users
+	var empresaInfo = await _context.Users
 		.Where(u => u.Id == userId)
-		.Include(u => u.Empresa)
-		.Select(u => u.Empresa.Nome)
+		.Select(u => new { u.Empresa.Nome, u.Empresa.LogoUrl })
 		.FirstOrDefaultAsync();
+
+	var nomeUsuario = empresaInfo?.Nome;
+	var logoEmpresa = empresaInfo?.LogoUrl;
 }
 
 <!DOCTYPE html>
@@ -95,7 +97,16 @@
 
 	<!-- SIDEBAR -->
 	<div class="sidebar" id="sidebar">
-		<h4>🚀 Sistema</h4>
+		@if (!string.IsNullOrEmpty(logoEmpresa))
+		{
+			<div class="mb-2 py-2 px-2">
+				<img src="@logoEmpresa" alt="Logo" style="width:100%;height:130px;object-fit:contain;" />
+			</div>
+		}
+		else
+		{
+			<h4>🚀 Sistema</h4>
+		}
 		<hr />
 		<ul class="nav flex-column">
 
@@ -174,7 +185,7 @@
 			</li>
 
 			<!-- ========================= -->
-			<!-- FINANCEIRO (FUTURO) -->
+			<!-- FINANCEIRO -->
 			<!-- ========================= -->
 			<li class="nav-item">
 
@@ -197,21 +208,63 @@
 					<ul class="nav flex-column">
 
 						<li>
-							<a class="nav-link disabled" href="#">
+							<a class="nav-link" asp-controller="Financeiro" asp-action="Dashboard">
+								<i class="bi bi-speedometer2"></i>
+								<span class="link-text">Dashboard</span>
+							</a>
+						</li>
+
+						<li>
+							<a class="nav-link" asp-controller="Financeiro" asp-action="Caixa">
+								<i class="bi bi-safe"></i>
+								<span class="link-text">Caixa</span>
+							</a>
+						</li>
+
+						<li>
+							<a class="nav-link" asp-controller="ContasReceber" asp-action="Index">
+								<i class="bi bi-cash-stack"></i>
+								<span class="link-text">Contas a Receber</span>
+							</a>
+						</li>
+
+						<li>
+							<a class="nav-link" asp-controller="ContasReceber" asp-action="Receitas">
 								<i class="bi bi-receipt"></i>
 								<span class="link-text">Receitas</span>
 							</a>
 						</li>
 
 						<li>
-							<a class="nav-link disabled" href="#">
+							<a class="nav-link" asp-controller="ContasPagar" asp-action="Index">
+								<i class="bi bi-cash-coin"></i>
+								<span class="link-text">Contas a Pagar</span>
+							</a>
+						</li>
+
+						<li>
+							<a class="nav-link" asp-controller="ContasPagar" asp-action="Despesas">
 								<i class="bi bi-wallet2"></i>
 								<span class="link-text">Despesas</span>
 							</a>
 						</li>
 
 						<li>
-							<a class="nav-link disabled" href="#">
+							<a class="nav-link" asp-controller="Comissoes" asp-action="Index">
+								<i class="bi bi-percent"></i>
+								<span class="link-text">Comissões</span>
+							</a>
+						</li>
+
+						<li>
+							<a class="nav-link" asp-controller="CategoriasFinanceiras" asp-action="Index">
+								<i class="bi bi-tags"></i>
+								<span class="link-text">Categorias</span>
+							</a>
+						</li>
+
+						<li>
+							<a class="nav-link" asp-controller="Financeiro" asp-action="Relatorios">
 								<i class="bi bi-graph-up"></i>
 								<span class="link-text">Relatórios</span>
 							</a>

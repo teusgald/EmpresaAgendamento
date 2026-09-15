@@ -1,0 +1,59 @@
+@model EmpresaAgendamento.Models.ContaPagar
+
+@{
+    ViewData["Title"] = "Nova Despesa";
+}
+
+<div class="container-fluid mt-4">
+    <div class="card shadow-sm" style="max-width: 640px;">
+        <div class="card-body">
+            <h4 class="mb-4">Nova Despesa</h4>
+
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="All" class="text-danger mb-2"></div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descrição</label>
+                    <input asp-for="Descricao" class="form-control" placeholder="Ex.: Aluguel, produtos, conta de luz..." />
+                    <span asp-validation-for="Descricao" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Categoria</label>
+                    <select asp-for="CategoriaId" class="form-select" asp-items="ViewBag.Categorias">
+                        <option value="">Sem categoria</option>
+                    </select>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Valor previsto</label>
+                        <input asp-for="ValorPrevisto" type="number" step="0.01" min="0.01" class="form-control" />
+                        <span asp-validation-for="ValorPrevisto" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Vencimento</label>
+                        <input asp-for="DataVencimento" type="date" class="form-control" />
+                        <span asp-validation-for="DataVencimento" class="text-danger"></span>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Observação</label>
+                    <textarea asp-for="Observacao" class="form-control" rows="2"></textarea>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-danger">Lançar Despesa</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

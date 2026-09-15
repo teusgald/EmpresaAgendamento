@@ -8,6 +8,51 @@
     ViewData["Title"] = nome;
 }
 
+@section Styles {
+    <style>
+        /* Estilo do formulário de login/registro/recuperação carregado dentro
+           do modal público. Escopado em #clienteLoginContent de propósito —
+           as telas originais (/cliente/login, /registro, /forgot) têm seu
+           próprio <style> com regras de "body"/página cheia que NÃO podem
+           ser copiadas para cá (vazariam para o fundo do site). */
+        #clienteLoginModal .modal-content {
+            background: #ffffff;
+        }
+
+        #clienteLoginContent .login-card,
+        #clienteLoginContent .auth-card {
+            background: transparent;
+            box-shadow: none;
+            padding: 0;
+            border: none;
+        }
+
+        #clienteLoginContent h3,
+        #clienteLoginContent h4,
+        #clienteLoginContent p,
+        #clienteLoginContent label,
+        #clienteLoginContent .text-muted {
+            color: #212529;
+        }
+
+        #clienteLoginContent .form-control {
+            border-radius: 10px;
+        }
+
+        #clienteLoginContent .btn-primary,
+        #clienteLoginContent .btn-dark {
+            border-radius: 10px;
+            background: #2563eb;
+            border: none;
+        }
+
+        #clienteLoginContent .btn-primary:hover,
+        #clienteLoginContent .btn-dark:hover {
+            background: #1e40af;
+        }
+    </style>
+}
+
 @section Navbar {
     <a class="navbar-brand d-flex align-items-center" href="/">
         <img id="logoSite"
@@ -29,7 +74,8 @@
         <button class="btn-cta"
                 id="btnEntrarCliente"
                 data-bs-toggle="modal"
-                data-bs-target="#clienteLoginModal">
+                data-bs-target="#clienteLoginModal"
+                data-cliente-mode="login">
             Entrar
         </button>
 
@@ -397,6 +443,8 @@
 
             <div class="modal-body">
 
+                <div id="agendamentoAlert"></div>
+
                 <input type="hidden" id="ServicoId" />
 
                 <input type="hidden" id="ClienteId" />
@@ -462,7 +510,8 @@
 
                     <a href="#"
                        data-bs-toggle="modal"
-                       data-bs-target="#clienteLoginModal">
+                       data-bs-target="#clienteLoginModal"
+                       data-cliente-mode="register">
                         Criar Conta
                     </a>
 
@@ -489,11 +538,7 @@
 
         <div class="modal-content p-4">
 
-            <div class="d-flex justify-content-between align-items-center mb-3">
-
-                <h5 class="mb-0">
-                    Entrar
-                </h5>
+            <div class="d-flex justify-content-end align-items-center mb-3">
 
                 <button type="button"
                         class="btn-close"
@@ -501,6 +546,8 @@
                 </button>
 
             </div>
+
+            <div id="clienteLoginAlert"></div>
 
             <div id="clienteLoginContent"></div>
 
@@ -563,9 +610,24 @@
         // CARREGA LOGIN / REGISTRO / FORGOT
         // ==========================================
 
+        function mostrarAlertaCliente(mensagem, tipo = "danger") {
+
+            const alerta =
+                document.getElementById("clienteLoginAlert");
+
+            if (!alerta)
+                return;
+
+            alerta.innerHTML = mensagem
+                ? `<div class="alert alert-${tipo} py-2 mb-3">${mensagem}</div>`
+                : "";
+        }
+
         function loadClienteLogin(mode = "login") {
 
             modoCliente = mode;
+
+            mostrarAlertaCliente("");
 
             let url = "/cliente/login";
 
@@ -575,8 +637,21 @@
             if (mode === "forgot")
                 url = "/cliente/forgot";
 
+            const container =
+                document.getElementById("clienteLoginContent");
+
+            container.innerHTML =
+                '<p class="text-center text-muted my-4">Carregando...</p>';
+
             fetch(url)
-                .then(res => res.text())
+                .then(res => {
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+
+                    return res.text();
+                })
                 .then(html => {
 
                     const doc =
@@ -588,9 +663,7 @@
                         || doc.querySelector(".login-card")
                         || doc.body;
 
-                    document.getElementById(
-                        "clienteLoginContent"
-                    ).innerHTML =
+                    container.innerHTML =
                         content.outerHTML;
 
                     const form =
@@ -614,6 +687,18 @@
                             `
                         );
                     }
+                })
+                .catch(err => {
+
+                    console.error(
+                        "Erro ao carregar tela de cliente:",
+                        err
+                    );
+
+                    container.innerHTML =
+                        '<p class="text-danger text-center my-4">' +
+                        'Não foi possível carregar esta tela agora. Tente novamente.' +
+                        '</p>';
                 });
         }
 
@@ -658,7 +743,9 @@
 
                 loginModal.addEventListener(
                     "shown.bs.modal",
-                    () => loadClienteLogin("login")
+                    (event) => loadClienteLogin(
+                        event.relatedTarget?.dataset.clienteMode || "login"
+                    )
                 );
             }
         );
@@ -682,6 +769,19 @@
 
                 e.preventDefault();
 
+                mostrarAlertaCliente("");
+
+                const urlsPorTipo = {
+                    "cliente-login": "/cliente/login",
+                    "cliente-register": "/cliente/registro",
+                    "cliente-forgot": "/cliente/forgot",
+                    "cliente-reset": "/cliente/resetpassword"
+                };
+
+                const url =
+                    urlsPorTipo[form.dataset.type]
+                    || form.action;
+
                 const formData =
                     new FormData(form);
 
@@ -689,7 +789,7 @@
 
                     const response =
                         await fetch(
-                            form.action,
+                            url,
                             {
                                 method: "POST",
                                 body: formData
@@ -740,7 +840,7 @@
                             return;
                         }
 
-                        alert(
+                        mostrarAlertaCliente(
                             data.error ||
                             "Erro ao processar."
                         );
@@ -772,7 +872,7 @@
 
                     console.error(err);
 
-                    alert(
+                    mostrarAlertaCliente(
                         "Erro ao processar a solicitação."
                     );
                 }
@@ -896,6 +996,37 @@
         }
 
         // ==========================================
+        // MENSAGENS NO MODAL DE AGENDAMENTO
+        // ==========================================
+
+        function mostrarAlertaAgendamento(mensagem, tipo = "danger") {
+
+            const alerta =
+                document.getElementById("agendamentoAlert");
+
+            if (!alerta)
+                return;
+
+            alerta.innerHTML = mensagem
+                ? `<div class="alert alert-${tipo} py-2 mb-3">${mensagem}</div>`
+                : "";
+        }
+
+        // ==========================================
+        // AGENDAR AGORA (HERO) — ROLA ATÉ OS SERVIÇOS
+        // ==========================================
+
+        document.querySelector(".btn-agendar")
+            ?.addEventListener("click", () => {
+
+                document.getElementById("servicos")
+                    ?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                    });
+            });
+
+        // ==========================================
         // ABRIR MODAL AGENDAMENTO
         // ==========================================
 
@@ -909,6 +1040,8 @@
 
                         const servicoId =
                             this.dataset.servico;
+
+                        mostrarAlertaAgendamento("");
 
                         document.getElementById(
                             "ServicoId"
@@ -1030,12 +1163,15 @@
 
                 if (!data || !hora) {
 
-                    alert(
-                        "Selecione data e horário."
+                    mostrarAlertaAgendamento(
+                        "Selecione data e horário.",
+                        "warning"
                     );
 
                     return;
                 }
+
+                mostrarAlertaAgendamento("");
 
                 const payload = {
 
@@ -1109,15 +1245,18 @@
 
                 if (result.sucesso) {
 
-                    alert(
-                        result.mensagem
+                    mostrarAlertaAgendamento(
+                        result.mensagem,
+                        "success"
                     );
 
-                    location.reload();
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
                 }
                 else {
 
-                    alert(
+                    mostrarAlertaAgendamento(
                         result.mensagem ||
                         "Erro ao realizar agendamento."
                     );

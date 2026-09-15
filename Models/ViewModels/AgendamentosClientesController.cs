@@ -1,5 +1,7 @@
 ﻿using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.Enums;
+using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,15 +15,18 @@ public class AgendamentosClientesController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly IFinanceiroService _financeiroService;
 
     public AgendamentosClientesController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        SignInManager<ApplicationUser> signInManager)
+        SignInManager<ApplicationUser> signInManager,
+        IFinanceiroService financeiroService)
     {
         _context = context;
         _userManager = userManager;
         _signInManager = signInManager;
+        _financeiroService = financeiroService;
     }
 
     private async Task<ApplicationUser?> GetCurrentUserAsync()
@@ -83,16 +88,113 @@ public class AgendamentosClientesController : Controller
         if (user == null || user.ClienteId == null)
             return RedirectLogin();
 
+        ModelState.Remove(nameof(Agendamento.FuncionarioId));
+        ModelState.Remove(nameof(Agendamento.Status));
+        ModelState.Remove(nameof(Agendamento.Cliente));
+        ModelState.Remove(nameof(Agendamento.Servico));
+        ModelState.Remove(nameof(Agendamento.Empresa));
+        ModelState.Remove(nameof(Agendamento.Funcionario));
+
         agendamento.ClienteId = user.ClienteId.Value;
+        agendamento.ClienteAvulso = false;
 
         if (!ModelState.IsValid)
         {
-            ViewBag.Empresas = await _context.Empresas.ToListAsync();
+            ViewBag.Empresas = new SelectList(
+                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                "Id", "Nome");
             return View(agendamento);
         }
 
+        // =========================
+        // SERVIÇO (precisa pertencer à empresa selecionada)
+        // =========================
+        var servico = await _context.Servicos
+            .FirstOrDefaultAsync(s =>
+                s.Id == agendamento.ServicoId &&
+                s.EmpresaId == agendamento.EmpresaId &&
+                s.Ativo);
+
+        if (servico == null)
+        {
+            ModelState.AddModelError(
+                nameof(Agendamento.ServicoId),
+                "Serviço não encontrado para a empresa selecionada.");
+
+            ViewBag.Empresas = new SelectList(
+                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                "Id", "Nome");
+            return View(agendamento);
+        }
+
+        // =========================
+        // FUNCIONÁRIO (o formulário não coleta esse campo — sorteia entre os disponíveis)
+        // =========================
+        var funcionarioId = await _context.Funcionarios
+            .Where(f => f.EmpresaId == agendamento.EmpresaId && f.Ativo)
+            .OrderBy(x => Guid.NewGuid())
+            .Select(x => (int?)x.Id)
+            .FirstOrDefaultAsync();
+
+        if (!funcionarioId.HasValue)
+        {
+            ModelState.AddModelError(
+                "",
+                "Nenhum profissional disponível para essa empresa.");
+
+            ViewBag.Empresas = new SelectList(
+                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                "Id", "Nome");
+            return View(agendamento);
+        }
+
+        agendamento.FuncionarioId = funcionarioId;
+
+        // =========================
+        // CONFLITO DE HORÁRIO (overlap real, considerando a duração do serviço)
+        // =========================
+        var inicio = agendamento.DataHora;
+        var fim = inicio.AddMinutes(servico.DuracaoMinutos);
+
+        var conflito = await _context.Agendamentos
+            .Include(a => a.Servico)
+            .AnyAsync(a =>
+                a.EmpresaId == agendamento.EmpresaId &&
+                a.FuncionarioId == funcionarioId &&
+                a.Ativo &&
+                a.Status != StatusAgendamento.Cancelado &&
+                inicio < a.DataHora.AddMinutes(a.Servico.DuracaoMinutos) &&
+                fim > a.DataHora);
+
+        if (conflito)
+        {
+            ModelState.AddModelError(
+                "",
+                "Não há profissional disponível nesse horário. Escolha outro horário.");
+
+            ViewBag.Empresas = new SelectList(
+                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                "Id", "Nome");
+            return View(agendamento);
+        }
+
+        agendamento.Status = StatusAgendamento.Agendado;
+        agendamento.Ativo = true;
+        agendamento.DataCriacao = DateTime.UtcNow;
+
         _context.Agendamentos.Add(agendamento);
         await _context.SaveChangesAsync();
+
+        // Todo agendamento já entra no financeiro como previsão de receita
+        // (Contas a Receber pendente) — mesmo criado pelo cliente aqui.
+        try
+        {
+            await _financeiroService.GerarContaReceberDeAgendamentoAsync(agendamento.Id);
+        }
+        catch
+        {
+            // Não bloqueia o agendamento do cliente por um problema no financeiro.
+        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -157,51 +259,7 @@ public class AgendamentosClientesController : Controller
         return Json(servicos);
     }
 
-    // =========================
-    // 🔥 NOVO: AGENDAMENTO PÚBLICO (SEM LOGIN)
-    // =========================
-    [AllowAnonymous]
-    [HttpGet("publico/{empresaId}")]
-    public async Task<IActionResult> Publico(int empresaId)
-    {
-        var empresa = await _context.Empresas
-            .FirstOrDefaultAsync(x => x.Id == empresaId && x.Ativo);
-
-        if (empresa == null)
-            return NotFound();
-
-        ViewBag.Empresa = empresa;
-
-        ViewBag.Servicos = await _context.Servicos
-            .Where(x => x.EmpresaId == empresaId)
-            .ToListAsync();
-
-        return View("PublicoAgendamento");
-    }
-
-    // =========================
-    // 🔥 CRIAR AGENDAMENTO PÚBLICO
-    // =========================
-    [AllowAnonymous]
-    [HttpPost("publico")]
-    public async Task<IActionResult> PublicoCreate(Agendamento agendamento)
-    {
-        if (!ModelState.IsValid)
-            return RedirectToAction("Publico", new { empresaId = agendamento.EmpresaId });
-
-        agendamento.ClienteId = null; // cliente opcional
-        agendamento.DataCriacao = DateTime.UtcNow;
-
-        _context.Agendamentos.Add(agendamento);
-        await _context.SaveChangesAsync();
-
-        return RedirectToAction("PublicoConfirmacao");
-    }
-
-    [AllowAnonymous]
-    [HttpGet("publico-confirmacao")]
-    public IActionResult PublicoConfirmacao()
-    {
-        return View();
-    }
+    // Agendamento público sem login é feito por PublicoController.Agendar
+    // (esta rota duplicada foi removida: a view "PublicoAgendamento" nunca existiu
+    // e o POST não validava tenant nem conflito de horário).
 }

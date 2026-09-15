@@ -13,7 +13,7 @@
                 </div>
             }
 
-            <form asp-action="Index" method="post">
+            <form asp-action="Index" method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
 
                 <input type="hidden" asp-for="Id" />
@@ -55,8 +55,26 @@
 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Logo URL</label>
-                        <input asp-for="LogoUrl" class="form-control" />
+                        <label class="form-label">Logo</label>
+
+                        <div class="d-flex align-items-center gap-3 mb-2">
+                            <img id="logoPreview"
+                                 src="@Model.LogoUrl"
+                                 alt="Logo"
+                                 style="max-height:64px;max-width:120px;object-fit:contain;@(string.IsNullOrEmpty(Model.LogoUrl) ? "display:none;" : "")"
+                                 class="border rounded p-1 bg-white" />
+                        </div>
+
+                        <input type="file"
+                               name="logoFile"
+                               id="logoFile"
+                               accept="image/png,image/jpeg,image/webp,image/gif"
+                               class="form-control"
+                               onchange="previewLogo(this)" />
+
+                        <small class="text-muted">
+                            PNG, JPG, WEBP ou GIF — até 2 MB. Aparece no menu do seu portal e na sua página pública.
+                        </small>
                     </div>
 
                     <div class="col-md-6 mb-3">
@@ -250,6 +268,14 @@
 </div>
 
 <script>
+        function previewLogo(input) {
+        if (!input.files || !input.files[0]) return;
+
+        const preview = document.getElementById("logoPreview");
+        preview.src = URL.createObjectURL(input.files[0]);
+        preview.style.display = "";
+    }
+
         function copyPublicUrl() {
         const input = document.getElementById("publicUrl");
         navigator.clipboard.writeText(input.value);

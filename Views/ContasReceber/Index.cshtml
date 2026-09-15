@@ -1,0 +1,305 @@
+@model IEnumerable<EmpresaAgendamento.Models.ContaReceber>
+@using EmpresaAgendamento.Models.Enums
+
+@{
+    ViewData["Title"] = ViewBag.Titulo;
+
+    bool somenteAbertas = ViewBag.SomenteAbertas;
+    StatusConta? statusFiltro = ViewBag.Status;
+    DateTime? dataInicial = ViewBag.DataInicial;
+    DateTime? dataFinal = ViewBag.DataFinal;
+    string acaoPaginacao = somenteAbertas ? "Index" : "Receitas";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">@ViewBag.Titulo</h3>
+
+        <a asp-action="Create" class="btn btn-primary">
+            + Nova Receita
+        </a>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+
+                @if (!somenteAbertas)
+                {
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <select name="status" class="form-select">
+                            <option value="">Todos</option>
+                            @foreach (var s in Enum.GetValues<StatusConta>())
+                            {
+                                <option value="@s" selected="@(statusFiltro == s)">@s</option>
+                            }
+                        </select>
+                    </div>
+                }
+
+                <div class="col-md-3">
+                    <label class="form-label">Vencimento de</label>
+                    <input type="date" name="dataInicial" class="form-control"
+                           value="@(dataInicial?.ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Vencimento até</label>
+                    <input type="date" name="dataFinal" class="form-control"
+                           value="@(dataFinal?.ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Cliente</th>
+                        <th>Categoria</th>
+                        <th>Vencimento</th>
+                        <th>Previsto</th>
+                        <th>Recebido</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        var saldo = item.ValorPrevisto - item.ValorRecebido;
+                        bool podeReceber = item.Status == StatusConta.Pendente || item.Status == StatusConta.Parcial;
+                        bool podeCancelar = item.Status != StatusConta.Cancelado && item.Status != StatusConta.Estornado;
+
+                        string badgeClass = item.Status switch
+                        {
+                            StatusConta.Pendente => "bg-warning text-dark",
+                            StatusConta.Parcial => "bg-info text-dark",
+                            StatusConta.Quitado => "bg-success",
+                            StatusConta.Cancelado => "bg-secondary",
+                            StatusConta.Estornado => "bg-dark",
+                            _ => "bg-secondary"
+                        };
+
+                        <tr>
+                            <td>
+                                @item.Descricao
+                                @if (item.AgendamentoId.HasValue)
+                                {
+                                    <br /><small class="text-muted">Agendamento #@item.AgendamentoId</small>
+                                }
+                            </td>
+                            <td>@(item.Cliente?.Nome ?? "-")</td>
+                            <td>@(item.Categoria?.Nome ?? "-")</td>
+                            <td>@item.DataVencimento.ToString("dd/MM/yyyy")</td>
+                            <td>@item.ValorPrevisto.ToString("C")</td>
+                            <td>@item.ValorRecebido.ToString("C")</td>
+                            <td><span class="badge @badgeClass">@item.Status</span></td>
+                            <td class="text-end">
+                                @if (podeReceber)
+                                {
+                                    <button type="button" class="btn btn-sm btn-success"
+                                            data-bs-toggle="modal" data-bs-target="#modalReceber"
+                                            data-id="@item.Id"
+                                            data-saldo="@saldo.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-descricao="@item.Descricao">
+                                        Receber
+                                    </button>
+                                }
+                                @if (podeCancelar)
+                                {
+                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                            data-bs-toggle="modal" data-bs-target="#modalCancelar"
+                                            data-id="@item.Id">
+                                        Cancelar
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <!-- MOBILE -->
+    <div class="d-lg-none">
+        @foreach (var item in Model)
+        {
+            var saldo = item.ValorPrevisto - item.ValorRecebido;
+            bool podeReceber = item.Status == StatusConta.Pendente || item.Status == StatusConta.Parcial;
+            bool podeCancelar = item.Status != StatusConta.Cancelado && item.Status != StatusConta.Estornado;
+
+            string badgeClass = item.Status switch
+            {
+                StatusConta.Pendente => "bg-warning text-dark",
+                StatusConta.Parcial => "bg-info text-dark",
+                StatusConta.Quitado => "bg-success",
+                StatusConta.Cancelado => "bg-secondary",
+                StatusConta.Estornado => "bg-dark",
+                _ => "bg-secondary"
+            };
+
+            <div class="card mobile-card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">@item.Descricao</h6>
+                        <span class="badge @badgeClass">@item.Status</span>
+                    </div>
+
+                    <div class="mobile-info"><label>Cliente</label><span>@(item.Cliente?.Nome ?? "-")</span></div>
+                    <div class="mobile-info"><label>Vencimento</label><span>@item.DataVencimento.ToString("dd/MM/yyyy")</span></div>
+                    <div class="mobile-info"><label>Previsto</label><span>@item.ValorPrevisto.ToString("C")</span></div>
+                    <div class="mobile-info"><label>Recebido</label><span>@item.ValorRecebido.ToString("C")</span></div>
+
+                    <div class="mobile-actions">
+                        @if (podeReceber)
+                        {
+                            <button type="button" class="btn btn-success"
+                                    data-bs-toggle="modal" data-bs-target="#modalReceber"
+                                    data-id="@item.Id"
+                                    data-saldo="@saldo.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                    data-descricao="@item.Descricao">
+                                Receber
+                            </button>
+                        }
+                        @if (podeCancelar)
+                        {
+                            <button type="button" class="btn btn-outline-danger"
+                                    data-bs-toggle="modal" data-bs-target="#modalCancelar"
+                                    data-id="@item.Id">
+                                Cancelar
+                            </button>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="@acaoPaginacao" asp-route-page="@(ViewBag.CurrentPage - 1)">Anterior</a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="@acaoPaginacao" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="@acaoPaginacao" asp-route-page="@(ViewBag.CurrentPage + 1)">Próximo</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+
+</div>
+
+<!-- MODAL: REGISTRAR RECEBIMENTO -->
+<div class="modal fade" id="modalReceber" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="RegistrarRecebimento" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="receberId" />
+                <input type="hidden" name="origem" value="@(somenteAbertas ? "" : "receitas")" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Registrar Recebimento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="receberDescricao" class="text-muted"></p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Valor recebido</label>
+                        <input type="number" step="0.01" min="0.01" name="valor" id="receberValor" class="form-control" required />
+                        <div class="form-text">Saldo em aberto: R$ <span id="receberSaldo">0,00</span></div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Forma de pagamento</label>
+                        <select name="formaPagamento" class="form-select" required>
+                            @foreach (var forma in Enum.GetValues<FormaPagamento>())
+                            {
+                                <option value="@forma">@forma</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Confirmar Recebimento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CANCELAR / ESTORNAR -->
+<div class="modal fade" id="modalCancelar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Cancelar" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" id="cancelarId" />
+                <input type="hidden" name="origem" value="@(somenteAbertas ? "" : "receitas")" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Cancelar Conta a Receber</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">
+                        Se já houve recebimento registrado, será gerado um estorno — nada é excluído.
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo</label>
+                        <textarea name="motivo" class="form-control" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-danger">Confirmar Cancelamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('modalReceber')?.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            document.getElementById('receberId').value = btn.dataset.id;
+            document.getElementById('receberSaldo').textContent =
+                parseFloat(btn.dataset.saldo).toFixed(2).replace('.', ',');
+            document.getElementById('receberValor').value = btn.dataset.saldo;
+            document.getElementById('receberValor').max = btn.dataset.saldo;
+            document.getElementById('receberDescricao').textContent = btn.dataset.descricao;
+        });
+
+        document.getElementById('modalCancelar')?.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            document.getElementById('cancelarId').value = btn.dataset.id;
+        });
+    </script>
+}

@@ -29,6 +29,12 @@ namespace EmpresaAgendamento.Data
 
         public DbSet<Plano> Planos { get; set; }
 
+        // Financeiro
+        public DbSet<CategoriaFinanceira> CategoriasFinanceiras { get; set; }
+        public DbSet<ContaReceber> ContasReceber { get; set; }
+        public DbSet<ContaPagar> ContasPagar { get; set; }
+        public DbSet<MovimentacaoFinanceira> MovimentacoesFinanceiras { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -269,6 +275,208 @@ namespace EmpresaAgendamento.Data
             builder.Entity<Plano>()
                 .Property(x => x.ValorMensal)
                 .HasPrecision(10, 2);
+
+            #endregion
+
+            #region Financeiro
+
+            // ---- CategoriaFinanceira ----
+
+            builder.Entity<CategoriaFinanceira>()
+                .HasOne(x => x.Empresa)
+                .WithMany(e => e.CategoriasFinanceiras)
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<CategoriaFinanceira>()
+                .Property(x => x.Tipo)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<CategoriaFinanceira>()
+                .HasIndex(x => x.EmpresaId);
+
+            // ---- ContaReceber ----
+
+            builder.Entity<ContaReceber>()
+                .Property(x => x.ValorPrevisto)
+                .HasPrecision(10, 2);
+
+            builder.Entity<ContaReceber>()
+                .Property(x => x.ValorRecebido)
+                .HasPrecision(10, 2);
+
+            builder.Entity<ContaReceber>()
+                .Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<ContaReceber>()
+                .Property(x => x.FormaPagamento)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            builder.Entity<ContaReceber>()
+                .HasOne(x => x.Empresa)
+                .WithMany(e => e.ContasReceber)
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ContaReceber>()
+                .HasOne(x => x.Agendamento)
+                .WithMany()
+                .HasForeignKey(x => x.AgendamentoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ContaReceber>()
+                .HasOne(x => x.Cliente)
+                .WithMany()
+                .HasForeignKey(x => x.ClienteId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ContaReceber>()
+                .HasOne(x => x.Categoria)
+                .WithMany()
+                .HasForeignKey(x => x.CategoriaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<ContaReceber>()
+                .HasIndex(x => x.EmpresaId);
+
+            builder.Entity<ContaReceber>()
+                .HasIndex(x => new { x.EmpresaId, x.DataVencimento });
+
+            // Trava no banco: um agendamento nunca gera duas contas a receber.
+            builder.Entity<ContaReceber>()
+                .HasIndex(x => x.AgendamentoId)
+                .IsUnique()
+                .HasFilter("[AgendamentoId] IS NOT NULL");
+
+            // ---- ContaPagar ----
+
+            builder.Entity<ContaPagar>()
+                .Property(x => x.ValorPrevisto)
+                .HasPrecision(10, 2);
+
+            builder.Entity<ContaPagar>()
+                .Property(x => x.ValorPago)
+                .HasPrecision(10, 2);
+
+            builder.Entity<ContaPagar>()
+                .Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<ContaPagar>()
+                .Property(x => x.FormaPagamento)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            builder.Entity<ContaPagar>()
+                .HasOne(x => x.Empresa)
+                .WithMany(e => e.ContasPagar)
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ContaPagar>()
+                .HasOne(x => x.Funcionario)
+                .WithMany()
+                .HasForeignKey(x => x.FuncionarioId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<ContaPagar>()
+                .HasOne(x => x.Categoria)
+                .WithMany()
+                .HasForeignKey(x => x.CategoriaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<ContaPagar>()
+                .HasIndex(x => x.EmpresaId);
+
+            builder.Entity<ContaPagar>()
+                .HasIndex(x => new { x.EmpresaId, x.DataVencimento });
+
+            // ---- MovimentacaoFinanceira (Caixa) ----
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .Property(x => x.Valor)
+                .HasPrecision(10, 2);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .Property(x => x.Tipo)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .Property(x => x.Origem)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .Property(x => x.FormaPagamento)
+                .HasConversion<string>()
+                .HasMaxLength(20);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasOne(x => x.Empresa)
+                .WithMany(e => e.MovimentacoesFinanceiras)
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasOne(x => x.ContaReceber)
+                .WithMany(c => c.Movimentacoes)
+                .HasForeignKey(x => x.ContaReceberId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasOne(x => x.ContaPagar)
+                .WithMany(c => c.Movimentacoes)
+                .HasForeignKey(x => x.ContaPagarId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasOne(x => x.Categoria)
+                .WithMany()
+                .HasForeignKey(x => x.CategoriaId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasOne(x => x.Usuario)
+                .WithMany()
+                .HasForeignKey(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasOne(x => x.MovimentacaoOrigemEstorno)
+                .WithMany()
+                .HasForeignKey(x => x.MovimentacaoOrigemEstornoId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasIndex(x => x.EmpresaId);
+
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasIndex(x => new { x.EmpresaId, x.DataMovimento });
+
+            // ---- Comissão (AgendamentoFuncionario -> ContaPagar) ----
+
+            builder.Entity<AgendamentoFuncionario>()
+                .HasOne(x => x.ContaPagar)
+                .WithMany(c => c.Comissoes)
+                .HasForeignKey(x => x.ContaPagarId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             #endregion
 

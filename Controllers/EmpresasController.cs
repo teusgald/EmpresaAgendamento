@@ -13,13 +13,35 @@ namespace EmpresaAgendamento.Controllers
     [Authorize(Roles = "Empresa")]
     public class EmpresasController : Controller
     {
+        // Extensão de salvamento por Content-Type (fonte principal — é o que o
+        // navegador detecta a partir do conteúdo real do arquivo, não do nome).
+        private static readonly Dictionary<string, string> ExtensaoPorContentType = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["image/png"] = ".png",
+            ["image/jpeg"] = ".jpg",
+            ["image/jpg"] = ".jpg",
+            ["image/webp"] = ".webp",
+            ["image/gif"] = ".gif",
+        };
+
+        // Extensões aceitas no nome do arquivo — usado só como fallback quando
+        // o Content-Type não vier reconhecível (alguns clientes não enviam certo).
+        private static readonly string[] ExtensoesPermitidas = { ".png", ".jpg", ".jpeg", ".webp", ".gif" };
+
+        private const long TamanhoMaximoLogoBytes = 2 * 1024 * 1024; // 2 MB
+
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IWebHostEnvironment _env;
 
-        public EmpresasController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public EmpresasController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IWebHostEnvironment env)
         {
             _context = context;
             _userManager = userManager;
+            _env = env;
         }
 
         // =========================
@@ -167,7 +189,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("index")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Index(Empresa model)
+        public async Task<IActionResult> Index(Empresa model, IFormFile? logoFile)
         {
             try
             {
@@ -199,8 +221,24 @@ namespace EmpresaAgendamento.Controllers
                 empresa.DocumentoNumero = model.DocumentoNumero;
                 empresa.DocumentoTipo = model.DocumentoTipo;
 
-                // MÍDIA
-                empresa.LogoUrl = model.LogoUrl;
+                // MÍDIA — logo é enviada como arquivo (não mais URL digitada).
+                // Sem arquivo novo, mantém a logo que a empresa já tinha.
+                string? avisoLogo = null;
+
+                if (logoFile != null && logoFile.Length > 0)
+                {
+                    var (sucesso, caminhoOuErro) = await SalvarLogoAsync(empresa.Id, logoFile);
+
+                    if (sucesso)
+                    {
+                        empresa.LogoUrl = caminhoOuErro;
+                    }
+                    else
+                    {
+                        avisoLogo = caminhoOuErro;
+                    }
+                }
+
                 empresa.CapaBannerUrl = model.CapaBannerUrl;
 
                 // ENDEREÇO
@@ -249,7 +287,14 @@ namespace EmpresaAgendamento.Controllers
 
                 await _context.SaveChangesAsync();
 
-                ToastHelper.Success(TempData, "Dados salvos com sucesso!");
+                if (avisoLogo != null)
+                {
+                    ToastHelper.Warning(TempData, $"Dados salvos, mas a logo não foi atualizada: {avisoLogo}");
+                }
+                else
+                {
+                    ToastHelper.Success(TempData, "Dados salvos com sucesso!");
+                }
 
                 return View(empresa);
             }
@@ -258,6 +303,55 @@ namespace EmpresaAgendamento.Controllers
                 ToastHelper.Error(TempData, "Erro ao salvar empresa.");
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        // Salva a logo enviada em wwwroot/uploads/empresas/{empresaId}/logo{ext},
+        // sempre com esse mesmo nome (reenviar substitui a anterior — não fica
+        // lixo acumulando). Nome/extensão nunca vêm do arquivo do usuário.
+        private async Task<(bool Sucesso, string CaminhoOuErro)> SalvarLogoAsync(int empresaId, IFormFile logoFile)
+        {
+            // Content-Type primeiro (o navegador detecta pelo conteúdo real do
+            // arquivo); nome do arquivo só como reforço/fallback.
+            if (!ExtensaoPorContentType.TryGetValue(logoFile.ContentType ?? "", out var extensao))
+            {
+                var extensaoArquivo = Path.GetExtension(logoFile.FileName).ToLowerInvariant();
+
+                if (extensaoArquivo == ".jpeg")
+                    extensaoArquivo = ".jpg";
+
+                if (!ExtensoesPermitidas.Contains(extensaoArquivo))
+                {
+                    return (false, "Formato de imagem inválido. Use PNG, JPG, WEBP ou GIF.");
+                }
+
+                extensao = extensaoArquivo;
+            }
+
+            if (logoFile.Length > TamanhoMaximoLogoBytes)
+            {
+                return (false, "A imagem deve ter no máximo 2 MB.");
+            }
+
+            var pastaEmpresa = Path.Combine(_env.WebRootPath, "uploads", "empresas", empresaId.ToString());
+            Directory.CreateDirectory(pastaEmpresa);
+
+            // Remove qualquer logo antiga (pode ter extensão diferente da nova).
+            foreach (var arquivoAntigo in Directory.GetFiles(pastaEmpresa, "logo.*"))
+            {
+                try { System.IO.File.Delete(arquivoAntigo); } catch { /* não bloqueia o upload por isso */ }
+            }
+
+            var nomeArquivo = $"logo{extensao}";
+            var caminhoFisico = Path.Combine(pastaEmpresa, nomeArquivo);
+
+            using (var stream = new FileStream(caminhoFisico, FileMode.Create))
+            {
+                await logoFile.CopyToAsync(stream);
+            }
+
+            var caminhoPublico = $"/uploads/empresas/{empresaId}/{nomeArquivo}?v={DateTime.UtcNow.Ticks}";
+
+            return (true, caminhoPublico);
         }
     }
 }

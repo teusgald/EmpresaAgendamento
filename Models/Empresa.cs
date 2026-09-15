@@ -162,5 +162,21 @@ namespace EmpresaAgendamento.Models
 
         public ICollection<EmpresaCliente> EmpresaClientes { get; set; }
             = new List<EmpresaCliente>();
+
+        // ─────────────────────────────────────────────
+        // 💰 FINANCEIRO
+        // ─────────────────────────────────────────────
+
+        public ICollection<CategoriaFinanceira> CategoriasFinanceiras { get; set; }
+            = new List<CategoriaFinanceira>();
+
+        public ICollection<ContaReceber> ContasReceber { get; set; }
+            = new List<ContaReceber>();
+
+        public ICollection<ContaPagar> ContasPagar { get; set; }
+            = new List<ContaPagar>();
+
+        public ICollection<MovimentacaoFinanceira> MovimentacoesFinanceiras { get; set; }
+            = new List<MovimentacaoFinanceira>();
     }
 }

@@ -41,6 +41,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IEmpresaService, EmpresaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
 
 // =========================
 // 🔥 SESSION

@@ -1,0 +1,113 @@
+@model EmpresaAgendamento.Models.ViewModels.DashboardFinanceiroViewModel
+
+@{
+    ViewData["Title"] = "Dashboard Financeiro";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Dashboard Financeiro</h3>
+
+        <form asp-action="SincronizarAgendamentos" method="post">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-arrow-repeat"></i>
+                Sincronizar agendamentos existentes
+            </button>
+        </form>
+    </div>
+
+    <p class="text-muted small mb-3">
+        Agendamentos criados antes do financeiro existir (ou importados diretamente no banco)
+        não geram conta a receber automaticamente. Use o botão acima para gerá-las agora —
+        pode rodar quantas vezes precisar, não duplica nada.
+    </p>
+
+    <!-- FILTRO DE PERÍODO -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">De</label>
+                    <input type="date" name="dataInicial" class="form-control"
+                           value="@Model.DataInicial.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Até</label>
+                    <input type="date" name="dataFinal" class="form-control"
+                           value="@Model.DataFinal.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar período</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small mb-1">Receitas (período)</div>
+                    <div class="fs-4 fw-bold text-success">@Model.Receitas.ToString("C")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small mb-1">Despesas (período)</div>
+                    <div class="fs-4 fw-bold text-danger">@Model.Despesas.ToString("C")</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small mb-1">Lucro (período)</div>
+                    <div class="fs-4 fw-bold @(Model.Lucro >= 0 ? "text-success" : "text-danger")">
+                        @Model.Lucro.ToString("C")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small mb-1">Contas a Receber (em aberto)</div>
+                    <div class="fs-4 fw-bold">@Model.ContasAReceberAberto.ToString("C")</div>
+                    <a asp-controller="ContasReceber" asp-action="Index" class="small">Ver contas &rarr;</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small mb-1">Contas a Pagar (em aberto)</div>
+                    <div class="fs-4 fw-bold">@Model.ContasAPagarAberto.ToString("C")</div>
+                    <a asp-controller="ContasPagar" asp-action="Index" class="small">Ver contas &rarr;</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm h-100 border-primary">
+                <div class="card-body">
+                    <div class="text-muted small mb-1">Saldo de Caixa (atual)</div>
+                    <div class="fs-4 fw-bold @(Model.SaldoCaixa >= 0 ? "text-success" : "text-danger")">
+                        @Model.SaldoCaixa.ToString("C")
+                    </div>
+                    <a asp-action="Caixa" class="small">Ver extrato &rarr;</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>

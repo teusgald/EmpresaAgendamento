@@ -1,0 +1,131 @@
+@model IEnumerable<EmpresaAgendamento.Models.MovimentacaoFinanceira>
+@using EmpresaAgendamento.Models.Enums
+
+@{
+    ViewData["Title"] = "Caixa";
+
+    DateTime? dataInicial = ViewBag.DataInicial;
+    DateTime? dataFinal = ViewBag.DataFinal;
+    TipoMovimentacao? tipoFiltro = ViewBag.Tipo;
+    decimal saldoCaixa = ViewBag.SaldoCaixa;
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Caixa</h3>
+
+        <div class="card shadow-sm">
+            <div class="card-body py-2 px-3">
+                <span class="text-muted small">Saldo atual: </span>
+                <span class="fw-bold @(saldoCaixa >= 0 ? "text-success" : "text-danger")">
+                    @saldoCaixa.ToString("C")
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- FILTROS -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label">Tipo</label>
+                    <select name="tipo" class="form-select">
+                        <option value="">Todos</option>
+                        @foreach (var t in Enum.GetValues<TipoMovimentacao>())
+                        {
+                            <option value="@t" selected="@(tipoFiltro == t)">@t</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">De</label>
+                    <input type="date" name="dataInicial" class="form-control"
+                           value="@(dataInicial?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Até</label>
+                    <input type="date" name="dataFinal" class="form-control"
+                           value="@(dataFinal?.ToString("yyyy-MM-dd"))" />
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Categoria</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.DataMovimento.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@item.Descricao</td>
+                            <td>@(item.Categoria?.Nome ?? "-")</td>
+                            <td>
+                                @if (item.Tipo == TipoMovimentacao.Entrada)
+                                {
+                                    <span class="badge bg-success">Entrada</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-danger">Saída</span>
+                                }
+                            </td>
+                            <td>@item.Valor.ToString("C")</td>
+                            <td>
+                                @if (item.Status == StatusMovimentacao.Estornada)
+                                {
+                                    <span class="badge bg-secondary">Estornada</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-light text-dark border">Confirmada</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Caixa" asp-route-page="@(ViewBag.CurrentPage - 1)">Anterior</a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Caixa" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Caixa" asp-route-page="@(ViewBag.CurrentPage + 1)">Próximo</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+
+</div>

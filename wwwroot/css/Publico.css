@@ -161,13 +161,21 @@ nav {
 }
 
     .logo-ring img {
-        width: 64px;
-        height: 64px;
+        width: 112px;
+        height: 112px;
         border-radius: 50%;
-        object-fit: cover;
-        border: 2.5px solid transparent;
-        background: linear-gradient(var(--bg), var(--bg)) padding-box, linear-gradient(135deg, var(--accent), #7a5c2e) border-box;
+        object-fit: contain;
+        padding: 6px;
+        border: 3px solid transparent;
+        background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, var(--accent), #7a5c2e) border-box;
     }
+
+@media (max-width: 576px) {
+    .logo-ring img {
+        width: 84px;
+        height: 84px;
+    }
+}
 
 .rating-badge {
     position: absolute;

@@ -2,6 +2,7 @@
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
+using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,13 +16,16 @@ namespace EmpresaAgendamento.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IFinanceiroService _financeiroService;
 
         public AgendamentosController(
             ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            IFinanceiroService financeiroService)
         {
             _context = context;
             _userManager = userManager;
+            _financeiroService = financeiroService;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -166,6 +170,35 @@ namespace EmpresaAgendamento.Controllers
             agendamento.DataAtualizacao = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            // Integração com o financeiro. A conta a receber já existe desde a
+            // criação do agendamento; ao finalizar só apuramos a comissão (e,
+            // como segurança, geramos a conta aqui também, caso este seja um
+            // agendamento antigo criado antes dessa integração existir). Ao
+            // cancelar, cancela/estorna a receita vinculada. Uma falha aqui não
+            // deve impedir a troca de status já salva.
+            try
+            {
+                if (status == StatusAgendamento.Finalizado)
+                {
+                    await _financeiroService.GerarContaReceberDeAgendamentoAsync(agendamento.Id);
+                    await _financeiroService.ApurarComissaoDoAgendamentoAsync(agendamento.Id);
+                }
+                else if (status == StatusAgendamento.Cancelado)
+                {
+                    await _financeiroService.CancelarContaReceberDeAgendamentoAsync(
+                        agendamento.Id,
+                        "Agendamento cancelado.");
+                }
+            }
+            catch
+            {
+                ToastHelper.Warning(
+                    TempData,
+                    "Status atualizado, mas houve um problema ao atualizar o financeiro.");
+
+                return RedirectToAction(nameof(Index));
+            }
 
             return RedirectToAction(nameof(Index));
         }
@@ -343,6 +376,21 @@ namespace EmpresaAgendamento.Controllers
                 _context.Agendamentos.Add(model);
 
                 await _context.SaveChangesAsync();
+
+                // Todo agendamento já entra no financeiro como previsão de
+                // receita (Contas a Receber pendente) — não só quando finalizado.
+                try
+                {
+                    await _financeiroService.GerarContaReceberDeAgendamentoAsync(model.Id);
+                }
+                catch
+                {
+                    ToastHelper.Warning(
+                        TempData,
+                        "Agendamento criado, mas houve um problema ao gerar a previsão no financeiro.");
+
+                    return RedirectToAction(nameof(Index));
+                }
 
                 ToastHelper.Success(
                     TempData,

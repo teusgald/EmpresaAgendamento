@@ -1,0 +1,125 @@
+@model EmpresaAgendamento.Models.ViewModels.RelatorioFinanceiroViewModel
+
+@{
+    ViewData["Title"] = "Relatórios";
+}
+
+<div class="container-fluid mt-4">
+
+    <h3 class="fw-bold mb-3">Relatórios</h3>
+
+    <!-- FILTRO DE PERÍODO -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label">De</label>
+                    <input type="date" name="dataInicial" class="form-control"
+                           value="@Model.DataInicial.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Até</label>
+                    <input type="date" name="dataFinal" class="form-control"
+                           value="@Model.DataFinal.ToString("yyyy-MM-dd")" />
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar período</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3">
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Receitas por Categoria</h6>
+
+                    @if (!Model.ReceitasPorCategoria.Any())
+                    {
+                        <p class="text-muted small">Sem receitas no período.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <tbody>
+                                @foreach (var item in Model.ReceitasPorCategoria)
+                                {
+                                    <tr>
+                                        <td>@item.CategoriaNome</td>
+                                        <td class="text-end fw-bold text-success">@item.Total.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Despesas por Categoria</h6>
+
+                    @if (!Model.DespesasPorCategoria.Any())
+                    {
+                        <p class="text-muted small">Sem despesas no período.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <tbody>
+                                @foreach (var item in Model.DespesasPorCategoria)
+                                {
+                                    <tr>
+                                        <td>@item.CategoriaNome</td>
+                                        <td class="text-end fw-bold text-danger">@item.Total.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Comissões por Funcionário</h6>
+
+                    @if (!Model.ComissoesPorFuncionario.Any())
+                    {
+                        <p class="text-muted small">Sem comissões apuradas no período.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Funcionário</th>
+                                    <th class="text-end">Qtd</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in Model.ComissoesPorFuncionario)
+                                {
+                                    <tr>
+                                        <td>@item.FuncionarioNome</td>
+                                        <td class="text-end">@item.Quantidade</td>
+                                        <td class="text-end fw-bold">@item.TotalComissao.ToString("C")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>

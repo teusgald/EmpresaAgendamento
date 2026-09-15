@@ -1,0 +1,225 @@
+@model IEnumerable<EmpresaAgendamento.Models.AgendamentoFuncionario>
+@using EmpresaAgendamento.Models.Enums
+@using EmpresaAgendamento.Models.ViewModels
+
+@{
+    ViewData["Title"] = "Comissões";
+
+    bool somentePendentes = ViewBag.SomentePendentes;
+    int? funcionarioIdFiltro = ViewBag.FuncionarioId;
+    DateTime? dataInicial = ViewBag.DataInicial;
+    DateTime? dataFinal = ViewBag.DataFinal;
+    var resumoPendentes = ViewBag.ResumoPendentes as List<ComissaoResumoViewModel> ?? new List<ComissaoResumoViewModel>();
+}
+
+<div class="container-fluid mt-4">
+
+    <h3 class="fw-bold mb-3">Comissões</h3>
+
+    <!-- RESUMO POR FUNCIONÁRIO (PENDENTES) -->
+    <div class="row mb-4">
+        @if (!resumoPendentes.Any())
+        {
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body text-muted">
+                        Nenhuma comissão pendente no momento.
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            foreach (var item in resumoPendentes)
+            {
+                <div class="col-md-4 col-lg-3 mb-3">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h6 class="fw-bold mb-1">@item.FuncionarioNome</h6>
+                            <div class="text-muted small mb-2">
+                                @item.QuantidadeAgendamentos agendamento(s)
+                            </div>
+                            <div class="fs-5 fw-bold text-success mb-3">
+                                @item.TotalPendente.ToString("C")
+                            </div>
+                            <button type="button" class="btn btn-sm btn-success w-100"
+                                    data-bs-toggle="modal" data-bs-target="#modalPagar"
+                                    data-funcionario-id="@item.FuncionarioId"
+                                    data-funcionario-nome="@item.FuncionarioNome"
+                                    data-total="@item.TotalPendente.ToString("C")">
+                                Pagar comissão
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+
+    <!-- FILTROS -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+
+                <div class="col-md-3">
+                    <label class="form-label">Funcionário</label>
+                    <select name="funcionarioId" class="form-select" asp-items="ViewBag.Funcionarios">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="somentePendentes" class="form-select">
+                        <option value="true" selected="@somentePendentes">Pendentes</option>
+                        <option value="false" selected="@(!somentePendentes)">Todas</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">De</label>
+                    <input type="date" name="dataInicial" class="form-control"
+                           value="@(dataInicial?.ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Até</label>
+                    <input type="date" name="dataFinal" class="form-control"
+                           value="@(dataFinal?.ToString("yyyy-MM-dd"))" />
+                </div>
+
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- DETALHE -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Data</th>
+                        <th>Funcionário</th>
+                        <th>Cliente</th>
+                        <th>Serviço</th>
+                        <th>Comissão</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Agendamento.DataHora.ToString("dd/MM/yyyy")</td>
+                            <td>@item.Funcionario.Nome</td>
+                            <td>@(item.Agendamento.Cliente?.Nome ?? item.Agendamento.NomeClienteAvulso ?? "-")</td>
+                            <td>@item.Agendamento.Servico?.Nome</td>
+                            <td>@(item.ValorComissao?.ToString("C") ?? "-")</td>
+                            <td>
+                                @if (item.ValorRecebido != null)
+                                {
+                                    <span class="badge bg-success">Paga</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning text-dark">Pendente</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)">Anterior</a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)">Próximo</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+
+</div>
+
+<!-- MODAL: PAGAR COMISSÃO -->
+<div class="modal fade" id="modalPagar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form asp-action="Pagar" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="funcionarioId" id="pagarFuncionarioId" />
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Pagar Comissão</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        Funcionário: <strong id="pagarFuncionarioNome"></strong><br />
+                        Total pendente: <strong id="pagarTotal"></strong>
+                    </p>
+                    <p class="text-muted small">
+                        Paga todas as comissões pendentes deste funcionário no período informado
+                        (deixe em branco para pagar tudo que estiver pendente).
+                    </p>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">De</label>
+                            <input type="date" name="dataInicial" class="form-control" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Até</label>
+                            <input type="date" name="dataFinal" class="form-control" />
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Forma de pagamento</label>
+                        <select name="formaPagamento" class="form-select" required>
+                            @foreach (var forma in Enum.GetValues<FormaPagamento>())
+                            {
+                                <option value="@forma">@forma</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-success">Confirmar Pagamento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById('modalPagar')?.addEventListener('show.bs.modal', function (event) {
+            const btn = event.relatedTarget;
+            document.getElementById('pagarFuncionarioId').value = btn.dataset.funcionarioId;
+            document.getElementById('pagarFuncionarioNome').textContent = btn.dataset.funcionarioNome;
+            document.getElementById('pagarTotal').textContent = btn.dataset.total;
+        });
+    </script>
+}

@@ -20,5 +20,10 @@ namespace EmpresaAgendamento.Models
 
         [Column(TypeName = "decimal(10,2)")]
         public decimal? ValorRecebido { get; set; }
+
+        // Preenchido quando a comissão é quitada (ValorRecebido != null),
+        // apontando para o pagamento (ContaPagar) que a liquidou.
+        public int? ContaPagarId { get; set; }
+        public ContaPagar? ContaPagar { get; set; }
     }
 }
