@@ -110,13 +110,74 @@ body {
     flex-direction: column;
     transition: left 0.3s ease;
     z-index: 1000;
-    padding-top: 60px; /* espa�o para topbar */
+    padding-top: 60px; /* espa�o para topbar */
 }
+
+    /* Sem isso, com o dropdown do Financeiro aberto o menu passa da altura
+       da tela e não tem como rolar até os itens de baixo (Empresas,
+       Assinatura) — só a lista de navegação rola, o rodapé (usuário/sair)
+       continua fixo embaixo. */
+    .sidebar > ul.nav {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin; /* Firefox */
+        /* O Bootstrap ".nav" já vem com flex-wrap:wrap por padrão, e
+           ".flex-column" não desfaz isso — então quando a lista passava da
+           altura da tela, em vez de só rolar, ela ABRIA UMA SEGUNDA COLUNA
+           (Financeiro/Empresas/Assinatura indo pro lado). É isso que
+           precisa ficar travado em "nowrap". */
+        flex-wrap: nowrap !important;
+    }
+
+        .sidebar > ul.nav::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .sidebar > ul.nav::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, .12);
+            border-radius: 2px;
+        }
+
+        .sidebar > ul.nav::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+    /* Logo/cabeçalho e rodapé nunca encolhem — só a lista de navegação no
+       meio é que cede espaço/rola. */
+    .sidebar > .mb-2,
+    .sidebar > h4,
+    .sidebar > hr,
+    .sidebar .sidebar-footer {
+        flex-shrink: 0;
+    }
+
 
     .sidebar h4 {
         font-weight: bold;
         text-align: center;
         padding: 1rem 0;
+    }
+
+    .sidebar-logo-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        /* .sidebar já reserva 60px de padding-top pra topbar — aqui é só o
+           respiro dentro do próprio bloco da logo, centralizada nos dois eixos. */
+        padding: 8px 0 16px;
+    }
+
+    .sidebar-logo {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        object-fit: contain;
+        background: #fff;
+        padding: 8px;
+        border: 4px solid #2563eb;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
     }
 
     .sidebar hr {
@@ -142,14 +203,14 @@ body {
         color: #fff !important;
     }
 
-    /* LOGIN RODAP� */
+    /* LOGIN RODAP� */
     .sidebar .sidebar-footer {
         margin-top: auto;
         padding: 1rem;
         border-top: 1px solid #1f2937;
     }
 
-/* CONTE�DO */
+/* CONTE�DO */
 .content {
     margin-left: 240px;
     min-height: 100vh;
@@ -171,7 +232,7 @@ body {
     z-index: 1100;
 }
 
-/* DESKTOP: topbar fica alinhada ao conte�do, dentro do layout */
+/* DESKTOP: topbar fica alinhada ao conte�do, dentro do layout */
 @media (min-width: 769px) {
     .topbar {
         width: 100%;
@@ -240,7 +301,7 @@ body {
 }
 
 .table-fixed {
-    table-layout: fixed; /* for�a largura proporcional */
+    table-layout: fixed; /* for�a largura proporcional */
     width: 100%;
 }
 

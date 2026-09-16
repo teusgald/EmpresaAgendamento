@@ -1,0 +1,102 @@
+@model EmpresaAgendamento.Models.ViewModels.PlanoServicoViewModel
+
+<div class="container-fluid mt-4">
+
+    <h3 class="fw-bold mb-3">Novo Plano</h3>
+
+    <form asp-action="Create" method="post">
+
+        @Html.AntiForgeryToken()
+
+        <div class="row">
+
+            <div class="col-lg-8">
+
+                <div class="card shadow-sm mb-3">
+                    <div class="card-body">
+
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        <div class="row g-3">
+
+                            <div class="col-md-6">
+                                <label class="form-label">Nome do plano</label>
+                                <input asp-for="Nome" class="form-control" placeholder="Ex.: Personal Mensal" />
+                                <span asp-validation-for="Nome" class="text-danger"></span>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Periodicidade</label>
+                                <select asp-for="Periodicidade" class="form-select"
+                                        asp-items="Html.GetEnumSelectList<EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico>()">
+                                </select>
+                            </div>
+
+                            <div class="col-md-3">
+                                <label class="form-label">Sessões por período</label>
+                                <input asp-for="QuantidadeUsos" type="number" min="1" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Valor de referência</label>
+                                <input asp-for="ValorReferencia" type="number" step="0.01" class="form-control" placeholder="R$" />
+                                <small class="text-muted">
+                                    Só pra mostrar na página pública — a cobrança em si você continua fazendo por fora.
+                                </small>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Juros de atraso (%)</label>
+                                <input asp-for="PercentualJurosAtraso" type="number" step="0.01" class="form-control" placeholder="Opcional" />
+                                <small class="text-muted">
+                                    Se o cliente atrasar o pagamento — só informativo, aparece no e-mail do plano.
+                                </small>
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+
+                        <h5 class="mb-3">Serviços incluídos</h5>
+
+                        @if (Model.ServicosDisponiveis.Any())
+                        {
+                            @for (int i = 0; i < Model.ServicosDisponiveis.Count; i++)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input"
+                                           type="checkbox"
+                                           name="ServicosSelecionados"
+                                           value="@Model.ServicosDisponiveis[i].Value"
+                                           checked="@Model.ServicosSelecionados.Contains(int.Parse(Model.ServicosDisponiveis[i].Value))" />
+
+                                    <label class="form-check-label">
+                                        @Model.ServicosDisponiveis[i].Text
+                                    </label>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p class="text-muted">Cadastre um serviço antes de criar um plano.</p>
+                        }
+
+                        <div class="d-flex gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary">Salvar</button>
+                            <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </form>
+
+</div>

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Models.ViewModels;
+using System.Text.RegularExpressions;
 
 namespace EmpresaAgendamento.Controllers
 {
@@ -29,6 +30,8 @@ namespace EmpresaAgendamento.Controllers
         private static readonly string[] ExtensoesPermitidas = { ".png", ".jpg", ".jpeg", ".webp", ".gif" };
 
         private const long TamanhoMaximoLogoBytes = 2 * 1024 * 1024; // 2 MB
+
+        private const int LimiteFotosGaleria = 5;
 
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -69,6 +72,13 @@ namespace EmpresaAgendamento.Controllers
                     return NotFound();
                 }
 
+                ViewBag.Fotos = await _context.EmpresaFotos
+                    .Where(f => f.EmpresaId == empresa.Id)
+                    .OrderBy(f => f.DataUpload)
+                    .ToListAsync();
+
+                ViewBag.LimiteFotosGaleria = LimiteFotosGaleria;
+
                 return View(empresa);
             }
             catch (Exception)
@@ -96,6 +106,13 @@ namespace EmpresaAgendamento.Controllers
                 }
 
                 var empresaId = user.EmpresaId.Value;
+
+                var assinaturaStatus = await _context.Empresas
+                    .Where(e => e.Id == empresaId)
+                    .Select(e => e.AssinaturaStatus)
+                    .FirstOrDefaultAsync();
+
+                var assinaturaAtiva = assinaturaStatus == "active" || assinaturaStatus == "trialing";
 
                 var totalClientes = await _context.Clientes
                     .CountAsync(c =>
@@ -172,7 +189,9 @@ namespace EmpresaAgendamento.Controllers
                     Crescimento = crescimento,
                     AgendamentosHoje = agendamentosHoje,
                     FaturamentoPorMes = faturamentoPorMes,
-                    ServicosPopulares = servicosPopulares
+                    ServicosPopulares = servicosPopulares,
+                    OnboardingPassos = await CarregarPassosOnboardingAsync(empresaId),
+                    AssinaturaAtiva = assinaturaAtiva
                 };
 
                 return View(vm);
@@ -182,6 +201,66 @@ namespace EmpresaAgendamento.Controllers
                 ToastHelper.Error(TempData, "Erro ao carregar dashboard.");
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        // =========================
+        // ONBOARDING (checklist do dashboard)
+        // =========================
+        private async Task<List<OnboardingPassoDto>> CarregarPassosOnboardingAsync(int empresaId)
+        {
+            var empresa = await _context.Empresas
+                .Where(e => e.Id == empresaId)
+                .Select(e => new { e.LogoUrl })
+                .FirstOrDefaultAsync();
+
+            var temServico = await _context.Servicos
+                .AnyAsync(s => s.EmpresaId == empresaId && s.Ativo);
+
+            var temFuncionario = await _context.Funcionarios
+                .AnyAsync(f => f.EmpresaId == empresaId && f.Ativo);
+
+            var temHorarioConfigurado = await _context.FuncionariosHorarios
+                .AnyAsync(h => h.Funcionario.EmpresaId == empresaId);
+
+            return new List<OnboardingPassoDto>
+            {
+                new()
+                {
+                    Titulo = "Adicione a logo da empresa",
+                    Descricao = "Deixe sua página pública com a cara do seu negócio.",
+                    Concluido = !string.IsNullOrWhiteSpace(empresa?.LogoUrl),
+                    Icone = "bi-image",
+                    ControllerName = "Empresas",
+                    ActionName = "Index"
+                },
+                new()
+                {
+                    Titulo = "Cadastre seus serviços",
+                    Descricao = "O que sua empresa oferece — corte, manicure, consulta etc.",
+                    Concluido = temServico,
+                    Icone = "bi-scissors",
+                    ControllerName = "Servicos",
+                    ActionName = "Index"
+                },
+                new()
+                {
+                    Titulo = "Cadastre seus funcionários",
+                    Descricao = "Quem vai atender os agendamentos.",
+                    Concluido = temFuncionario,
+                    Icone = "bi-person-badge",
+                    ControllerName = "Funcionarios",
+                    ActionName = "Index"
+                },
+                new()
+                {
+                    Titulo = "Configure o horário de trabalho",
+                    Descricao = "Define os horários que aparecem disponíveis pros clientes.",
+                    Concluido = temHorarioConfigurado,
+                    Icone = "bi-clock",
+                    ControllerName = "Funcionarios",
+                    ActionName = "Index"
+                }
+            };
         }
 
         // =========================
@@ -296,13 +375,197 @@ namespace EmpresaAgendamento.Controllers
                     ToastHelper.Success(TempData, "Dados salvos com sucesso!");
                 }
 
-                return View(empresa);
+                // Redireciona (não retorna a View direto) porque o GET Index
+                // é quem monta ViewBag.Fotos/LimiteFotosGaleria pra galeria —
+                // sem isso a página quebrava ao salvar (ViewBag.Fotos nulo).
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception)
             {
                 ToastHelper.Error(TempData, "Erro ao salvar empresa.");
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        // =========================
+        // GALERIA — UPLOAD
+        // =========================
+        [HttpPost("galeria/upload")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UploadGaleria(List<IFormFile> fotos)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user?.EmpresaId == null)
+            {
+                ToastHelper.Error(TempData, "Acesso negado.");
+                return RedirectToAction("Login", "Account");
+            }
+
+            var empresa = await _context.Empresas
+                .FirstOrDefaultAsync(e => e.Id == user.EmpresaId);
+
+            if (empresa == null)
+            {
+                ToastHelper.Error(TempData, "Empresa não encontrada.");
+                return NotFound();
+            }
+
+            if (fotos == null || fotos.Count == 0 || fotos.All(f => f.Length == 0))
+            {
+                ToastHelper.Warning(TempData, "Selecione ao menos uma foto.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var totalAtual = await _context.EmpresaFotos.CountAsync(f => f.EmpresaId == empresa.Id);
+
+            if (totalAtual + fotos.Count > LimiteFotosGaleria)
+            {
+                ToastHelper.Warning(
+                    TempData,
+                    $"A galeria aceita no máximo {LimiteFotosGaleria} fotos — você já tem {totalAtual}.");
+
+                return RedirectToAction(nameof(Index));
+            }
+
+            var nomePasta = NomePastaGaleria(empresa);
+            var erros = new List<string>();
+
+            foreach (var foto in fotos)
+            {
+                if (foto.Length == 0) continue;
+
+                var (sucesso, caminhoOuErro) = await SalvarFotoGaleriaAsync(nomePasta, foto);
+
+                if (sucesso)
+                {
+                    _context.EmpresaFotos.Add(new EmpresaFoto
+                    {
+                        EmpresaId = empresa.Id,
+                        Url = caminhoOuErro
+                    });
+                }
+                else
+                {
+                    erros.Add(caminhoOuErro);
+                }
+            }
+
+            await _context.SaveChangesAsync();
+
+            if (erros.Any())
+            {
+                ToastHelper.Warning(TempData, $"Algumas fotos não foram salvas: {string.Join(" ", erros)}");
+            }
+            else
+            {
+                ToastHelper.Success(TempData, "Fotos adicionadas à galeria!");
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        // =========================
+        // GALERIA — REMOVER
+        // =========================
+        [HttpPost("galeria/remover")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoverFotoGaleria(int id)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user?.EmpresaId == null)
+            {
+                ToastHelper.Error(TempData, "Acesso negado.");
+                return RedirectToAction("Login", "Account");
+            }
+
+            var foto = await _context.EmpresaFotos
+                .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == user.EmpresaId);
+
+            if (foto == null)
+            {
+                ToastHelper.Error(TempData, "Foto não encontrada.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var caminhoFisico = Path.Combine(
+                _env.WebRootPath,
+                foto.Url.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+            try
+            {
+                if (System.IO.File.Exists(caminhoFisico))
+                {
+                    System.IO.File.Delete(caminhoFisico);
+                }
+            }
+            catch
+            {
+                // Não bloqueia a remoção do registro por falha ao apagar o arquivo.
+            }
+
+            _context.EmpresaFotos.Remove(foto);
+            await _context.SaveChangesAsync();
+
+            ToastHelper.Success(TempData, "Foto removida.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        // Pasta da galeria é nomeada pelo "nome" da empresa (o slug). O slug é
+        // texto livre digitado pelo dono no perfil — nunca dá pra usar direto
+        // num caminho de arquivo (ex.: "../../windows" seria path traversal).
+        // Só letra/número/hífen/underscore sobrevivem; o resto vira "-".
+        private static string NomePastaGaleria(Empresa empresa)
+        {
+            var baseNome = string.IsNullOrWhiteSpace(empresa.Slug)
+                ? $"empresa-{empresa.Id}"
+                : empresa.Slug;
+
+            var sanitizado = Regex.Replace(baseNome, @"[^a-zA-Z0-9\-_]", "-").Trim('-');
+
+            return string.IsNullOrWhiteSpace(sanitizado) ? $"empresa-{empresa.Id}" : sanitizado;
+        }
+
+        // Salva em wwwroot/uploads/galeria/{nomePasta}/{guid}{ext} — cria a
+        // pasta se não existir. Cada foto tem nome único (não substitui as
+        // outras, diferente da logo).
+        private async Task<(bool Sucesso, string CaminhoOuErro)> SalvarFotoGaleriaAsync(string nomePasta, IFormFile foto)
+        {
+            if (!ExtensaoPorContentType.TryGetValue(foto.ContentType ?? "", out var extensao))
+            {
+                var extensaoArquivo = Path.GetExtension(foto.FileName).ToLowerInvariant();
+
+                if (extensaoArquivo == ".jpeg")
+                    extensaoArquivo = ".jpg";
+
+                if (!ExtensoesPermitidas.Contains(extensaoArquivo))
+                {
+                    return (false, "Formato de imagem inválido. Use PNG, JPG, WEBP ou GIF.");
+                }
+
+                extensao = extensaoArquivo;
+            }
+
+            if (foto.Length > TamanhoMaximoLogoBytes)
+            {
+                return (false, "Cada imagem deve ter no máximo 2 MB.");
+            }
+
+            var pastaGaleria = Path.Combine(_env.WebRootPath, "uploads", "galeria", nomePasta);
+            Directory.CreateDirectory(pastaGaleria);
+
+            var nomeArquivo = $"{Guid.NewGuid()}{extensao}";
+            var caminhoFisico = Path.Combine(pastaGaleria, nomeArquivo);
+
+            using (var stream = new FileStream(caminhoFisico, FileMode.Create))
+            {
+                await foto.CopyToAsync(stream);
+            }
+
+            var caminhoPublico = $"/uploads/galeria/{nomePasta}/{nomeArquivo}";
+
+            return (true, caminhoPublico);
         }
 
         // Salva a logo enviada em wwwroot/uploads/empresas/{empresaId}/logo{ext},

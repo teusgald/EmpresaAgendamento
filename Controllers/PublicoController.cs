@@ -17,17 +17,20 @@ namespace EmpresaAgendamento.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IFinanceiroService _financeiroService;
+        private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
 
         public PublicoController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IFinanceiroService financeiroService)
+            IFinanceiroService financeiroService,
+            INotificacaoAgendamentoService notificacaoAgendamentoService)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
             _financeiroService = financeiroService;
+            _notificacaoAgendamentoService = notificacaoAgendamentoService;
         }
 
         [HttpGet("{slug}")]
@@ -43,6 +46,9 @@ namespace EmpresaAgendamento.Controllers
                 var empresa = await _context.Empresas
                     .AsNoTracking()
                     .Include(e => e.Servicos)
+                    .Include(e => e.Fotos)
+                    .Include(e => e.Avaliacoes).ThenInclude(a => a.Cliente)
+                    .Include(e => e.PlanosServico).ThenInclude(p => p.Servicos).ThenInclude(x => x.Servico)
                     .FirstOrDefaultAsync(e =>
                         e.Slug.ToLower() == slug &&
                         e.Ativo);
@@ -50,12 +56,28 @@ namespace EmpresaAgendamento.Controllers
                 if (empresa == null)
                     return NotFound();
 
+                var avaliacoes = empresa.Avaliacoes
+                    .OrderByDescending(a => a.DataAtualizacao ?? a.DataCriacao)
+                    .ToList();
+
                 var viewModel = new EmpresaPublicaViewModel
                 {
                     Empresa = empresa,
                     Servicos = empresa.Servicos
                         .OrderBy(x => x.Nome)
-                        .ToList()
+                        .ToList(),
+                    Fotos = empresa.Fotos
+                        .OrderBy(f => f.DataUpload)
+                        .ToList(),
+                    PlanosServico = empresa.PlanosServico
+                        .Where(p => p.Ativo)
+                        .OrderBy(p => p.Nome)
+                        .ToList(),
+                    Avaliacoes = avaliacoes,
+                    TotalAvaliacoes = avaliacoes.Count,
+                    NotaMedia = avaliacoes.Count > 0
+                        ? avaliacoes.Average(a => a.Nota)
+                        : null
                 };
 
                 return View(viewModel);
@@ -471,10 +493,173 @@ namespace EmpresaAgendamento.Controllers
                 // Não bloqueia o agendamento do cliente por um problema no financeiro.
             }
 
+            await _notificacaoAgendamentoService.EnviarConfirmacaoAsync(agendamento.Id);
+
             return Ok(new
             {
                 sucesso = true,
                 mensagem = "Agendamento realizado com sucesso."
+            });
+        }
+
+        // ======================================
+        // AVALIAÇÕES
+        // ======================================
+
+        // Avaliação existente do cliente logado pra essa empresa (se houver)
+        // — usado pra pré-preencher o formulário quando ele já avaliou antes.
+        [HttpGet("Publico/MinhaAvaliacao")]
+        public async Task<IActionResult> MinhaAvaliacao(int empresaId)
+        {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Json(new { avaliado = false });
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            var clienteId = await _userManager.Users
+                .Where(u => u.Id == userId && u.ClienteId.HasValue)
+                .Select(u => u.ClienteId)
+                .FirstOrDefaultAsync();
+
+            if (clienteId == null)
+            {
+                return Json(new { avaliado = false });
+            }
+
+            var avaliacao = await _context.Avaliacoes
+                .Where(a => a.EmpresaId == empresaId && a.ClienteId == clienteId)
+                .Select(a => new { a.Nota, a.Comentario })
+                .FirstOrDefaultAsync();
+
+            if (avaliacao == null)
+            {
+                return Json(new { avaliado = false });
+            }
+
+            return Json(new
+            {
+                avaliado = true,
+                nota = avaliacao.Nota,
+                comentario = avaliacao.Comentario
+            });
+        }
+
+        [HttpPost("Publico/Avaliar")]
+        public async Task<IActionResult> Avaliar([FromBody] AvaliacaoViewModel model)
+        {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Json(new { sucesso = false, mensagem = "Você precisa estar logado para avaliar." });
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return Json(new { sucesso = false, mensagem = "Escolha de 1 a 5 estrelas." });
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            var clienteId = await _userManager.Users
+                .Where(u => u.Id == userId && u.ClienteId.HasValue)
+                .Select(u => u.ClienteId)
+                .FirstOrDefaultAsync();
+
+            if (clienteId == null)
+            {
+                return Json(new { sucesso = false, mensagem = "Você precisa estar logado como cliente para avaliar." });
+            }
+
+            var empresaExiste = await _context.Empresas
+                .AnyAsync(e => e.Id == model.EmpresaId && e.Ativo);
+
+            if (!empresaExiste)
+            {
+                return Json(new { sucesso = false, mensagem = "Empresa não encontrada." });
+            }
+
+            var avaliacao = await _context.Avaliacoes
+                .FirstOrDefaultAsync(a => a.EmpresaId == model.EmpresaId && a.ClienteId == clienteId);
+
+            if (avaliacao == null)
+            {
+                _context.Avaliacoes.Add(new Avaliacao
+                {
+                    EmpresaId = model.EmpresaId,
+                    ClienteId = clienteId.Value,
+                    Nota = model.Nota,
+                    Comentario = model.Comentario
+                });
+            }
+            else
+            {
+                avaliacao.Nota = model.Nota;
+                avaliacao.Comentario = model.Comentario;
+                avaliacao.DataAtualizacao = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Json(new { sucesso = true, mensagem = "Avaliação enviada. Obrigado!" });
+        }
+
+        // ======================================
+        // PLANOS — CLIENTE SOLICITA (fica pendente até a empresa aprovar)
+        // ======================================
+
+        [HttpPost("Publico/SolicitarPlano")]
+        public async Task<IActionResult> SolicitarPlano([FromBody] SolicitarPlanoViewModel model)
+        {
+            if (User.Identity?.IsAuthenticated != true)
+            {
+                return Json(new { sucesso = false, mensagem = "Você precisa estar logado para contratar um plano." });
+            }
+
+            var userId = _userManager.GetUserId(User);
+
+            var clienteId = await _userManager.Users
+                .Where(u => u.Id == userId && u.ClienteId.HasValue)
+                .Select(u => u.ClienteId)
+                .FirstOrDefaultAsync();
+
+            if (clienteId == null)
+            {
+                return Json(new { sucesso = false, mensagem = "Você precisa estar logado como cliente pra contratar um plano." });
+            }
+
+            var plano = await _context.PlanosServico
+                .FirstOrDefaultAsync(p => p.Id == model.PlanoServicoId && p.Ativo);
+
+            if (plano == null)
+            {
+                return Json(new { sucesso = false, mensagem = "Plano não encontrado." });
+            }
+
+            var jaAssinante = await _context.AssinaturasPlanoServico
+                .AnyAsync(a =>
+                    a.PlanoServicoId == model.PlanoServicoId &&
+                    a.ClienteId == clienteId &&
+                    (a.Status == StatusAssinaturaPlano.Ativa || a.Status == StatusAssinaturaPlano.Pendente));
+
+            if (jaAssinante)
+            {
+                return Json(new { sucesso = false, mensagem = "Você já solicitou ou já assina este plano." });
+            }
+
+            _context.AssinaturasPlanoServico.Add(new AssinaturaPlanoServico
+            {
+                PlanoServicoId = model.PlanoServicoId,
+                ClienteId = clienteId.Value,
+                Status = StatusAssinaturaPlano.Pendente
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Json(new
+            {
+                sucesso = true,
+                mensagem = "Solicitação enviada! A empresa vai confirmar o pagamento com você e ativar seu plano."
             });
         }
     }

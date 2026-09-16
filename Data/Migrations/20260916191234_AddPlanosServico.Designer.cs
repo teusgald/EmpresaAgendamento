@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmpresaAgendamento.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916191234_AddPlanosServico")]
+    partial class AddPlanosServico
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -226,14 +229,14 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("Ativa")
+                        .HasColumnType("bit");
+
                     b.Property<int>("ClienteId")
                         .HasColumnType("int");
 
                     b.Property<int>("CreditosUsados")
                         .HasColumnType("int");
-
-                    b.Property<DateTime?>("DataAprovacao")
-                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("DataCancelamento")
                         .HasColumnType("datetime2");
@@ -245,9 +248,6 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("PlanoServicoId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -1045,10 +1045,6 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
-
-                    b.Property<decimal?>("PercentualJurosAtraso")
-                        .HasPrecision(5, 2)
-                        .HasColumnType("decimal(5,2)");
 
                     b.Property<int>("Periodicidade")
                         .HasColumnType("int");

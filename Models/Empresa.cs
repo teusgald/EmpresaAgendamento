@@ -201,5 +201,14 @@ namespace EmpresaAgendamento.Models
 
         public ICollection<MovimentacaoFinanceira> MovimentacoesFinanceiras { get; set; }
             = new List<MovimentacaoFinanceira>();
+
+        public ICollection<EmpresaFoto> Fotos { get; set; }
+            = new List<EmpresaFoto>();
+
+        public ICollection<Avaliacao> Avaliacoes { get; set; }
+            = new List<Avaliacao>();
+
+        public ICollection<PlanoServico> PlanosServico { get; set; }
+            = new List<PlanoServico>();
     }
 }

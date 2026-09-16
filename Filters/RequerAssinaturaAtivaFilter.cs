@@ -27,8 +27,19 @@ namespace EmpresaAgendamento.Filters
             "ContasPagar",
             "Comissoes",
             "CategoriasFinanceiras",
-            "Financeiro"
+            "Financeiro",
+            "PlanosServico"
         };
+
+        // Mesmo dentro de um Controller com paywall, essas ações pontuais
+        // ficam sempre liberadas — dão uma tela inicial pro usuário novo
+        // enquanto ele não paga (só Dashboard, o resto de Empresas continua
+        // bloqueado).
+        private static readonly HashSet<(string Controller, string Action)> AcoesLiberadas =
+            new()
+            {
+                ("Empresas", "Dashboard")
+            };
 
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
@@ -54,9 +65,17 @@ namespace EmpresaAgendamento.Filters
                 return;
             }
 
-            var controllerName = (context.ActionDescriptor as ControllerActionDescriptor)?.ControllerName;
+            var actionDescriptor = context.ActionDescriptor as ControllerActionDescriptor;
+            var controllerName = actionDescriptor?.ControllerName;
+            var actionName = actionDescriptor?.ActionName;
 
             if (controllerName == null || !ControllersComPaywall.Contains(controllerName))
+            {
+                await next();
+                return;
+            }
+
+            if (actionName != null && AcoesLiberadas.Contains((controllerName, actionName)))
             {
                 await next();
                 return;

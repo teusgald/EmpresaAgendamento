@@ -238,8 +238,49 @@ namespace EmpresaAgendamento.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            if (status == StatusAgendamento.Finalizado)
+            {
+                await ConsumirCreditoDoPlanoSeAplicavelAsync(agendamento);
+            }
+
             return RedirectToAction(nameof(Index));
         }
+
+        // Se o cliente tiver um plano ativo (ver módulo Planos) que cobre o
+        // serviço desse agendamento, desconta 1 crédito do período atual —
+        // sem isso, um plano nunca teria seu uso registrado. Não gera/altera
+        // nada no financeiro (o cliente já "pagou" o plano por fora).
+        private async Task ConsumirCreditoDoPlanoSeAplicavelAsync(Agendamento agendamento)
+        {
+            if (agendamento.ClienteId == null)
+                return;
+
+            try
+            {
+                var assinatura = await _context.AssinaturasPlanoServico
+                    .Include(a => a.PlanoServico)
+                    .Where(a =>
+                        a.Status == Models.Enums.StatusAssinaturaPlano.Ativa &&
+                        a.ClienteId == agendamento.ClienteId &&
+                        a.PlanoServico.EmpresaId == agendamento.EmpresaId &&
+                        a.PlanoServico.Servicos.Any(x => x.ServicoId == agendamento.ServicoId))
+                    .FirstOrDefaultAsync();
+
+                if (assinatura == null)
+                    return;
+
+                if (!assinatura.TemCreditoDisponivel())
+                    return;
+
+                assinatura.CreditosUsados++;
+                await _context.SaveChangesAsync();
+            }
+            catch
+            {
+                // Não bloqueia a finalização do agendamento por isso.
+            }
+        }
+
         // =========================
         // CREATE GET
         // =========================

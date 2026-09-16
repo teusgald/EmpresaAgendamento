@@ -10,11 +10,13 @@
 
 	var empresaInfo = await _context.Users
 		.Where(u => u.Id == userId)
-		.Select(u => new { u.Empresa.Nome, u.Empresa.LogoUrl })
+		.Select(u => new { u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus })
 		.FirstOrDefaultAsync();
 
 	var nomeUsuario = empresaInfo?.Nome;
 	var logoEmpresa = empresaInfo?.LogoUrl;
+
+	var assinaturaAtiva = empresaInfo?.AssinaturaStatus == "active" || empresaInfo?.AssinaturaStatus == "trialing";
 }
 
 <!DOCTYPE html>
@@ -27,6 +29,17 @@
 	<link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 	<link rel="stylesheet" href="~/css/site.css" />
+	<style>
+		.nav-locked {
+			opacity: .45;
+			pointer-events: none;
+			cursor: not-allowed;
+		}
+
+		.nav-locked .bi-chevron-down {
+			display: none;
+		}
+	</style>
 
 	<script>
 				const empresaSelect = document.getElementById("empresaSelect");
@@ -99,8 +112,8 @@
 	<div class="sidebar" id="sidebar">
 		@if (!string.IsNullOrEmpty(logoEmpresa))
 		{
-			<div class="mb-2 py-2 px-2">
-				<img src="@logoEmpresa" alt="Logo" style="width:100%;height:130px;object-fit:contain;" />
+			<div class="sidebar-logo-wrap">
+				<img src="@logoEmpresa" alt="Logo" class="sidebar-logo" />
 			</div>
 		}
 		else
@@ -115,6 +128,10 @@
 				// o resto (Dashboard, Serviços, Funcionários, Financeiro,
 				// Empresas, Assinatura) é exclusivo do dono da empresa.
 				var ehFuncionario = User.IsInRole("Funcionario");
+
+				// Dono da empresa sem assinatura ativa só pode ver Dashboard e
+				// Assinatura — o resto do menu fica travado até ele pagar.
+				var menuBloqueado = !ehFuncionario && !assinaturaAtiva;
 			}
 
 			@if (!ehFuncionario)
@@ -129,7 +146,7 @@
 			}
 
 			<!-- CALENDÁRIO -->
-			<li class="nav-item">
+			<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 				<a class="nav-link" asp-controller="Agendamentos" asp-action="Calendario">
 					<i class="bi bi-calendar"></i>
 					<span class="link-text">Calendário</span>
@@ -137,7 +154,7 @@
 			</li>
 
 			<!-- AGENDAMENTOS -->
-			<li class="nav-item">
+			<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 				<a class="nav-link" asp-controller="Agendamentos" asp-action="Index">
 					<i class="bi bi-list-check"></i>
 					<span class="link-text">Agendamentos</span>
@@ -159,7 +176,7 @@
 				<!-- ========================= -->
 				<!-- CADASTROS (DROPDOWN) -->
 				<!-- ========================= -->
-				<li class="nav-item">
+				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 
 					<a class="nav-link d-flex justify-content-between align-items-center"
 					   data-bs-toggle="collapse"
@@ -200,6 +217,13 @@
 								</a>
 							</li>
 
+							<li>
+								<a class="nav-link" asp-controller="PlanosServico" asp-action="Index">
+									<i class="bi bi-card-checklist"></i>
+									<span class="link-text">Planos</span>
+								</a>
+							</li>
+
 						</ul>
 
 					</div>
@@ -209,7 +233,7 @@
 				<!-- ========================= -->
 				<!-- FINANCEIRO -->
 				<!-- ========================= -->
-				<li class="nav-item">
+				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 
 					<a class="nav-link d-flex justify-content-between align-items-center"
 					   data-bs-toggle="collapse"
@@ -299,14 +323,14 @@
 				</li>
 
 				<!-- EMPRESAS -->
-				<li class="nav-item">
+				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 					<a class="nav-link" asp-controller="Empresas" asp-action="Index">
 						<i class="bi bi-building"></i>
 						<span class="link-text">Empresas</span>
 					</a>
 				</li>
 
-				<!-- ASSINATURA -->
+				<!-- ASSINATURA (sempre liberada — é por aqui que o dono ativa a conta) -->
 				<li class="nav-item">
 					<a class="nav-link" asp-controller="Assinatura" asp-action="Index">
 						<i class="bi bi-credit-card"></i>

@@ -14,9 +14,16 @@ namespace EmpresaAgendamento.ViewModels
         // 📅 (futuro) Agendamentos do dia / destaque
         public List<Agendamento> Agendamentos { get; set; } = new();
 
-        // ⭐ (futuro) avaliações
+        // ⭐ avaliações
         public double? NotaMedia { get; set; }
         public int TotalAvaliacoes { get; set; }
+        public List<Avaliacao> Avaliacoes { get; set; } = new();
+
+        // 🖼️ galeria de fotos
+        public List<EmpresaFoto> Fotos { get; set; } = new();
+
+        // 📋 planos recorrentes (controle de crédito, sem cobrança pelo app)
+        public List<PlanoServico> PlanosServico { get; set; } = new();
 
         // 🧠 flags auxiliares (evita lógica na View)
         public bool TemServicos => Servicos != null && Servicos.Count > 0;

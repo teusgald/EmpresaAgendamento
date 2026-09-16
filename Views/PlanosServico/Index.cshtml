@@ -1,0 +1,122 @@
+@model IEnumerable<EmpresaAgendamento.Models.PlanoServico>
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+
+        <h3 class="fw-bold mb-0">Planos</h3>
+
+        <a asp-action="Create" class="btn btn-primary">
+            + Novo Plano
+        </a>
+
+    </div>
+
+    <p class="text-muted small">
+        Planos recorrentes que seus clientes assinam (ex.: "Personal Mensal — 12 sessões").
+        A cobrança em si você continua fazendo por fora — aqui só controlamos os créditos usados.
+    </p>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+
+                    <thead class="table-light">
+                        <tr>
+                            <th>Plano</th>
+                            <th>Periodicidade</th>
+                            <th>Sessões/período</th>
+                            <th>Serviços</th>
+                            <th>Assinantes</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+
+                        @foreach (var plano in Model)
+                        {
+                            <tr>
+                                <td class="fw-semibold">@plano.Nome</td>
+
+                                <td>
+                                    @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "Semanal" : "Mensal")
+                                </td>
+
+                                <td>@plano.QuantidadeUsos</td>
+
+                                <td>
+                                    @if (plano.Servicos.Any())
+                                    {
+                                        @string.Join(", ", plano.Servicos.Select(x => x.Servico.Nome))
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Nenhum</span>
+                                    }
+                                </td>
+
+                                <td>
+                                    @plano.Assinaturas.Count(a => a.Status == EmpresaAgendamento.Models.Enums.StatusAssinaturaPlano.Ativa)
+                                </td>
+
+                                <td>
+                                    @if (plano.Ativo)
+                                    {
+                                        <span class="badge bg-success">Ativo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    }
+                                </td>
+
+                                <td class="text-end">
+
+                                    <a asp-action="Assinantes" asp-route-id="@plano.Id" class="btn btn-sm btn-outline-primary">
+                                        Assinantes
+                                    </a>
+
+                                    <a asp-action="Edit" asp-route-id="@plano.Id" class="btn btn-sm btn-outline-secondary">
+                                        Editar
+                                    </a>
+
+                                    <form asp-action="ToggleAtivo" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@plano.Id" />
+
+                                        @if (plano.Ativo)
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-success">Ativo</button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Inativo</button>
+                                        }
+                                    </form>
+
+                                </td>
+                            </tr>
+                        }
+
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="text-center text-muted py-4">
+                                    Nenhum plano cadastrado ainda.
+                                </td>
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+</div>

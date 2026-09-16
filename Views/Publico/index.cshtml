@@ -182,56 +182,263 @@
 
         <div id="servicos">
 
-            <div class="section-title">Serviços</div>
-
-            <div class="search-box">
-                <input type="search"
-                       placeholder="Pesquisar serviço"
-                       id="searchInput"
-                       oninput="filterServices()" />
+            <div class="tabs-wrapper">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="tabServicos">Serviços</button>
+                    @if (Model.PlanosServico != null && Model.PlanosServico.Any())
+                    {
+                        <button class="tab-btn" data-tab="tabPlanos">Planos</button>
+                    }
+                    <button class="tab-btn" data-tab="tabGaleria">Galeria</button>
+                    <button class="tab-btn" data-tab="tabAvaliacoes">Avaliações (@Model.TotalAvaliacoes)</button>
+                </div>
             </div>
 
-            <div class="services-list">
+            <!-- ===================== SERVIÇOS ===================== -->
+            <div id="tabServicos" class="tab-pane-publico">
 
-                @if (Model.Servicos != null && Model.Servicos.Any())
-                {
-                    foreach (var s in Model.Servicos)
+                <div class="search-box">
+                    <input type="search"
+                           placeholder="Pesquisar serviço"
+                           id="searchInput"
+                           oninput="filterServices()" />
+                </div>
+
+                <div class="services-list">
+
+                    @if (Model.Servicos != null && Model.Servicos.Any())
                     {
-                        <div class="service-item" data-name="@s.Nome.ToLower()">
+                        foreach (var s in Model.Servicos)
+                        {
+                            <div class="service-item" data-name="@s.Nome.ToLower()">
 
-                            <div class="service-img">💇</div>
+                                <div class="service-img">💇</div>
 
-                            <div class="service-info">
-                                <div class="name">@s.Nome</div>
+                                <div class="service-info">
+                                    <div class="name">@s.Nome</div>
 
-                                @if (!string.IsNullOrEmpty(s.Descricao))
+                                    @if (!string.IsNullOrEmpty(s.Descricao))
+                                    {
+                                        <div class="desc">@s.Descricao</div>
+                                    }
+
+                                    <div class="meta">
+                                        <span class="price">R$ @s.Preco.ToString("F2")</span>
+                                        <span class="duration">🕐 @s.DuracaoMinutos min</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn-schedule"
+                                        data-servico="@s.Id"
+                                        data-servico-nome="@s.Nome">
+                                    Agendar
+                                </button>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p style="color:var(--text2)">
+                            Nenhum serviço disponível.
+                        </p>
+                    }
+
+                </div>
+
+                <div class="pagination-public" id="servicosPaginacao"></div>
+
+            </div>
+
+            @if (Model.PlanosServico != null && Model.PlanosServico.Any())
+            {
+                <!-- ===================== PLANOS ===================== -->
+                <div id="tabPlanos" class="tab-pane-publico" style="display:none">
+
+                    <div class="plans-grid">
+
+                        @foreach (var plano in Model.PlanosServico)
+                        {
+                            <div class="plan-card">
+
+                                <div class="plan-card-header">
+                                    <h4>@plano.Nome</h4>
+                                    <span class="plan-periodicidade">
+                                        @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "Semanal" : "Mensal")
+                                    </span>
+                                </div>
+
+                                @if (plano.ValorReferencia.HasValue)
                                 {
-                                    <div class="desc">@s.Descricao</div>
+                                    <div class="plan-price">
+                                        R$ @plano.ValorReferencia.Value.ToString("F2")
+                                        <span>/ @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "semana" : "mês")</span>
+                                    </div>
                                 }
 
-                                <div class="meta">
-                                    <span class="price">R$ @s.Preco.ToString("F2")</span>
-                                    <span class="duration">🕐 @s.DuracaoMinutos min</span>
+                                <div class="plan-usos">
+                                    @plano.QuantidadeUsos sessões por período
                                 </div>
+
+                                @if (plano.Servicos.Any())
+                                {
+                                    <ul class="plan-servicos">
+                                        @foreach (var item in plano.Servicos)
+                                        {
+                                            <li>@item.Servico.Nome</li>
+                                        }
+                                    </ul>
+                                }
+
+                                <button class="btn-agendar btn-contratar-plano" data-plano-id="@plano.Id" style="margin-top:10px;">
+                                    Contratar plano
+                                </button>
+
+                                <p class="plan-contato-nota">
+                                    A empresa confirma o pagamento com você e libera os créditos.
+                                </p>
+
                             </div>
+                        }
 
-                            <button class="btn-schedule"
-                                    data-servico="@s.Id"
-                                    data-servico-nome="@s.Nome">
-                                Agendar
-                            </button>
+                    </div>
 
+                </div>
+            }
+
+            <!-- ===================== GALERIA ===================== -->
+            <div id="tabGaleria" class="tab-pane-publico" style="display:none">
+
+                @if (Model.Fotos != null && Model.Fotos.Any())
+                {
+                    <div class="gallery">
+
+                        <div class="gallery-main" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="0">
+                            <img src="@Model.Fotos[0].Url" alt="Foto 1" />
                         </div>
-                    }
+
+                        @if (Model.Fotos.Count > 1)
+                        {
+                            <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="1">
+                                <img src="@Model.Fotos[1].Url" alt="Foto 2" />
+                            </div>
+                        }
+
+                        @if (Model.Fotos.Count > 2)
+                        {
+                            <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="2">
+                                <img src="@Model.Fotos[2].Url" alt="Foto 3" />
+
+                                @if (Model.Fotos.Count > 3)
+                                {
+                                    <div class="gallery-more">
+                                        +@(Model.Fotos.Count - 3) fotos
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                    </div>
                 }
                 else
                 {
-                    <p style="color:var(--text2)">
-                        Nenhum serviço disponível.
-                    </p>
+                    <p style="color:var(--text2)">Nenhuma foto adicionada ainda.</p>
                 }
 
             </div>
+
+            <!-- ===================== AVALIAÇÕES ===================== -->
+            <div id="tabAvaliacoes" class="tab-pane-publico" style="display:none">
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+
+                    <div>
+                        @if (Model.NotaMedia.HasValue)
+                        {
+                            <span class="stars-display">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <span class="star">@(i <= Math.Round(Model.NotaMedia.Value) ? "★" : "☆")</span>
+                                }
+                            </span>
+                            <strong>@Model.NotaMedia.Value.ToString("F1")</strong>
+                            <span class="review-count">(@Model.TotalAvaliacoes avaliações)</span>
+                        }
+                        else
+                        {
+                            <span class="review-count">Ainda sem avaliações — seja o primeiro!</span>
+                        }
+                    </div>
+
+                    <button class="btn-agendar" id="btnAbrirAvaliacao" style="padding:8px 18px;font-size:13px;">
+                        Deixar avaliação
+                    </button>
+
+                </div>
+
+                <div id="formAvaliacao" style="display:none" class="mb-4">
+
+                    <div class="star-picker" id="starPicker">
+                        <span class="star-pick" data-valor="1">★</span>
+                        <span class="star-pick" data-valor="2">★</span>
+                        <span class="star-pick" data-valor="3">★</span>
+                        <span class="star-pick" data-valor="4">★</span>
+                        <span class="star-pick" data-valor="5">★</span>
+                    </div>
+
+                    <textarea id="comentarioAvaliacao"
+                              class="form-control mt-2"
+                              rows="3"
+                              placeholder="Conte como foi sua experiência (opcional)"></textarea>
+
+                    <button class="btn-agendar mt-2" id="btnEnviarAvaliacao" style="padding:8px 18px;font-size:13px;">
+                        Enviar
+                    </button>
+
+                    <div id="avaliacaoAlert" class="mt-2"></div>
+
+                </div>
+
+                <div class="reviews-list">
+
+                    @if (Model.Avaliacoes != null && Model.Avaliacoes.Any())
+                    {
+                        foreach (var av in Model.Avaliacoes)
+                        {
+                            <div class="review-item">
+
+                                <div class="review-header">
+                                    <strong>@(av.Cliente?.Nome ?? "Cliente")</strong>
+
+                                    <span class="stars-display">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <span class="star">@(i <= av.Nota ? "★" : "☆")</span>
+                                        }
+                                    </span>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(av.Comentario))
+                                {
+                                    <p class="review-comment">@av.Comentario</p>
+                                }
+
+                                <span class="review-date">
+                                    @((av.DataAtualizacao ?? av.DataCriacao).ToString("dd/MM/yyyy"))
+                                </span>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p style="color:var(--text2)">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
+                    }
+
+                </div>
+
+            </div>
+
         </div>
 
     </div>
@@ -530,6 +737,73 @@
     </div>
 </div>
 
+<div class="modal fade" id="galeriaModal" tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark">
+
+            <div class="modal-header border-0">
+                <h5 class="text-white">Fotos</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-0">
+
+                <div id="galeriaCarousel" class="carousel slide">
+
+                    <div class="carousel-inner">
+
+                        @if (Model.Fotos != null)
+                        {
+                            for (var i = 0; i < Model.Fotos.Count; i++)
+                            {
+                                <div class="carousel-item @(i == 0 ? "active" : "")" style="height:min(70vh, 520px);">
+                                    <img src="@Model.Fotos[i].Url"
+                                         style="width:100%;height:100%;object-fit:contain;" />
+                                </div>
+                            }
+                        }
+
+                    </div>
+
+                    @if (Model.Fotos != null && Model.Fotos.Count > 1)
+                    {
+                        <button class="carousel-control-prev" type="button" data-bs-target="#galeriaCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+
+                        <button class="carousel-control-next" type="button" data-bs-target="#galeriaCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    }
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="avisoModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content p-4 text-center">
+
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div id="avisoModalIcone" class="mb-2" style="font-size:2.5rem;"></div>
+
+            <p id="avisoModalMensagem" class="mb-0"></p>
+
+        </div>
+    </div>
+
+</div>
+
 <div class="modal fade"
      id="clienteLoginModal"
      tabindex="-1">
@@ -579,24 +853,105 @@
         }
 
         // ==========================================
-        // FILTRO DE SERVIÇOS
+        // ABAS (SERVIÇOS / GALERIA / AVALIAÇÕES)
         // ==========================================
 
-        function filterServices() {
+        document.querySelectorAll(".tab-btn").forEach(btn => {
 
-            const q =
-                document.getElementById("searchInput")
-                    .value
-                    .toLowerCase();
+            btn.addEventListener("click", () => {
+
+                document.querySelectorAll(".tab-btn")
+                    .forEach(b => b.classList.remove("active"));
+
+                btn.classList.add("active");
+
+                document.querySelectorAll(".tab-pane-publico")
+                    .forEach(p => p.style.display = "none");
+
+                document.getElementById(btn.dataset.tab).style.display = "";
+            });
+        });
+
+        // ==========================================
+        // GALERIA — ABRE O CARROSSEL NA FOTO CLICADA
+        // ==========================================
+
+        document.querySelectorAll("#tabGaleria [data-foto-index]").forEach(el => {
+
+            el.addEventListener("click", () => {
+
+                const indice = parseInt(el.dataset.fotoIndex);
+
+                const carousel = bootstrap.Carousel.getOrCreateInstance(
+                    document.getElementById("galeriaCarousel")
+                );
+
+                carousel.to(indice);
+            });
+        });
+
+        // ==========================================
+        // FILTRO + PAGINAÇÃO DE SERVIÇOS (5 por página)
+        // ==========================================
+
+        const SERVICOS_POR_PAGINA = 5;
+        let paginaServicoAtual = 1;
+
+        function servicosFiltrados() {
+
+            const q = document.getElementById("searchInput")?.value.toLowerCase() || "";
+
+            return Array.from(document.querySelectorAll(".service-item"))
+                .filter(item => item.dataset.name.includes(q));
+        }
+
+        function renderPaginacaoServicos() {
+
+            const itens = servicosFiltrados();
+            const totalPaginas = Math.max(1, Math.ceil(itens.length / SERVICOS_POR_PAGINA));
+
+            if (paginaServicoAtual > totalPaginas) {
+                paginaServicoAtual = totalPaginas;
+            }
 
             document.querySelectorAll(".service-item")
-                .forEach(item => {
+                .forEach(item => item.style.display = "none");
 
-                    item.style.display =
-                        item.dataset.name.includes(q)
-                            ? ""
-                            : "none";
+            itens
+                .slice(
+                    (paginaServicoAtual - 1) * SERVICOS_POR_PAGINA,
+                    paginaServicoAtual * SERVICOS_POR_PAGINA
+                )
+                .forEach(item => item.style.display = "");
+
+            const nav = document.getElementById("servicosPaginacao");
+
+            if (!nav) return;
+
+            nav.innerHTML = "";
+
+            if (totalPaginas <= 1) return;
+
+            for (let i = 1; i <= totalPaginas; i++) {
+
+                const btn = document.createElement("button");
+
+                btn.type = "button";
+                btn.textContent = i;
+                btn.className = "page-btn" + (i === paginaServicoAtual ? " active" : "");
+
+                btn.addEventListener("click", () => {
+                    paginaServicoAtual = i;
+                    renderPaginacaoServicos();
                 });
+
+                nav.appendChild(btn);
+            }
+        }
+
+        function filterServices() {
+            paginaServicoAtual = 1;
+            renderPaginacaoServicos();
         }
 
         // ==========================================
@@ -1316,8 +1671,185 @@
         "DOMContentLoaded",
         async () => {
 
+            renderPaginacaoServicos();
+
             await verificarClienteLogado();
         });
+
+        // ==========================================
+        // AVISO (MODAL) — fecha em 10s ou se o cliente fechar
+        // ==========================================
+
+        let avisoModalTimeout = null;
+
+        function mostrarAviso(mensagem, sucesso = true) {
+
+            const modalEl = document.getElementById("avisoModal");
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+            document.getElementById("avisoModalMensagem").textContent = mensagem;
+            document.getElementById("avisoModalIcone").textContent = sucesso ? "✅" : "⚠️";
+
+            modal.show();
+
+            if (avisoModalTimeout) {
+                clearTimeout(avisoModalTimeout);
+            }
+
+            avisoModalTimeout = setTimeout(() => modal.hide(), 10000);
+
+            modalEl.addEventListener("hidden.bs.modal", () => {
+                if (avisoModalTimeout) {
+                    clearTimeout(avisoModalTimeout);
+                    avisoModalTimeout = null;
+                }
+            }, { once: true });
+        }
+
+        // ==========================================
+        // PLANOS — CONTRATAR
+        // ==========================================
+
+        document.querySelectorAll(".btn-contratar-plano").forEach(btn => {
+
+            btn.addEventListener("click", async () => {
+
+                const clienteIdInput = document.getElementById("ClienteId");
+
+                if (!clienteIdInput.value) {
+                    new bootstrap.Modal(
+                        document.getElementById("clienteLoginModal")
+                    ).show();
+                    return;
+                }
+
+                btn.disabled = true;
+
+                try {
+                    const resp = await fetch("/Publico/SolicitarPlano", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            planoServicoId: parseInt(btn.dataset.planoId)
+                        })
+                    });
+
+                    const data = await resp.json();
+
+                    mostrarAviso(data.mensagem, data.sucesso);
+
+                    if (!data.sucesso) {
+                        btn.disabled = false;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    mostrarAviso("Erro ao enviar solicitação.", false);
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        // ==========================================
+        // AVALIAÇÕES — ESTRELAS + ENVIO
+        // ==========================================
+
+        let notaSelecionada = 0;
+
+        function selecionarEstrelas(valor) {
+
+            notaSelecionada = valor;
+
+            document.querySelectorAll("#starPicker .star-pick")
+                .forEach(el => {
+                    el.classList.toggle(
+                        "selected",
+                        parseInt(el.dataset.valor) <= valor
+                    );
+                });
+        }
+
+        document.querySelectorAll("#starPicker .star-pick")
+            .forEach(el => {
+                el.addEventListener("click", () =>
+                    selecionarEstrelas(parseInt(el.dataset.valor))
+                );
+            });
+
+        document.getElementById("btnAbrirAvaliacao")
+            ?.addEventListener("click", async () => {
+
+                const clienteIdInput = document.getElementById("ClienteId");
+
+                if (!clienteIdInput.value) {
+                    new bootstrap.Modal(
+                        document.getElementById("clienteLoginModal")
+                    ).show();
+                    return;
+                }
+
+                const formDiv = document.getElementById("formAvaliacao");
+                const abrindo = formDiv.style.display === "none";
+
+                formDiv.style.display = abrindo ? "" : "none";
+
+                if (abrindo) {
+
+                    try {
+                        const resp = await fetch(
+                            `/Publico/MinhaAvaliacao?empresaId=${empresaId}`
+                        );
+
+                        const data = await resp.json();
+
+                        if (data.avaliado) {
+                            selecionarEstrelas(data.nota);
+                            document.getElementById("comentarioAvaliacao").value =
+                                data.comentario || "";
+                        }
+                    } catch (err) {
+                        console.error("Erro ao carregar avaliação:", err);
+                    }
+                }
+            });
+
+        document.getElementById("btnEnviarAvaliacao")
+            ?.addEventListener("click", async () => {
+
+                const alerta = document.getElementById("avaliacaoAlert");
+
+                if (!notaSelecionada) {
+                    alerta.innerHTML =
+                        '<div class="alert alert-warning py-2 mb-0">Escolha de 1 a 5 estrelas.</div>';
+                    return;
+                }
+
+                try {
+                    const resp = await fetch("/Publico/Avaliar", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            empresaId: parseInt(empresaId),
+                            nota: notaSelecionada,
+                            comentario: document.getElementById("comentarioAvaliacao").value
+                        })
+                    });
+
+                    const data = await resp.json();
+
+                    if (data.sucesso) {
+                        alerta.innerHTML =
+                            `<div class="alert alert-success py-2 mb-0">${data.mensagem}</div>`;
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        alerta.innerHTML =
+                            `<div class="alert alert-danger py-2 mb-0">${data.mensagem}</div>`;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alerta.innerHTML =
+                        '<div class="alert alert-danger py-2 mb-0">Erro ao enviar avaliação.</div>';
+                }
+            });
     </script>
 
 }

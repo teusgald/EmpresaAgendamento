@@ -265,6 +265,73 @@
 
         </div>
     </div>
+
+    <!-- ===================== GALERIA DE FOTOS ===================== -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Galeria de fotos</h5>
+                <span class="text-muted small">
+                    @ViewBag.Fotos.Count de @ViewBag.LimiteFotosGaleria fotos
+                </span>
+            </div>
+
+            <p class="text-muted small">
+                Essas fotos aparecem na aba "Galeria" da sua página pública.
+            </p>
+
+            <div class="row g-3 mb-3">
+
+                @foreach (var foto in ViewBag.Fotos)
+                {
+                    <div class="col-6 col-md-3">
+                        <div class="position-relative">
+                            <img src="@foto.Url"
+                                 class="w-100 rounded border"
+                                 style="height:120px;object-fit:cover;" />
+
+                            <form asp-action="RemoverFotoGaleria" method="post" class="position-absolute top-0 end-0 m-1">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@foto.Id" />
+                                <button type="submit"
+                                        class="btn btn-sm btn-danger rounded-circle"
+                                        title="Remover foto"
+                                        style="width:28px;height:28px;padding:0;line-height:1;">
+                                    &times;
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+
+            </div>
+
+            @if (ViewBag.Fotos.Count < ViewBag.LimiteFotosGaleria)
+            {
+                <form asp-action="UploadGaleria" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+
+                    <div class="input-group">
+                        <input type="file"
+                               name="fotos"
+                               multiple
+                               accept="image/png,image/jpeg,image/webp,image/gif"
+                               class="form-control" />
+
+                        <button type="submit" class="btn btn-outline-primary">
+                            Adicionar
+                        </button>
+                    </div>
+
+                    <small class="text-muted">
+                        PNG, JPG, WEBP ou GIF — até 2 MB cada. Pode selecionar várias de uma vez.
+                    </small>
+                </form>
+            }
+
+        </div>
+    </div>
 </div>
 
 <script>

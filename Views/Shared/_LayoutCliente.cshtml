@@ -52,6 +52,14 @@
                 </a>
             </li>
 
+            <li>
+                <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "PlanosCliente" ? "active" : "")"
+                   asp-controller="PlanosCliente" asp-action="Index">
+                    <i class="bi bi-card-checklist"></i>
+                    <span class="link-text">Meus Planos</span>
+                </a>
+            </li>
+
         </ul>
 
         <div class="sidebar-footer d-flex flex-column px-2 py-2">

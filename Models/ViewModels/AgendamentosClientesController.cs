@@ -16,17 +16,20 @@ public class AgendamentosClientesController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IFinanceiroService _financeiroService;
+    private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
 
     public AgendamentosClientesController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IFinanceiroService financeiroService)
+        IFinanceiroService financeiroService,
+        INotificacaoAgendamentoService notificacaoAgendamentoService)
     {
         _context = context;
         _userManager = userManager;
         _signInManager = signInManager;
         _financeiroService = financeiroService;
+        _notificacaoAgendamentoService = notificacaoAgendamentoService;
     }
 
     private async Task<ApplicationUser?> GetCurrentUserAsync()
@@ -253,6 +256,8 @@ public class AgendamentosClientesController : Controller
         {
             // Não bloqueia o agendamento do cliente por um problema no financeiro.
         }
+
+        await _notificacaoAgendamentoService.EnviarConfirmacaoAsync(agendamento.Id);
 
         return RedirectToAction(nameof(Index));
     }

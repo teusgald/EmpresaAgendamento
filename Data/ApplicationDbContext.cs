@@ -35,6 +35,13 @@ namespace EmpresaAgendamento.Data
         public DbSet<ContaPagar> ContasPagar { get; set; }
         public DbSet<MovimentacaoFinanceira> MovimentacoesFinanceiras { get; set; }
 
+        public DbSet<EmpresaFoto> EmpresaFotos { get; set; }
+        public DbSet<Avaliacao> Avaliacoes { get; set; }
+
+        public DbSet<PlanoServico> PlanosServico { get; set; }
+        public DbSet<PlanoServicoItem> PlanosServicoItens { get; set; }
+        public DbSet<AssinaturaPlanoServico> AssinaturasPlanoServico { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -507,6 +514,79 @@ namespace EmpresaAgendamento.Data
             builder.Entity<Cliente>()
                 .HasIndex(x => x.UserId)
                 .IsUnique();
+
+            #region Galeria e Avaliações
+
+            builder.Entity<EmpresaFoto>()
+                .HasOne(f => f.Empresa)
+                .WithMany(e => e.Fotos)
+                .HasForeignKey(f => f.EmpresaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Avaliacao>()
+                .HasOne(a => a.Empresa)
+                .WithMany(e => e.Avaliacoes)
+                .HasForeignKey(a => a.EmpresaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Avaliacao>()
+                .HasOne(a => a.Cliente)
+                .WithMany(c => c.Avaliacoes)
+                .HasForeignKey(a => a.ClienteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Um cliente avalia cada empresa uma única vez — reenviar edita a
+            // avaliação anterior em vez de duplicar.
+            builder.Entity<Avaliacao>()
+                .HasIndex(a => new { a.EmpresaId, a.ClienteId })
+                .IsUnique();
+
+            #endregion
+
+            #region Planos de Serviço (controle de crédito, sem cobrança automática)
+
+            builder.Entity<PlanoServico>()
+                .HasOne(p => p.Empresa)
+                .WithMany(e => e.PlanosServico)
+                .HasForeignKey(p => p.EmpresaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<PlanoServico>()
+                .Property(p => p.ValorReferencia)
+                .HasPrecision(10, 2);
+
+            builder.Entity<PlanoServico>()
+                .Property(p => p.PercentualJurosAtraso)
+                .HasPrecision(5, 2);
+
+            builder.Entity<PlanoServicoItem>()
+                .HasKey(x => new { x.PlanoServicoId, x.ServicoId });
+
+            builder.Entity<PlanoServicoItem>()
+                .HasOne(x => x.PlanoServico)
+                .WithMany(p => p.Servicos)
+                .HasForeignKey(x => x.PlanoServicoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<PlanoServicoItem>()
+                .HasOne(x => x.Servico)
+                .WithMany()
+                .HasForeignKey(x => x.ServicoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AssinaturaPlanoServico>()
+                .HasOne(a => a.PlanoServico)
+                .WithMany(p => p.Assinaturas)
+                .HasForeignKey(a => a.PlanoServicoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<AssinaturaPlanoServico>()
+                .HasOne(a => a.Cliente)
+                .WithMany()
+                .HasForeignKey(a => a.ClienteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            #endregion
         }
     }
 }
