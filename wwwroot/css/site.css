@@ -1,3 +1,42 @@
+/* ===========================================================================
+   SIMPLI TIME — DESIGN SYSTEM DO PORTAL
+   Paleta: preto #111111, cinza escuro #2B2B2B, cinza #6B7280,
+   cinza claro #E5E7EB, branco #FFFFFF, fundo #F8F9FA.
+   Minimalista, poucas cores — as cores de status (sucesso/erro/aviso)
+   continuam existindo porque carregam significado, só ficaram mais suaves.
+   =========================================================================== */
+
+:root {
+    --st-black: #111111;
+    --st-gray-900: #2B2B2B;
+    --st-gray-600: #6B7280;
+    --st-gray-300: #E5E7EB;
+    --st-white: #FFFFFF;
+    --st-bg: #F8F9FA;
+
+    /* Estados semânticos — só usados em badge/alerta/status, nunca decorativo */
+    --st-success: #15803d;
+    --st-success-bg: #dcfce7;
+    --st-danger: #b91c1c;
+    --st-danger-bg: #fee2e2;
+    --st-warning: #b45309;
+    --st-warning-bg: #fef3c7;
+    --st-info: #1d4ed8;
+    --st-info-bg: #dbeafe;
+
+    --st-radius-sm: 8px;
+    --st-radius: 12px;
+    --st-radius-lg: 16px;
+
+    --st-shadow-sm: 0 1px 2px rgba(17, 17, 17, .05);
+    --st-shadow: 0 1px 3px rgba(17, 17, 17, .06), 0 4px 12px rgba(17, 17, 17, .04);
+    --st-shadow-lg: 0 8px 24px rgba(17, 17, 17, .10);
+}
+
+/* ===========================================================================
+   BASE / TIPOGRAFIA
+   =========================================================================== */
+
 html {
   font-size: 14px;
 }
@@ -8,13 +47,195 @@ html {
   }
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+html, body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
+body {
+    margin: 0;
+    overflow-x: hidden;
+    background-color: var(--st-bg);
+    color: var(--st-gray-900);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--st-black);
+}
+
+a {
+    color: var(--st-black);
+}
+
+    a:hover {
+        color: var(--st-gray-900);
+    }
+
+.text-muted {
+    color: var(--st-gray-600) !important;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus, .form-select:focus {
+  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem rgba(17, 17, 17, .35);
+}
+
+/* ===========================================================================
+   BOTÕES — preto/neutro como ação principal (padrão SaaS premium), cores
+   semânticas preservadas mas um pouco mais discretas.
+   =========================================================================== */
+
+.btn {
+    border-radius: var(--st-radius-sm);
+    font-weight: 500;
+    padding: .5rem 1rem;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+}
+
+    .btn:active {
+        transform: translateY(1px);
+    }
+
+.btn-primary {
+    background-color: var(--st-black);
+    border-color: var(--st-black);
+    color: var(--st-white);
+}
+
+    .btn-primary:hover,
+    .btn-primary:active,
+    .btn-check:checked + .btn-primary {
+        background-color: var(--st-gray-900) !important;
+        border-color: var(--st-gray-900) !important;
+        color: var(--st-white) !important;
+    }
+
+.btn-dark {
+    background-color: var(--st-black);
+    border-color: var(--st-black);
+}
+
+    .btn-dark:hover {
+        background-color: var(--st-gray-900);
+        border-color: var(--st-gray-900);
+    }
+
+.btn-outline-primary {
+    color: var(--st-black);
+    border-color: var(--st-gray-300);
+}
+
+    .btn-outline-primary:hover {
+        background-color: var(--st-black);
+        border-color: var(--st-black);
+        color: var(--st-white);
+    }
+
+.btn-outline-secondary {
+    color: var(--st-gray-900);
+    border-color: var(--st-gray-300);
+}
+
+    .btn-outline-secondary:hover {
+        background-color: var(--st-gray-900);
+        border-color: var(--st-gray-900);
+        color: var(--st-white);
+    }
+
+.btn-success {
+    background-color: #16794a;
+    border-color: #16794a;
+}
+
+.btn-outline-success {
+    color: #16794a;
+    border-color: #16794a;
+}
+
+.btn-danger, .btn-outline-danger:hover {
+    background-color: #b91c1c;
+    border-color: #b91c1c;
+}
+
+.btn-outline-danger {
+    color: #b91c1c;
+    border-color: #f0b8b8;
+}
+
+.btn-sm {
+    border-radius: 7px;
+}
+
+/* ===========================================================================
+   CARDS
+   =========================================================================== */
+
+.card {
+    border: 1px solid var(--st-gray-300);
+    border-radius: var(--st-radius);
+    background: var(--st-white);
+}
+
+.shadow-sm {
+    box-shadow: var(--st-shadow-sm) !important;
+}
+
+.shadow {
+    box-shadow: var(--st-shadow) !important;
+}
+
+.card-body {
+    padding: 1.25rem;
+}
+
+.card-header {
+    background: var(--st-white);
+    border-bottom: 1px solid var(--st-gray-300);
+    font-weight: 600;
+}
+
+/* Cabeçalho padrão de tela (título + descrição + ação principal) — usar em
+   toda tela de listagem/cadastro pra manter o mesmo "esqueleto" visual. */
+.page-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.25rem;
+}
+
+    .page-header h3, .page-header h4 {
+        margin-bottom: .15rem;
+    }
+
+    .page-header .page-subtitle {
+        color: var(--st-gray-600);
+        font-size: .9rem;
+        margin: 0;
+    }
+
+/* Estado vazio padrão (tabela/lista sem itens) */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--st-gray-600);
+}
+
+    .empty-state i, .empty-state .empty-state-icon {
+        font-size: 2.25rem;
+        color: var(--st-gray-300);
+        display: block;
+        margin-bottom: .75rem;
+    }
+
+    .empty-state p {
+        margin-bottom: 0;
+    }
+
 .agendamento-card {
-    border-radius: 12px;
-    border: none;
+    border-radius: var(--st-radius);
+    border: 1px solid var(--st-gray-300);
 }
 
     .agendamento-card .card-body {
@@ -36,53 +257,232 @@ html {
         }
 }
 
+/* ===========================================================================
+   FORMULÁRIOS
+   =========================================================================== */
+
+.form-control, .form-select {
+    border-color: var(--st-gray-300);
+    border-radius: var(--st-radius-sm);
+    padding: .55rem .8rem;
+}
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--st-gray-900);
+    }
+
+.form-label {
+    font-weight: 500;
+    font-size: .875rem;
+    color: var(--st-gray-900);
+    margin-bottom: .35rem;
+}
+
+.form-check-input:checked {
+    background-color: var(--st-black);
+    border-color: var(--st-black);
+}
+
+/* ===========================================================================
+   TABELAS
+   =========================================================================== */
+
+.table {
+    color: var(--st-gray-900);
+    vertical-align: middle;
+}
+
+    .table thead.table-light th,
+    .table > :not(caption) > * > th {
+        background-color: var(--st-bg);
+        color: var(--st-gray-600);
+        font-weight: 600;
+        font-size: .8rem;
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        border-bottom: 1px solid var(--st-gray-300);
+    }
+
+    .table > :not(caption) > * > td {
+        border-bottom-color: var(--st-gray-300);
+    }
+
+    .table-hover > tbody > tr:hover > * {
+        background-color: var(--st-bg);
+    }
+
+.table-fixed {
+    table-layout: fixed;
+    width: 100%;
+}
+
+    .table-fixed th, .table-fixed td {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+        white-space: normal;
+    }
+
+/* ===========================================================================
+   BADGES / STATUS — cores suaves (fundo claro + texto na cor), não sólidas
+   =========================================================================== */
+
+.badge {
+    font-weight: 600;
+    font-size: .72rem;
+    letter-spacing: .01em;
+    padding: .4em .65em;
+    border-radius: 999px;
+}
+
+.badge.bg-success { background-color: var(--st-success-bg) !important; color: var(--st-success) !important; }
+.badge.bg-danger   { background-color: var(--st-danger-bg) !important; color: var(--st-danger) !important; }
+.badge.bg-warning  { background-color: var(--st-warning-bg) !important; color: var(--st-warning) !important; }
+.badge.bg-primary  { background-color: var(--st-info-bg) !important; color: var(--st-info) !important; }
+.badge.bg-secondary{ background-color: var(--st-gray-300) !important; color: var(--st-gray-900) !important; }
+
+.status-select {
+    border: none;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    width: 130px;
+    cursor: pointer;
+    padding: 4px 10px;
+    box-shadow: none !important;
+}
+
+.status-agendado   { background: var(--st-info-bg); color: var(--st-info); }
+.status-confirmado { background: var(--st-success-bg); color: var(--st-success); }
+.status-cancelado  { background: var(--st-danger-bg); color: var(--st-danger); }
+.status-finalizado { background: var(--st-gray-300); color: var(--st-gray-900); }
+
+/* ===========================================================================
+   NAV-PILLS (abas — Próximos/Concluídos/Cancelados/Todos etc.)
+   =========================================================================== */
+
+.nav-pills .nav-link {
+    color: var(--st-gray-600);
+    border-radius: 999px;
+    font-weight: 500;
+    font-size: .9rem;
+    padding: .4rem 1rem;
+}
+
+    .nav-pills .nav-link.active {
+        background-color: var(--st-black);
+        color: var(--st-white);
+    }
+
+    .nav-pills .nav-link:hover:not(.active) {
+        background-color: var(--st-gray-300);
+        color: var(--st-black);
+    }
+
+/* ===========================================================================
+   MODAIS
+   =========================================================================== */
+
+.modal-content {
+    border: none;
+    border-radius: var(--st-radius-lg);
+    box-shadow: var(--st-shadow-lg);
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--st-gray-300);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--st-gray-300);
+}
+
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: .75rem;
+    }
+}
+
+/* ===========================================================================
+   ALERTAS / TOASTS
+   =========================================================================== */
+
+.alert {
+    border: 1px solid transparent;
+    border-radius: var(--st-radius-sm);
+}
+
+.alert-success { background-color: var(--st-success-bg); color: var(--st-success); }
+.alert-danger  { background-color: var(--st-danger-bg); color: var(--st-danger); }
+.alert-warning { background-color: var(--st-warning-bg); color: var(--st-warning); }
+.alert-info    { background-color: var(--st-info-bg); color: var(--st-info); }
+
 .toast-container {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 999999;
     width: 350px;
+    max-width: calc(100vw - 40px);
 }
 
 .toast-box {
     display: block;
-    padding: 15px;
+    padding: 14px 16px;
     margin-bottom: 10px;
-    border-radius: 8px;
+    border-radius: var(--st-radius-sm);
     color: #fff;
     font-size: 14px;
     font-weight: 500;
-    box-shadow: 0 4px 15px rgba(0,0,0,.2);
+    box-shadow: var(--st-shadow-lg);
     position: relative;
     opacity: 1;
     visibility: visible;
     animation: slideIn 0.3s ease;
 }
 
-.toast-success {
-    background-color: #198754;
-}
-
-.toast-error {
-    background-color: #dc3545;
-}
-
-.toast-warning {
-    background-color: #ffc107;
-    color: #000;
-}
+.toast-success { background-color: var(--st-black); }
+.toast-error   { background-color: #b91c1c; }
+.toast-warning { background-color: #b45309; }
 
 @keyframes slideIn {
-    from {
-        transform: translateX(120%);
-        opacity: 0;
-    }
+    from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
 
-    to {
-        transform: translateX(0);
-        opacity: 1;
+@media (max-width: 576px) {
+    .toast-container {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: none;
     }
 }
+
+/* ===========================================================================
+   PAGINAÇÃO
+   =========================================================================== */
+
+.pagination .page-link {
+    color: var(--st-gray-900);
+    border-color: var(--st-gray-300);
+    border-radius: var(--st-radius-sm);
+    margin: 0 2px;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: var(--st-black);
+    border-color: var(--st-black);
+}
+
+.pagination .page-item.disabled .page-link {
+    color: var(--st-gray-600);
+}
+
+/* ===========================================================================
+   LAYOUT: SIDEBAR
+   =========================================================================== */
+
 html {
   position: relative;
   min-height: 100%;
@@ -91,43 +491,28 @@ html {
 body {
   margin-bottom: 60px;
 }
-body {
-    margin: 0;
-    overflow-x: hidden;
-    background-color: #f1f5f9;
-}
 
-/* SIDEBAR */
 .sidebar {
-    width: 240px;
+    width: 250px;
     height: 100vh;
     position: fixed;
     top: 0;
     left: 0;
-    background: #111827;
-    color: #fff;
+    background: var(--st-black);
+    color: var(--st-white);
     display: flex;
     flex-direction: column;
-    transition: left 0.3s ease;
+    transition: left .25s ease;
     z-index: 1000;
-    padding-top: 60px; /* espa�o para topbar */
+    padding-top: 60px;
 }
 
-    /* Sem isso, com o dropdown do Financeiro aberto o menu passa da altura
-       da tela e não tem como rolar até os itens de baixo (Empresas,
-       Assinatura) — só a lista de navegação rola, o rodapé (usuário/sair)
-       continua fixo embaixo. */
     .sidebar > ul.nav {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
         overflow-x: hidden;
-        scrollbar-width: thin; /* Firefox */
-        /* O Bootstrap ".nav" já vem com flex-wrap:wrap por padrão, e
-           ".flex-column" não desfaz isso — então quando a lista passava da
-           altura da tela, em vez de só rolar, ela ABRIA UMA SEGUNDA COLUNA
-           (Financeiro/Empresas/Assinatura indo pro lado). É isso que
-           precisa ficar travado em "nowrap". */
+        scrollbar-width: thin;
         flex-wrap: nowrap !important;
     }
 
@@ -136,7 +521,7 @@ body {
         }
 
         .sidebar > ul.nav::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, .12);
+            background: rgba(255, 255, 255, .14);
             border-radius: 2px;
         }
 
@@ -144,8 +529,6 @@ body {
             background: transparent;
         }
 
-    /* Logo/cabeçalho e rodapé nunca encolhem — só a lista de navegação no
-       meio é que cede espaço/rola. */
     .sidebar > .mb-2,
     .sidebar > h4,
     .sidebar > hr,
@@ -153,94 +536,105 @@ body {
         flex-shrink: 0;
     }
 
-
     .sidebar h4 {
-        font-weight: bold;
+        font-weight: 600;
         text-align: center;
         padding: 1rem 0;
+        color: var(--st-white);
     }
 
     .sidebar-logo-wrap {
         display: flex;
         align-items: center;
         justify-content: center;
-        /* .sidebar já reserva 60px de padding-top pra topbar — aqui é só o
-           respiro dentro do próprio bloco da logo, centralizada nos dois eixos. */
         padding: 8px 0 16px;
     }
 
     .sidebar-logo {
-        width: 120px;
-        height: 120px;
+        width: 108px;
+        height: 108px;
         border-radius: 50%;
         object-fit: contain;
         background: #fff;
         padding: 8px;
-        border: 4px solid #2563eb;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+        border: 3px solid rgba(255, 255, 255, .18);
+        box-shadow: var(--st-shadow);
     }
 
     .sidebar hr {
-        border-color: #1f2937;
+        border-color: rgba(255, 255, 255, .12);
+        margin: 0 1rem;
     }
 
     .sidebar .nav-link {
-        color: #9ca3af;
-        border-radius: 8px;
-        margin: 5px;
+        color: rgba(255, 255, 255, .68);
+        border-radius: var(--st-radius-sm);
+        margin: 2px 10px;
+        padding: .55rem .75rem;
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.65rem;
+        font-size: .92rem;
+        font-weight: 500;
+        transition: background-color .15s ease, color .15s ease;
     }
 
+        .sidebar .nav-link i {
+            font-size: 1.05rem;
+            width: 1.2rem;
+            text-align: center;
+        }
+
         .sidebar .nav-link:hover {
-            background: #1f2937;
+            background: rgba(255, 255, 255, .08);
             color: #fff;
         }
 
     .sidebar .active {
-        background: #2563eb;
+        background: rgba(255, 255, 255, .14) !important;
         color: #fff !important;
     }
 
-    /* LOGIN RODAP� */
-    .sidebar .sidebar-footer {
-        margin-top: auto;
-        padding: 1rem;
-        border-top: 1px solid #1f2937;
+    .sidebar .nav-locked {
+        opacity: .4;
     }
 
-/* CONTE�DO */
+    .sidebar .sidebar-footer {
+        margin-top: auto;
+        padding: 1rem 1.15rem;
+        border-top: 1px solid rgba(255, 255, 255, .12);
+    }
+
+/* ===========================================================================
+   LAYOUT: CONTEÚDO / TOPBAR
+   =========================================================================== */
+
 .content {
-    margin-left: 240px;
+    margin-left: 250px;
     min-height: 100vh;
-    transition: margin-left 0.3s ease;
-    padding: 20px;
+    transition: margin-left 0.25s ease;
+    padding: 24px;
 }
 
-/* TOPBAR */
-/* --- TOPBAR --- */
 .topbar {
     height: 60px;
-    background: #fff;
-    border-bottom: 1px solid #e5e7eb;
+    background: var(--st-white);
+    border-bottom: 1px solid var(--st-gray-300);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 20px;
+    padding: 0 24px;
     box-sizing: border-box;
     z-index: 1100;
 }
 
-/* DESKTOP: topbar fica alinhada ao conte�do, dentro do layout */
 @media (min-width: 769px) {
     .topbar {
         width: 100%;
-        position: relative; /* dentro do fluxo */
+        position: relative;
     }
 }
 
-/* MOBILE: topbar ocupa 100% da tela e fica fixa */
 @media (max-width: 768px) {
     .topbar {
         width: 100%;
@@ -251,25 +645,31 @@ body {
         padding-left: 15px;
         padding-right: 15px;
     }
+
+    .content {
+        padding: 16px;
+    }
 }
 
-/* HAMBURGER */
 .hamburger {
     display: none;
     font-size: 1.5rem;
     cursor: pointer;
+    color: var(--st-gray-900);
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
 }
 
-/* CARDS */
-.card {
-    border: none;
-    border-radius: 12px;
-}
+/* ===========================================================================
+   RESPONSIVO MOBILE — sidebar vira gaveta com fundo escurecido
+   =========================================================================== */
 
-/* RESPONSIVO MOBILE */
 @media (max-width: 768px) {
     .sidebar {
-        left: -240px;
+        left: -260px;
+        box-shadow: var(--st-shadow-lg);
     }
 
         .sidebar.show {
@@ -281,9 +681,9 @@ body {
     }
 
     .hamburger {
-        display: block;
+        display: flex;
     }
-    /* overlay */
+
     #overlay {
         display: none;
         position: fixed;
@@ -291,29 +691,32 @@ body {
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0,0,0,0.3);
-        z-index: 1050;
+        background: rgba(17, 17, 17, .45);
+        backdrop-filter: blur(1px);
+        z-index: 999;
     }
 
         #overlay.show {
             display: block;
         }
-}
 
-.table-fixed {
-    table-layout: fixed; /* for�a largura proporcional */
-    width: 100%;
-}
-
-    .table-fixed th, .table-fixed td {
-        overflow-wrap: break-word; /* quebra texto longo */
-        word-wrap: break-word;
-        white-space: normal;
+    /* Área de toque confortável no celular */
+    .btn {
+        min-height: 40px;
     }
 
+    .sidebar .nav-link {
+        padding: .7rem .75rem;
+    }
+}
+
+/* ===========================================================================
+   CARDS MOBILE (listagens que viram cards em telas pequenas)
+   =========================================================================== */
+
 .mobile-card {
-    border: none;
-    border-radius: 12px;
+    border: 1px solid var(--st-gray-300);
+    border-radius: var(--st-radius);
 }
 
 .mobile-info {
@@ -326,8 +729,9 @@ body {
 
     .mobile-info label {
         font-weight: 600;
-        color: #6c757d;
+        color: var(--st-gray-600);
         margin: 0;
+        font-size: .82rem;
     }
 
     .mobile-info span {
@@ -338,6 +742,7 @@ body {
 .mobile-actions {
     display: flex;
     flex-direction: column;
+    gap: .5rem;
 }
 
 @media (max-width: 576px) {
@@ -354,35 +759,18 @@ body {
     .mobile-card .btn {
         width: 100%;
     }
-}
 
-.status-select {
-    border: none;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    width: 130px;
-    cursor: pointer;
-    padding: 4px 10px;
-    box-shadow: none !important;
-}
+    /* Formulários em coluna única no celular */
+    .row > [class*="col-"] {
+        margin-bottom: .25rem;
+    }
 
-.status-agendado {
-    background: #e7f1ff;
-    color: #0d6efd;
-}
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
 
-.status-confirmado {
-    background: #e8f8ee;
-    color: #198754;
-}
-
-.status-cancelado {
-    background: #fdeaea;
-    color: #dc3545;
-}
-
-.status-finalizado {
-    background: #f1f3f5;
-    color: #6c757d;
+        .page-header .btn {
+            width: 100%;
+        }
 }

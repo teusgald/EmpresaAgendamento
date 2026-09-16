@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using EmpresaAgendamento.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 public class HomeController : Controller
 {
@@ -32,6 +34,29 @@ public class HomeController : Controller
     [HttpGet("/acesso-negado")]
     [AllowAnonymous]
     public IActionResult AcessoNegado()
+    {
+        return View();
+    }
+
+    // Destino do app.UseExceptionHandler("/Home/Error") em produção (ver
+    // Program.cs) — sem essa ação, um erro não tratado batia numa rota que
+    // não existia e o usuário via só uma tela em branco/erro cru do servidor.
+    [HttpGet("/Home/Error")]
+    [AllowAnonymous]
+    public IActionResult Error()
+    {
+        return View(new ErrorViewModel
+        {
+            RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+        });
+    }
+
+    // Tela mostrada quando "Manutencao:Ativa" está ligado no appsettings
+    // (ver o middleware em Program.cs) — todo o resto do site redireciona
+    // pra cá enquanto estiver ativo.
+    [HttpGet("/manutencao")]
+    [AllowAnonymous]
+    public IActionResult Manutencao()
     {
         return View();
     }

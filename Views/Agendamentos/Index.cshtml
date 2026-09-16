@@ -83,13 +83,28 @@
 
     </div>
 </div>
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+<div class="page-header">
+    <div>
+        <h3 class="fw-bold mb-0">Agendamentos</h3>
+        <p class="page-subtitle">Gerencie os horários marcados na sua empresa.</p>
+    </div>
 
     <a asp-action="Create" class="btn btn-primary">
-        + Novo Agendamento
+        <i class="bi bi-plus-lg me-1"></i>Novo Agendamento
     </a>
-
 </div>
+
+@if (!Model.Any())
+{
+    <div class="card shadow-sm">
+        <div class="empty-state">
+            <i class="bi bi-calendar-x"></i>
+            <p>Nenhum agendamento encontrado nessa aba.</p>
+        </div>
+    </div>
+}
+else
+{
     <!-- DESKTOP -->
     <div class="card shadow-sm d-none d-lg-block">
         <div class="card-body">
@@ -397,6 +412,8 @@
     }
 
 </div>
+
+}
 
     @if (ViewBag.TotalPages > 1)
     {

@@ -136,6 +136,33 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 
+// MODO MANUTENÇÃO — liga via appsettings/variável de ambiente
+// ("Manutencao:Ativa": true), sem precisar recompilar. Deixa passar os
+// assets (senão a própria tela de manutenção não carrega o CSS) e a rota
+// da tela em si, e manda todo o resto pra lá.
+app.Use(async (context, next) =>
+{
+    var manutencaoAtiva = app.Configuration.GetValue<bool>("Manutencao:Ativa");
+
+    var path = context.Request.Path.Value ?? "";
+
+    var isAssetOuManutencao =
+        path.StartsWith("/css", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/js", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/lib", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/img", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/uploads", StringComparison.OrdinalIgnoreCase) ||
+        path.Equals("/manutencao", StringComparison.OrdinalIgnoreCase);
+
+    if (manutencaoAtiva && !isAssetOuManutencao)
+    {
+        context.Response.Redirect("/manutencao");
+        return;
+    }
+
+    await next();
+});
+
 app.UseRouting();
 
 app.UseSession();

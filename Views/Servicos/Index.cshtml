@@ -2,15 +2,29 @@
 
 <div class="container-fluid mt-4">
 
-    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
-
-        <h3 class="fw-bold mb-0">Serviços</h3>
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Serviços</h3>
+            <p class="page-subtitle">O que sua empresa oferece pros clientes agendarem.</p>
+        </div>
 
         <a asp-action="Create" class="btn btn-primary">
-            + Novo Serviço
+            <i class="bi bi-plus-lg me-1"></i>Novo Serviço
         </a>
-
     </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-scissors"></i>
+                <p>Nenhum serviço cadastrado ainda.</p>
+                <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Cadastrar o primeiro serviço</a>
+            </div>
+        </div>
+    }
+    else
+    {
 
     <!-- DESKTOP -->
     <div class="card shadow-sm d-none d-lg-block">
@@ -168,6 +182,8 @@
         }
 
     </div>
+
+    }
 
     @if (ViewBag.TotalPages > 1)
     {

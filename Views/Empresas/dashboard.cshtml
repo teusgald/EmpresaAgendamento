@@ -6,6 +6,13 @@
 
 <div class="container-fluid mt-4">
 
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Dashboard</h3>
+            <p class="page-subtitle">Visão geral do seu negócio hoje.</p>
+        </div>
+    </div>
+
     @if (!Model.AssinaturaAtiva)
     {
         <div class="alert alert-warning d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
@@ -82,34 +89,54 @@
     <div class="row g-3 mb-4">
 
         <div class="col-md-3 col-sm-6">
-            <div class="card shadow-sm p-3 text-center">
-                <h6 class="text-muted">Agendamentos Hoje</h6>
-                <h3 class="fw-bold">@Model.TotalAgendamentosHoje</h3>
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Agendamentos hoje</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalAgendamentosHoje</h3>
+                    </div>
+                    <i class="bi bi-calendar-check fs-4 text-muted"></i>
+                </div>
             </div>
         </div>
 
         <div class="col-md-3 col-sm-6">
-            <div class="card shadow-sm p-3 text-center">
-                <h6 class="text-muted">Faturamento Mensal</h6>
-                <h3 class="text-success fw-bold">
-                    @Model.FaturamentoMensal.ToString("C")
-                </h3>
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Faturamento mensal</h6>
+                        <h3 class="fw-bold mb-0">
+                            @Model.FaturamentoMensal.ToString("C")
+                        </h3>
+                    </div>
+                    <i class="bi bi-cash-stack fs-4 text-muted"></i>
+                </div>
             </div>
         </div>
 
         <div class="col-md-3 col-sm-6">
-            <div class="card shadow-sm p-3 text-center">
-                <h6 class="text-muted">Clientes Ativos</h6>
-                <h3 class="fw-bold">@Model.TotalClientes</h3>
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Clientes ativos</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalClientes</h3>
+                    </div>
+                    <i class="bi bi-people fs-4 text-muted"></i>
+                </div>
             </div>
         </div>
 
         <div class="col-md-3 col-sm-6">
-            <div class="card shadow-sm p-3 text-center">
-                <h6 class="text-muted">Crescimento</h6>
-                <h3 class="text-primary fw-bold">
-                    @Math.Round(Model.Crescimento, 2)%
-                </h3>
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Crescimento</h6>
+                        <h3 class="fw-bold mb-0">
+                            @Math.Round(Model.Crescimento, 2)%
+                        </h3>
+                    </div>
+                    <i class="bi bi-graph-up-arrow fs-4 text-muted"></i>
+                </div>
             </div>
         </div>
 
@@ -120,7 +147,7 @@
 
         <div class="col-lg-6">
             <div class="card shadow-sm p-3">
-                <h6>Faturamento Mensal</h6>
+                <h6 class="fw-semibold mb-2">Faturamento mensal</h6>
 
                 <div style="height:300px">
                     <canvas id="graficoFaturamento"></canvas>
@@ -130,7 +157,7 @@
 
         <div class="col-lg-6">
             <div class="card shadow-sm p-3">
-                <h6>Serviços Populares</h6>
+                <h6 class="fw-semibold mb-2">Serviços populares</h6>
 
                 <div style="height:300px">
                     <canvas id="graficoServicos"></canvas>
@@ -146,7 +173,7 @@
         <div class="card-body">
 
             <h5 class="fw-bold mb-3">
-                Agendamentos de Hoje
+                Agendamentos de hoje
             </h5>
 
             @if (Model.AgendamentosHoje.Any())
@@ -215,8 +242,9 @@
             }
             else
             {
-                <div class="alert alert-info">
-                    Nenhum agendamento para hoje.
+                <div class="empty-state">
+                    <i class="bi bi-calendar-x"></i>
+                    <p>Nenhum agendamento para hoje.</p>
                 </div>
             }
 
