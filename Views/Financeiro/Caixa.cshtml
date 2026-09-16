@@ -59,49 +59,59 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Data</th>
-                        <th>Descrição</th>
-                        <th>Categoria</th>
-                        <th>Tipo</th>
-                        <th>Valor</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model)
-                    {
+            @if (!Model.Any())
+            {
+                <div class="empty-state">
+                    <i class="bi bi-safe"></i>
+                    <p>Nenhuma movimentação encontrada.</p>
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover align-middle table-cards-mobile">
+                    <thead class="table-light">
                         <tr>
-                            <td>@item.DataMovimento.ToString("dd/MM/yyyy HH:mm")</td>
-                            <td>@item.Descricao</td>
-                            <td>@(item.Categoria?.Nome ?? "-")</td>
-                            <td>
-                                @if (item.Tipo == TipoMovimentacao.Entrada)
-                                {
-                                    <span class="badge bg-success">Entrada</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-danger">Saída</span>
-                                }
-                            </td>
-                            <td>@item.Valor.ToString("C")</td>
-                            <td>
-                                @if (item.Status == StatusMovimentacao.Estornada)
-                                {
-                                    <span class="badge bg-secondary">Estornada</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-light text-dark border">Confirmada</span>
-                                }
-                            </td>
+                            <th>Data</th>
+                            <th>Descrição</th>
+                            <th>Categoria</th>
+                            <th>Tipo</th>
+                            <th>Valor</th>
+                            <th>Status</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="td-header">@item.DataMovimento.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td data-label="Descrição">@item.Descricao</td>
+                                <td data-label="Categoria">@(item.Categoria?.Nome ?? "-")</td>
+                                <td data-label="Tipo">
+                                    @if (item.Tipo == TipoMovimentacao.Entrada)
+                                    {
+                                        <span class="badge bg-success">Entrada</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-danger">Saída</span>
+                                    }
+                                </td>
+                                <td data-label="Valor">@item.Valor.ToString("C")</td>
+                                <td data-label="Status">
+                                    @if (item.Status == StatusMovimentacao.Estornada)
+                                    {
+                                        <span class="badge bg-secondary">Estornada</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-light text-dark border">Confirmada</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
 
         </div>
     </div>

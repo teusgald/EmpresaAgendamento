@@ -180,7 +180,7 @@
             {
                 <div class="table-responsive">
 
-                    <table class="table table-hover align-middle">
+                    <table class="table table-hover align-middle table-cards-mobile">
 
                         <thead class="table-light">
                             <tr>
@@ -207,25 +207,25 @@
 
                                 <tr>
 
-                                    <td>
+                                    <td class="td-header">
                                         @ag.DataHora.ToString("HH:mm")
                                     </td>
 
-                                    <td>
+                                    <td data-label="Cliente">
                                         @(ag.Cliente?.Nome
                                             ?? ag.NomeClienteAvulso
                                             ?? "-")
                                     </td>
 
-                                    <td>
+                                    <td data-label="Funcionário">
                                         @(ag.Funcionario?.Nome ?? "-")
                                     </td>
 
-                                    <td>
+                                    <td data-label="Serviço">
                                         @ag.Servico?.Nome
                                     </td>
 
-                                    <td>
+                                    <td data-label="Status">
                                         <span class="badge @badge">
                                             @ag.Status
                                         </span>

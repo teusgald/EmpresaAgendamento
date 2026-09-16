@@ -18,7 +18,8 @@
 
                 <h5 class="mb-3">Meus planos assinados</h5>
 
-                <div class="table-responsive">
+                <!-- DESKTOP -->
+                <div class="table-responsive d-none d-lg-block">
                     <table class="table align-middle">
                         <thead class="table-light">
                             <tr>
@@ -73,6 +74,58 @@
                             }
                         </tbody>
                     </table>
+                </div>
+
+                <!-- MOBILE -->
+                <div class="d-lg-none">
+                    @foreach (var assinatura in meusPlanos)
+                    {
+                        <div class="card mobile-card mb-2">
+                            <div class="card-body">
+
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold mb-0">@assinatura.PlanoServico.Nome</h6>
+
+                                    @switch (assinatura.Status)
+                                    {
+                                        case StatusAssinaturaPlano.Ativa:
+                                            <span class="badge bg-success">Ativo</span>
+                                            break;
+                                        case StatusAssinaturaPlano.Pendente:
+                                            <span class="badge bg-warning text-dark">Aguardando</span>
+                                            break;
+                                        default:
+                                            <span class="badge bg-secondary">Cancelado</span>
+                                            break;
+                                    }
+                                </div>
+
+                                <div class="mobile-info">
+                                    <label>Empresa</label>
+                                    <span>@(assinatura.PlanoServico.Empresa.NomeFantasia ?? assinatura.PlanoServico.Empresa.Nome)</span>
+                                </div>
+
+                                <div class="mobile-info">
+                                    <label>Créditos usados</label>
+                                    <span>
+                                        @(assinatura.Status == StatusAssinaturaPlano.Ativa
+                                            ? $"{assinatura.CreditosUsados} / {assinatura.PlanoServico.QuantidadeUsos}"
+                                            : "—")
+                                    </span>
+                                </div>
+
+                                <div class="mobile-info">
+                                    <label>Vencimento</label>
+                                    <span>
+                                        @(assinatura.Status == StatusAssinaturaPlano.Ativa
+                                            ? assinatura.DataVencimento.ToString("dd/MM/yyyy")
+                                            : "—")
+                                    </span>
+                                </div>
+
+                            </div>
+                        </div>
+                    }
                 </div>
 
             </div>

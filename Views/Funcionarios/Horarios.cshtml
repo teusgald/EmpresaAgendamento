@@ -39,7 +39,7 @@
                 @Html.AntiForgeryToken()
 
                 <div class="table-responsive">
-                    <table class="table align-middle">
+                    <table class="table align-middle table-cards-mobile">
                         <thead class="table-light">
                             <tr>
                                 <th>Dia</th>
@@ -57,36 +57,36 @@
                                 var prefixo = $"horarios[{i}]";
 
                                 <tr>
-                                    <td class="fw-semibold">
+                                    <td class="fw-semibold td-header">
                                         @NomeDia(item.DiaSemana)
                                         <input type="hidden" name="@(prefixo).DiaSemana" value="@item.DiaSemana" />
                                     </td>
-                                    <td>
+                                    <td data-label="Trabalha">
                                         <input type="checkbox"
                                                name="@(prefixo).TrabalhaNoDia"
                                                value="true"
                                                class="form-check-input"
                                                checked="@item.TrabalhaNoDia" />
                                     </td>
-                                    <td>
+                                    <td data-label="Início">
                                         <input type="time"
                                                name="@(prefixo).HoraInicio"
                                                value="@item.HoraInicio?.ToString(@"hh\:mm")"
                                                class="form-control form-control-sm" />
                                     </td>
-                                    <td>
+                                    <td data-label="Fim">
                                         <input type="time"
                                                name="@(prefixo).HoraFim"
                                                value="@item.HoraFim?.ToString(@"hh\:mm")"
                                                class="form-control form-control-sm" />
                                     </td>
-                                    <td>
+                                    <td data-label="Início do intervalo">
                                         <input type="time"
                                                name="@(prefixo).InicioIntervalo"
                                                value="@item.InicioIntervalo?.ToString(@"hh\:mm")"
                                                class="form-control form-control-sm" />
                                     </td>
-                                    <td>
+                                    <td data-label="Fim do intervalo">
                                         <input type="time"
                                                name="@(prefixo).FimIntervalo"
                                                value="@item.FimIntervalo?.ToString(@"hh\:mm")"

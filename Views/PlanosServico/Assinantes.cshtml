@@ -3,17 +3,17 @@
 
 <div class="container-fluid mt-4">
 
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="page-header">
         <div>
             <h3 class="fw-bold mb-0">Assinantes — @Model.Nome</h3>
-            <span class="text-muted small">
+            <p class="page-subtitle">
                 @Model.QuantidadeUsos sessões por período
                 (@(Model.Periodicidade == PeriodicidadePlanoServico.Semanal ? "semanal" : "mensal"))
                 @if (Model.PercentualJurosAtraso.HasValue)
                 {
                     <text> — juros de atraso: @Model.PercentualJurosAtraso.Value.ToString("F2")%</text>
                 }
-            </span>
+            </p>
         </div>
 
         <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
@@ -23,6 +23,10 @@
         var pendentes = Model.Assinaturas.Where(a => a.Status == StatusAssinaturaPlano.Pendente).ToList();
         var ativas = Model.Assinaturas.Where(a => a.Status == StatusAssinaturaPlano.Ativa).ToList();
         var canceladas = Model.Assinaturas.Where(a => a.Status == StatusAssinaturaPlano.Cancelada).ToList();
+        var historico = ativas.Concat(canceladas)
+            .OrderByDescending(a => a.Status == StatusAssinaturaPlano.Ativa)
+            .ThenBy(a => a.Cliente.Nome)
+            .ToList();
     }
 
     @if (pendentes.Any())
@@ -35,7 +39,8 @@
                     Solicitações pendentes de aprovação
                 </h5>
 
-                <div class="table-responsive">
+                <!-- DESKTOP -->
+                <div class="table-responsive d-none d-lg-block">
                     <table class="table align-middle">
                         <thead class="table-light">
                             <tr>
@@ -75,6 +80,45 @@
                     </table>
                 </div>
 
+                <!-- MOBILE -->
+                <div class="d-lg-none">
+                    @foreach (var assinatura in pendentes)
+                    {
+                        <div class="card mobile-card mb-2">
+                            <div class="card-body">
+                                <div class="mobile-info">
+                                    <label>Cliente</label>
+                                    <span>@assinatura.Cliente.Nome</span>
+                                </div>
+                                <div class="mobile-info">
+                                    <label>Solicitado em</label>
+                                    <span>@assinatura.DataInicio.ToString("dd/MM/yyyy")</span>
+                                </div>
+
+                                <div class="mobile-actions mt-2">
+                                    <form asp-action="AprovarAssinatura" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@assinatura.Id" />
+                                        <input type="hidden" name="planoServicoId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-success w-100">
+                                            Aprovar (confirmei o pagamento)
+                                        </button>
+                                    </form>
+
+                                    <form asp-action="CancelarAssinatura" method="post">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@assinatura.Id" />
+                                        <input type="hidden" name="planoServicoId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-outline-danger w-100">
+                                            Recusar
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
             </div>
         </div>
     }
@@ -107,45 +151,96 @@
 
             <h5 class="mb-3">Assinantes ativos e histórico</h5>
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
+            @if (!historico.Any())
+            {
+                <div class="empty-state">
+                    <i class="bi bi-people"></i>
+                    <p>Nenhum cliente assinante ainda.</p>
+                </div>
+            }
+            else
+            {
+                <!-- DESKTOP -->
+                <div class="table-responsive d-none d-lg-block">
+                    <table class="table table-hover align-middle">
 
-                    <thead class="table-light">
-                        <tr>
-                            <th>Cliente</th>
-                            <th>Assinante desde</th>
-                            <th>Créditos usados no período</th>
-                            <th>Vencimento do período</th>
-                            <th>Status</th>
-                            <th class="text-end">Ações</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-
-                        @foreach (var assinatura in ativas.Concat(canceladas).OrderByDescending(a => a.Status == StatusAssinaturaPlano.Ativa).ThenBy(a => a.Cliente.Nome))
-                        {
+                        <thead class="table-light">
                             <tr>
-                                <td class="fw-semibold">@assinatura.Cliente.Nome</td>
+                                <th>Cliente</th>
+                                <th>Assinante desde</th>
+                                <th>Créditos usados no período</th>
+                                <th>Vencimento do período</th>
+                                <th>Status</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
 
-                                <td>@assinatura.DataInicio.ToString("dd/MM/yyyy")</td>
+                        <tbody>
 
-                                <td>
-                                    @assinatura.CreditosUsados / @Model.QuantidadeUsos
-                                </td>
+                            @foreach (var assinatura in historico)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@assinatura.Cliente.Nome</td>
 
-                                <td>
-                                    @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
-                                    {
-                                        @assinatura.DataVencimento.ToString("dd/MM/yyyy")
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted">—</span>
-                                    }
-                                </td>
+                                    <td>@assinatura.DataInicio.ToString("dd/MM/yyyy")</td>
 
-                                <td>
+                                    <td>
+                                        @assinatura.CreditosUsados / @Model.QuantidadeUsos
+                                    </td>
+
+                                    <td>
+                                        @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
+                                        {
+                                            @assinatura.DataVencimento.ToString("dd/MM/yyyy")
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">—</span>
+                                        }
+                                    </td>
+
+                                    <td>
+                                        @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
+                                        {
+                                            <span class="badge bg-success">Ativa</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Cancelada</span>
+                                        }
+                                    </td>
+
+                                    <td class="text-end">
+                                        @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
+                                        {
+                                            <form asp-action="CancelarAssinatura" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@assinatura.Id" />
+                                                <input type="hidden" name="planoServicoId" value="@Model.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    Cancelar
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+
+                        </tbody>
+
+                    </table>
+                </div>
+
+                <!-- MOBILE -->
+                <div class="d-lg-none">
+                    @foreach (var assinatura in historico)
+                    {
+                        <div class="card mobile-card mb-2">
+                            <div class="card-body">
+
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold mb-0">@assinatura.Cliente.Nome</h6>
+
                                     @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
                                     {
                                         <span class="badge bg-success">Ativa</span>
@@ -154,37 +249,43 @@
                                     {
                                         <span class="badge bg-secondary">Cancelada</span>
                                     }
-                                </td>
+                                </div>
 
-                                <td class="text-end">
-                                    @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
-                                    {
-                                        <form asp-action="CancelarAssinatura" method="post" class="d-inline">
-                                            @Html.AntiForgeryToken()
-                                            <input type="hidden" name="id" value="@assinatura.Id" />
-                                            <input type="hidden" name="planoServicoId" value="@Model.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                Cancelar
-                                            </button>
-                                        </form>
-                                    }
-                                </td>
-                            </tr>
-                        }
+                                <div class="mobile-info">
+                                    <label>Assinante desde</label>
+                                    <span>@assinatura.DataInicio.ToString("dd/MM/yyyy")</span>
+                                </div>
 
-                        @if (!ativas.Any() && !canceladas.Any())
-                        {
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
-                                    Nenhum cliente assinante ainda.
-                                </td>
-                            </tr>
-                        }
+                                <div class="mobile-info">
+                                    <label>Créditos usados</label>
+                                    <span>@assinatura.CreditosUsados / @Model.QuantidadeUsos</span>
+                                </div>
 
-                    </tbody>
+                                <div class="mobile-info">
+                                    <label>Vencimento</label>
+                                    <span>
+                                        @(assinatura.Status == StatusAssinaturaPlano.Ativa
+                                            ? assinatura.DataVencimento.ToString("dd/MM/yyyy")
+                                            : "—")
+                                    </span>
+                                </div>
 
-                </table>
-            </div>
+                                @if (assinatura.Status == StatusAssinaturaPlano.Ativa)
+                                {
+                                    <form asp-action="CancelarAssinatura" method="post" class="mt-2">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@assinatura.Id" />
+                                        <input type="hidden" name="planoServicoId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-outline-danger w-100">
+                                            Cancelar
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
 
         </div>
     </div>

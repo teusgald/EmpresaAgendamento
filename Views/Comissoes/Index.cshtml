@@ -100,40 +100,50 @@
     <div class="card shadow-sm">
         <div class="card-body">
 
-            <table class="table table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Data</th>
-                        <th>Funcionário</th>
-                        <th>Cliente</th>
-                        <th>Serviço</th>
-                        <th>Comissão</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Model)
-                    {
+            @if (!Model.Any())
+            {
+                <div class="empty-state">
+                    <i class="bi bi-percent"></i>
+                    <p>Nenhuma comissão encontrada.</p>
+                </div>
+            }
+            else
+            {
+                <table class="table table-hover align-middle table-cards-mobile">
+                    <thead class="table-light">
                         <tr>
-                            <td>@item.Agendamento.DataHora.ToString("dd/MM/yyyy")</td>
-                            <td>@item.Funcionario.Nome</td>
-                            <td>@(item.Agendamento.Cliente?.Nome ?? item.Agendamento.NomeClienteAvulso ?? "-")</td>
-                            <td>@item.Agendamento.Servico?.Nome</td>
-                            <td>@(item.ValorComissao?.ToString("C") ?? "-")</td>
-                            <td>
-                                @if (item.ValorRecebido != null)
-                                {
-                                    <span class="badge bg-success">Paga</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-warning text-dark">Pendente</span>
-                                }
-                            </td>
+                            <th>Data</th>
+                            <th>Funcionário</th>
+                            <th>Cliente</th>
+                            <th>Serviço</th>
+                            <th>Comissão</th>
+                            <th>Status</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td class="td-header" data-label="Data">@item.Agendamento.DataHora.ToString("dd/MM/yyyy")</td>
+                                <td data-label="Funcionário">@item.Funcionario.Nome</td>
+                                <td data-label="Cliente">@(item.Agendamento.Cliente?.Nome ?? item.Agendamento.NomeClienteAvulso ?? "-")</td>
+                                <td data-label="Serviço">@item.Agendamento.Servico?.Nome</td>
+                                <td data-label="Comissão">@(item.ValorComissao?.ToString("C") ?? "-")</td>
+                                <td data-label="Status">
+                                    @if (item.ValorRecebido != null)
+                                    {
+                                        <span class="badge bg-success">Paga</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Pendente</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
 
         </div>
     </div>

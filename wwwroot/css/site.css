@@ -311,6 +311,70 @@ a {
         background-color: var(--st-bg);
     }
 
+/* Tabela com inputs de formulário (uma linha = vários campos da mesma
+   submissão) — não dá pra duplicar o HTML pra ter uma versão "cards" no
+   mobile sem duplicar os inputs (name repetido quebra o binding). Em vez
+   disso, a própria tabela vira "cards" via CSS, sem duplicar o DOM: usar
+   junto com um data-label="..." em cada <td> (e a 1ª coluna com a classe
+   "td-header" pra virar o título do card). */
+@media (max-width: 991.98px) {
+
+    .table-cards-mobile thead {
+        display: none;
+    }
+
+    .table-cards-mobile,
+    .table-cards-mobile tbody,
+    .table-cards-mobile tr,
+    .table-cards-mobile td {
+        display: block;
+        width: 100%;
+    }
+
+    .table-cards-mobile tr {
+        border: 1px solid var(--st-gray-300);
+        border-radius: var(--st-radius);
+        margin-bottom: .75rem;
+        padding: .75rem;
+        background: var(--st-white);
+    }
+
+    .table-cards-mobile td {
+        border: none !important;
+        padding: .35rem 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+    }
+
+        .table-cards-mobile td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            color: var(--st-gray-600);
+            font-size: .8rem;
+            flex-shrink: 0;
+        }
+
+        .table-cards-mobile td .form-control,
+        .table-cards-mobile td .form-select {
+            max-width: 55%;
+        }
+
+    .table-cards-mobile td.td-header {
+        display: block;
+        font-weight: 700;
+        font-size: 1rem;
+        padding-bottom: .5rem;
+        border-bottom: 1px solid var(--st-gray-300);
+        margin-bottom: .5rem;
+    }
+
+        .table-cards-mobile td.td-header::before {
+            content: none;
+        }
+}
+
 .table-fixed {
     table-layout: fixed;
     width: 100%;
