@@ -30,6 +30,22 @@ namespace EmpresaAgendamento.Models
 
         public bool PermiteAPI { get; set; }
 
+        // ─────────────────────────────────────────────
+        // 💳 STRIPE (mapeamento do plano local para o Stripe)
+        // ─────────────────────────────────────────────
+
+        public decimal? ValorAnual { get; set; }
+
+        [StringLength(60)]
+        public string? StripePriceIdMensal { get; set; }
+
+        [StringLength(60)]
+        public string? StripePriceIdAnual { get; set; }
+
+        // Cupom aplicado no checkout mensal (ex.: 3 primeiros meses com desconto).
+        [StringLength(60)]
+        public string? StripeCouponIdPromocional { get; set; }
+
         public ICollection<Empresa> Empresas { get; set; }
     = new List<Empresa>();
     }

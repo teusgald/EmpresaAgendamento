@@ -22,7 +22,8 @@ namespace EmpresaAgendamento.Services
             _signInManager = signInManager;
         }
 
-        public async Task<(bool Success, string Error)> RegisterAsync(EmpresaRegisterViewModel model)
+        public async Task<(bool Success, string Error, ApplicationUser? User)> RegisterAsync(
+            EmpresaRegisterViewModel model, string? tipoPlanoEscolhido = null)
         {
             var empresaExistente = _userManager.Users
                 .Any(x =>
@@ -31,13 +32,15 @@ namespace EmpresaAgendamento.Services
 
             if (empresaExistente)
             {
-                return (false, "Já existe uma empresa cadastrada com este e-mail.");
+                return (false, "Já existe uma empresa cadastrada com este e-mail.", null);
             }
 
             var user = new ApplicationUser
             {
                 UserName = $"empresa-{Guid.NewGuid()}",
-                Email = model.Email
+                Email = model.Email,
+                NomeCompleto = model.NomeResponsavel,
+                PhoneNumber = model.Telefone
             };
 
             var result = await _userManager.CreateAsync(user, model.Password);
@@ -47,7 +50,8 @@ namespace EmpresaAgendamento.Services
                 return (
                     false,
                     string.Join("<br>",
-                        result.Errors.Select(x => x.Description))
+                        result.Errors.Select(x => x.Description)),
+                    null
                 );
             }
 
@@ -56,7 +60,11 @@ namespace EmpresaAgendamento.Services
             var empresa = new Empresa
             {
                 Nome = model.NomeEmpresa,
-                EmailContato = model.Email
+                EmailContato = model.Email,
+                Telefone = model.Telefone,
+                WhatsApp = model.Telefone,
+                SegmentoAtuacao = model.SegmentoAtuacao,
+                TipoPlanoEscolhido = tipoPlanoEscolhido == "anual" ? "anual" : "mensal"
             };
 
             _context.Empresas.Add(empresa);
@@ -66,9 +74,9 @@ namespace EmpresaAgendamento.Services
 
             await _userManager.UpdateAsync(user);
 
-            await _signInManager.SignInAsync(user, false);
-
-            return (true, null);
+            // Sem sign-in automático — precisa confirmar o e-mail primeiro
+            // (o controller envia o e-mail de confirmação com o usuário retornado aqui).
+            return (true, null, user);
         }
 
         public async Task<(bool Success, string Error)> LoginAsync(EmpresaLoginViewModel model)
@@ -92,10 +100,27 @@ namespace EmpresaAgendamento.Services
                 return (false, "Empresa não encontrada.");
 
             var result = await _signInManager.PasswordSignInAsync(
-                user, model.Password, false, false);
+                user, model.Password, false, true);
 
             if (!result.Succeeded)
-                return (false, "Email ou senha inválidos.");
+            {
+                string erro;
+
+                if (result.IsLockedOut)
+                {
+                    erro = "Muitas tentativas de login. Tente novamente em alguns minutos.";
+                }
+                else if (result.IsNotAllowed)
+                {
+                    erro = "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada.";
+                }
+                else
+                {
+                    erro = "Email ou senha inválidos.";
+                }
+
+                return (false, erro);
+            }
 
             return (true, null);
         }

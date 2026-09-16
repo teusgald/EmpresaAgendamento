@@ -634,7 +634,7 @@
                     </p>
 
                     <div class="hero-actions">
-                        <a href="/Identity/Account/Register" class="btn btn-dark btn-lg px-4">
+                        <a href="#" onclick="abrirCadastroComPlano('mensal'); return false;" class="btn btn-dark btn-lg px-4">
                             Começar Agora
                         </a>
 
@@ -815,9 +815,15 @@
                         <h5 class="text-light">Mensal</h5>
                         <p class="text-secondary mb-4">Ideal para começar</p>
 
-                        <div class="price mb-4">
-                            R$ 49,90 <span>/mês</span>
+                        <div class="price mb-1">
+                            <span class="text-decoration-line-through text-secondary" style="font-size:1.1rem;">R$ 19,99</span>
                         </div>
+                        <div class="price mb-4">
+                            R$ 9,90 <span>/mês</span>
+                        </div>
+                        <p class="text-secondary small mb-4" style="margin-top:-1rem;">
+                            Nos 3 primeiros meses. Depois, R$ 19,99/mês.
+                        </p>
 
                         <ul class="plan-list">
                             <li><i class="bi bi-check2"></i> Agendamentos ilimitados</li>
@@ -825,7 +831,7 @@
                             <li><i class="bi bi-check2"></i> Controle financeiro</li>
                         </ul>
 
-                        <a href="/Identity/Account/Register" class="btn btn-plan mt-auto">
+                        <a href="#" onclick="abrirCadastroComPlano('mensal'); return false;" class="btn btn-plan mt-auto">
                             Assinar Mensal
                         </a>
 
@@ -836,13 +842,13 @@
                 <div class="col-md-5">
                     <div class="plan-card highlight">
 
-                        <div class="badge-plan">Economize 17%</div>
+                        <div class="badge-plan">Economize ~2 meses</div>
 
                         <h5>Anual</h5>
                         <p class="text-light-50 mb-4">Melhor custo-benefício</p>
 
                         <div class="price mb-4">
-                            R$ 99,90 <span>/ano</span>
+                            R$ 199,90 <span>/ano</span>
                         </div>
 
                         <ul class="plan-list">
@@ -852,7 +858,7 @@
                             <li><i class="bi bi-check2"></i> Suporte prioritário</li>
                         </ul>
 
-                        <a href="/Identity/Account/Register" class="btn btn-plan-primary mt-auto">
+                        <a href="#" onclick="abrirCadastroComPlano('anual'); return false;" class="btn btn-plan-primary mt-auto">
                             Assinar Anual
                         </a>
 
@@ -872,7 +878,7 @@
                 Junte-se a profissionais que já automatizaram seus atendimentos.
             </p>
 
-            <a href="/Identity/Account/Register" class="btn btn-primary btn-lg">
+            <a href="#" onclick="abrirCadastroComPlano('mensal'); return false;" class="btn btn-primary btn-lg">
                 Começar Agora
             </a>
         </div>
@@ -963,6 +969,22 @@
                 let resetEmail = "";
                 let resetToken = "";
                 let resetType = "";
+                let planoEscolhido = "mensal";
+
+        // Usado pelos cards de preço/CTAs — abre o cadastro de empresa já
+        // "lembrando" qual plano a pessoa escolheu, pra mandar direto pro
+        // checkout certo depois que ela confirmar o e-mail e logar.
+        function abrirCadastroComPlano(tipoPlano) {
+
+            planoEscolhido = tipoPlano;
+            mode = "register";
+
+            const modal = document.getElementById("loginModal");
+
+            if (modal) {
+                new bootstrap.Modal(modal).show();
+            }
+        }
 
         // ===============================
         // 🔄 LOAD DINÂMICO
@@ -1167,6 +1189,10 @@
 
             const formData = new FormData(form);
 
+            if (type === "empresa-register") {
+                formData.append("tipoPlanoEscolhido", planoEscolhido);
+            }
+
             let url = "";
 
             switch (type) {
@@ -1219,7 +1245,7 @@
                             return;
                         }
 
-                        showSuccess(form, "Sucesso!");
+                        showSuccess(form, data.message || "Sucesso!");
 
                         // RESET DE SENHA
                         if (type.includes("reset")) {
@@ -1361,6 +1387,14 @@
 
                 if (reset === "success") {
                     alert("Senha alterada com sucesso!");
+                }
+
+                const confirmado = params.get("confirmado");
+
+                if (confirmado === "true") {
+                    alert("E-mail confirmado com sucesso! Você já pode entrar.");
+                } else if (confirmado === "false") {
+                    alert("Não foi possível confirmar seu e-mail. O link pode ter expirado.");
                 }
                 }
 

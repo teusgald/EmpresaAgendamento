@@ -1,27 +1,82 @@
-﻿@using EmpresaAgendamento.Models.ViewModels
+@using EmpresaAgendamento.Models.ViewModels
 @model EmpresaRegisterViewModel
 
 <div class="auth-card">
 
     <div class="text-center mb-4">
         <i class="bi bi-building auth-icon"></i>
-        <h4 class="auth-title">Cadastro Empresa</h4>
+        <h4 class="auth-title mb-1">Crie sua conta empresarial</h4>
+        <p class="text-muted small mb-0">
+            Comece a gerenciar seus agendamentos em poucos minutos.
+        </p>
     </div>
 
-    <form id="empresaRegisterForm"  data-type="empresa-register">
+    <form id="empresaRegisterForm" data-type="empresa-register">
+        @Html.AntiForgeryToken()
 
-        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        <div asp-validation-summary="All" class="text-danger mb-3 small"></div>
 
-        <div class="mb-3">
-            <input asp-for="NomeEmpresa" class="form-control" placeholder="Nome da empresa" />
+        <div class="row g-2">
+            <div class="col-md-6 mb-3">
+                <label class="form-label small fw-semibold">Seu nome</label>
+                <input asp-for="NomeResponsavel" class="form-control" placeholder="Nome completo" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label small fw-semibold">Telefone / WhatsApp</label>
+                <input asp-for="Telefone" class="form-control" placeholder="(00) 00000-0000" />
+            </div>
+        </div>
+
+        <div class="row g-2">
+            <div class="col-md-7 mb-3">
+                <label class="form-label small fw-semibold">Nome da empresa</label>
+                <input asp-for="NomeEmpresa" class="form-control" placeholder="Ex.: Barbearia do João" />
+            </div>
+
+            <div class="col-md-5 mb-3">
+                <label class="form-label small fw-semibold">Segmento</label>
+                <select asp-for="SegmentoAtuacao" class="form-select">
+                    <option value="">Selecione</option>
+                    <option>Barbearia</option>
+                    <option>Salão de Beleza</option>
+                    <option>Clínica de Estética</option>
+                    <option>Manicure e Pedicure</option>
+                    <option>Estúdio de Tatuagem</option>
+                    <option>Academia / Personal Trainer</option>
+                    <option>Consultório / Clínica</option>
+                    <option>Outro</option>
+                </select>
+            </div>
         </div>
 
         <div class="mb-3">
-            <input asp-for="Email" class="form-control" placeholder="Email" />
+            <label class="form-label small fw-semibold">E-mail</label>
+            <input asp-for="Email" type="email" class="form-control" placeholder="seuemail@exemplo.com" />
         </div>
 
-        <div class="mb-3">
-            <input asp-for="Password" type="password" class="form-control" placeholder="Senha" />
+        <div class="row g-2">
+            <div class="col-md-6 mb-3">
+                <label class="form-label small fw-semibold">Senha</label>
+                <input asp-for="Password" type="password" class="form-control" placeholder="Mínimo 8 caracteres" />
+            </div>
+
+            <div class="col-md-6 mb-3">
+                <label class="form-label small fw-semibold">Confirmar senha</label>
+                <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Repita a senha" />
+            </div>
+        </div>
+
+        <div class="form-text mb-3" style="margin-top:-0.5rem;">
+            Use maiúscula, minúscula, número e um símbolo (ex.: @@, #, !).
+        </div>
+
+        <div class="form-check mb-3">
+            <input type="checkbox" name="aceitaTermos" value="true" class="form-check-input" id="aceitaTermosEmpresa" required />
+            <label class="form-check-label small" for="aceitaTermosEmpresa">
+                Li e aceito os <a href="/termos-de-uso" target="_blank">Termos de Uso</a>
+                e a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.
+            </label>
         </div>
 
         <button class="btn btn-dark w-100">

@@ -9,6 +9,7 @@
 
     <form id="forgotForm"
           data-type="empresa-forgot">
+        @Html.AntiForgeryToken()
 
         <input type="email"
                name="Email"

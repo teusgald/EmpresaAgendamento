@@ -49,6 +49,7 @@
 
             <div asp-validation-summary="All" class="text-danger mb-2"></div>
             <form method="post" id="clienteLoginForm" data-type="cliente-login">
+                @Html.AntiForgeryToken()
 
                 <div class="form-floating mb-3">
                     <input asp-for="Email" class="form-control" placeholder="Email" />

@@ -86,20 +86,26 @@ public class ClientesAuthController : Controller
             user,
             model.Password,
             false,
-            false);
+            true);
 
         if (!result.Succeeded)
         {
+            var mensagemErro = result.IsLockedOut
+                ? "Muitas tentativas de login. Tente novamente em alguns minutos."
+                : result.IsNotAllowed
+                    ? "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada."
+                    : "Email ou senha inválidos.";
+
             if (origem == "publico")
             {
                 return Json(new
                 {
                     success = false,
-                    error = "Email ou senha inválidos."
+                    error = mensagemErro
                 });
             }
 
-            ModelState.AddModelError("", "Email ou senha inválidos.");
+            ModelState.AddModelError("", mensagemErro);
             return View(model);
         }
 
@@ -126,7 +132,8 @@ public class ClientesAuthController : Controller
     public IActionResult Register() => View();
 
     [HttpPost("registro")]
-    public async Task<IActionResult> Register(ClienteRegisterViewModel model)
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Register(ClienteRegisterViewModel model, bool aceitaTermos = false)
     {
         if (!ModelState.IsValid)
         {
@@ -134,6 +141,15 @@ public class ClientesAuthController : Controller
             {
                 success = false,
                 error = "Preencha todos os campos corretamente."
+            });
+        }
+
+        if (!aceitaTermos)
+        {
+            return Json(new
+            {
+                success = false,
+                error = "É necessário aceitar os Termos de Uso e a Política de Privacidade."
             });
         }
 
@@ -204,23 +220,33 @@ public class ClientesAuthController : Controller
         await _userManager.UpdateAsync(user);
 
         // =====================================
-        // EMAIL BOAS VINDAS
+        // EMAIL DE CONFIRMAÇÃO
         // =====================================
+        // Sem login automático mais — precisa confirmar o e-mail antes de entrar.
 
         bool emailEnviado = false;
         string erroEmail = "";
 
         try
         {
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            var link =
+                $"{Request.Scheme}://{Request.Host}/cliente/confirmar-email" +
+                $"?userId={Uri.EscapeDataString(user.Id)}" +
+                $"&token={Uri.EscapeDataString(token)}";
+
             await _emailService.SendEmailAsync(
                 user.Email,
-                "Bem-vindo ao Sistema",
+                "Confirme seu e-mail",
                 $@"
             <h2>Olá {cliente.Nome}</h2>
 
-            <p>Sua conta foi criada com sucesso.</p>
+            <p>Sua conta foi criada com sucesso. Falta só confirmar seu e-mail:</p>
 
-            <p>Agora você já pode acessar o sistema e realizar seus agendamentos.</p>
+            <p><a href='{link}'>Confirmar e-mail</a></p>
+
+            <p>Se você não fez esse cadastro, ignore este e-mail.</p>
             ");
 
             emailEnviado = true;
@@ -230,21 +256,35 @@ public class ClientesAuthController : Controller
             erroEmail = ex.Message;
         }
 
-        // =====================================
-        // LOGIN AUTOMÁTICO
-        // =====================================
-
-        await _signInManager.SignInAsync(
-            user,
-            isPersistent: false);
-
         return Json(new
         {
             success = true,
-            redirect = "/Cliente/Agendamentos",
+            message = "Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de entrar.",
             emailEnviado,
             erroEmail
         });
+    }
+
+    [HttpGet("confirmar-email")]
+    public async Task<IActionResult> ConfirmarEmail(string userId, string token)
+    {
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+        {
+            return Redirect("/");
+        }
+
+        var user = await _userManager.FindByIdAsync(userId);
+
+        if (user == null)
+        {
+            return Redirect("/");
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+
+        return Redirect(result.Succeeded
+            ? "/?login=true&type=cliente&confirmado=true"
+            : "/?login=true&type=cliente&confirmado=false");
     }
 
     // =========================
@@ -261,6 +301,7 @@ public class ClientesAuthController : Controller
     public IActionResult Forgot() => View();
 
     [HttpPost("forgot")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Forgot(ForgotViewModel model)
     {
         try
@@ -337,6 +378,7 @@ public class ClientesAuthController : Controller
     }
 
     [HttpPost("resetpassword")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword(
       ResetPasswordViewModel model)
     {

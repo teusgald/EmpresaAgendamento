@@ -1,0 +1,141 @@
+@model EmpresaAgendamento.Models.Empresa
+
+@{
+    ViewData["Title"] = "Assinatura";
+
+    var plano = ViewBag.Plano as EmpresaAgendamento.Models.Plano;
+    var temAssinaturaAtiva = Model.AssinaturaStatus == "active" || Model.AssinaturaStatus == "trialing";
+    var clientSecret = ViewBag.ClientSecret as string;
+    var tipoPlanoSelecionado = ViewBag.TipoPlanoSelecionado as string;
+    var publishableKey = ViewBag.StripePublishableKey as string;
+}
+
+<div class="container-fluid mt-4">
+
+    <h3 class="fw-bold mb-3">Assinatura</h3>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+
+            <h5 class="mb-3">Status atual</h5>
+
+            @if (temAssinaturaAtiva)
+            {
+                <p class="mb-1">
+                    <span class="badge bg-success">Ativa</span>
+                </p>
+
+                @if (Model.AssinaturaValidaAte.HasValue)
+                {
+                    <p class="text-muted mb-3">
+                        Próxima renovação: @Model.AssinaturaValidaAte.Value.ToString("dd/MM/yyyy")
+                    </p>
+                }
+
+                <a asp-action="Portal" class="btn btn-outline-primary">
+                    Gerenciar assinatura (cartão, faturas, cancelar)
+                </a>
+            }
+            else
+            {
+                <p class="mb-1">
+                    <span class="badge bg-secondary">
+                        @(string.IsNullOrEmpty(Model.AssinaturaStatus) ? "Sem assinatura" : Model.AssinaturaStatus)
+                    </span>
+                </p>
+                <p class="text-muted mb-0">
+                    Assine um plano para continuar usando o Simpli Time.
+                </p>
+            }
+
+        </div>
+    </div>
+
+    @if (!temAssinaturaAtiva && plano != null)
+    {
+        if (!string.IsNullOrEmpty(clientSecret))
+        {
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            Pagamento — Plano @(tipoPlanoSelecionado == "anual" ? "Anual" : "Mensal")
+                        </h5>
+                        <a asp-action="Index" class="small text-muted">
+                            <i class="bi bi-arrow-left"></i> Trocar plano
+                        </a>
+                    </div>
+
+                    <div id="checkout" data-client-secret="@clientSecret"></div>
+
+                </div>
+            </div>
+
+            <script src="https://js.stripe.com/v3/"></script>
+            <script>
+                (function () {
+                    var container = document.getElementById("checkout");
+                    var stripe = Stripe("@publishableKey");
+
+                    stripe.initEmbeddedCheckout({
+                        clientSecret: container.dataset.clientSecret
+                    }).then(function (checkout) {
+                        checkout.mount("#checkout");
+                    });
+                })();
+            </script>
+        }
+        else
+        {
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-body">
+                            <h5 class="fw-bold">Plano Mensal</h5>
+
+                            <p class="mb-1">
+                                <span class="text-decoration-line-through text-muted">R$ 19,99/mês</span>
+                            </p>
+
+                            <p class="fs-3 fw-bold text-success mb-1">
+                                R$ 9,90<span class="fs-6 fw-normal">/mês</span>
+                            </p>
+
+                            <p class="text-muted small mb-3">
+                                Nos 3 primeiros meses. Depois, R$ 19,99/mês.
+                            </p>
+
+                            <a asp-action="Index" asp-route-tipoPlano="mensal" class="btn btn-success w-100">
+                                Assinar mensal
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card shadow-sm h-100 border-primary">
+                        <div class="card-body">
+                            <h5 class="fw-bold">Plano Anual</h5>
+
+                            <p class="fs-3 fw-bold mb-1">
+                                R$ 199,90<span class="fs-6 fw-normal">/ano</span>
+                            </p>
+
+                            <p class="text-muted small mb-3">
+                                Equivale a R$ 16,66/mês — cerca de 2 meses grátis em relação ao mensal.
+                            </p>
+
+                            <a asp-action="Index" asp-route-tipoPlano="anual" class="btn btn-primary w-100">
+                                Assinar anual
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        }
+    }
+
+</div>

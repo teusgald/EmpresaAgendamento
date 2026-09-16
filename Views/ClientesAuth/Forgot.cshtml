@@ -6,6 +6,7 @@
     </div>
 
     <form id="forgotForm" data-type="cliente-forgot">
+        @Html.AntiForgeryToken()
 
         <input name="Email" class="form-control mb-3" placeholder="Email" />
 

@@ -85,73 +85,121 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpGet("Publico/HorariosDisponiveis")]
         public async Task<IActionResult> HorariosDisponiveis(
-       int empresaId,
-       int? funcionarioId,
-       DateTime data)
+            int empresaId,
+            int? servicoId,
+            int? funcionarioId,
+            DateTime data)
         {
-            // Horários do dia
-            var horarios = new List<string>();
+            // Duração do serviço define o tamanho real do slot — sem isso,
+            // caímos de volta pra um bloco de 30 min só por compatibilidade.
+            var duracaoMinutos = 30;
 
-            for (var hora = new TimeSpan(8, 0, 0);
-                 hora < new TimeSpan(18, 0, 0);
-                 hora += TimeSpan.FromMinutes(30))
+            if (servicoId.HasValue)
             {
-                horarios.Add(hora.ToString(@"hh\:mm"));
+                var servico = await _context.Servicos
+                    .FirstOrDefaultAsync(s =>
+                        s.Id == servicoId.Value &&
+                        s.EmpresaId == empresaId &&
+                        s.Ativo);
+
+                if (servico == null)
+                    return Json(new List<string>());
+
+                duracaoMinutos = servico.DuracaoMinutos;
             }
 
-            // Busca todos os agendamentos do dia em uma única consulta
-            var agendamentosDia = await _context.Agendamentos
-                .Where(a =>
-                    a.EmpresaId == empresaId &&
-                    a.DataHora.Date == data.Date &&
-                    a.Status != StatusAgendamento.Cancelado)
-                .Select(a => new
-                {
-                    a.FuncionarioId,
-                    Hora = a.DataHora.ToString("HH:mm")
-                })
-                .ToListAsync();
+            var diaSemana = data.DayOfWeek;
 
-            // Funcionário específico
+            var funcionariosQuery = _context.Funcionarios
+                .Include(f => f.Horarios)
+                .Where(f => f.EmpresaId == empresaId && f.Ativo);
+
             if (funcionarioId.HasValue)
             {
-                var ocupados = agendamentosDia
-                    .Where(a => a.FuncionarioId == funcionarioId)
-                    .Select(a => a.Hora)
-                    .Distinct()
-                    .ToList();
-
-                var disponiveis = horarios
-                    .Except(ocupados)
-                    .ToList();
-
-                return Json(disponiveis);
+                funcionariosQuery = funcionariosQuery.Where(f => f.Id == funcionarioId.Value);
             }
 
-            // Qualquer profissional
-            var funcionarios = await _context.Funcionarios
-                .Where(f =>
-                    f.EmpresaId == empresaId &&
-                    f.Ativo)
-                .Select(f => f.Id)
+            var funcionarios = await funcionariosQuery.ToListAsync();
+
+            var agendamentosDia = await _context.Agendamentos
+                .Include(a => a.Servico)
+                .Where(a =>
+                    a.EmpresaId == empresaId &&
+                    a.Ativo &&
+                    a.Status != StatusAgendamento.Cancelado &&
+                    a.DataHora.Date == data.Date)
                 .ToListAsync();
 
-            var horariosDisponiveis = new List<string>();
+            var slotsDisponiveis = new SortedSet<string>();
 
-            foreach (var horario in horarios)
+            foreach (var funcionario in funcionarios)
             {
-                bool existeFuncionarioLivre = funcionarios.Any(funcionario =>
-                    !agendamentosDia.Any(a =>
-                        a.FuncionarioId == funcionario &&
-                        a.Hora == horario));
+                TimeSpan inicioExpediente;
+                TimeSpan fimExpediente;
+                TimeSpan? inicioIntervalo = null;
+                TimeSpan? fimIntervalo = null;
 
-                if (existeFuncionarioLivre)
+                if (funcionario.Horarios.Any())
                 {
-                    horariosDisponiveis.Add(horario);
+                    // Já configurou expediente real — respeita à risca,
+                    // inclusive dia de folga.
+                    var horarioDia = funcionario.Horarios
+                        .FirstOrDefault(h => h.DiaSemana == diaSemana);
+
+                    if (horarioDia == null || !horarioDia.TrabalhaNoDia)
+                        continue;
+
+                    inicioExpediente = horarioDia.HoraInicio;
+                    fimExpediente = horarioDia.HoraFim;
+                    inicioIntervalo = horarioDia.InicioIntervalo;
+                    fimIntervalo = horarioDia.FimIntervalo;
+                }
+                else
+                {
+                    // Nunca configurou expediente: janela padrão (compatibilidade),
+                    // segunda a sábado, 08h-18h.
+                    if (diaSemana == DayOfWeek.Sunday)
+                        continue;
+
+                    inicioExpediente = new TimeSpan(8, 0, 0);
+                    fimExpediente = new TimeSpan(18, 0, 0);
+                }
+
+                var agendamentosFuncionario = agendamentosDia
+                    .Where(a => a.FuncionarioId == funcionario.Id)
+                    .ToList();
+
+                for (var horaSlot = inicioExpediente;
+                     horaSlot + TimeSpan.FromMinutes(duracaoMinutos) <= fimExpediente;
+                     horaSlot += TimeSpan.FromMinutes(30))
+                {
+                    var inicioSlot = data.Date + horaSlot;
+                    var fimSlot = inicioSlot.AddMinutes(duracaoMinutos);
+
+                    if (inicioSlot < DateTime.Now)
+                        continue;
+
+                    if (inicioIntervalo.HasValue && fimIntervalo.HasValue)
+                    {
+                        var inicioPausa = data.Date + inicioIntervalo.Value;
+                        var fimPausa = data.Date + fimIntervalo.Value;
+
+                        if (inicioSlot < fimPausa && fimSlot > inicioPausa)
+                            continue;
+                    }
+
+                    var conflito = agendamentosFuncionario.Any(a =>
+                        inicioSlot < a.DataHora.AddMinutes(a.Servico.DuracaoMinutos) &&
+                        fimSlot > a.DataHora);
+
+                    if (!conflito)
+                    {
+                        slotsDisponiveis.Add(horaSlot.ToString(@"hh\:mm"));
+                    }
                 }
             }
 
-            return Json(horariosDisponiveis);
+            return Json(slotsDisponiveis.ToList());
         }
         [HttpGet("login")]
         public IActionResult Login(int? empresaId)
@@ -202,14 +250,18 @@ namespace EmpresaAgendamento.Controllers
                 user,
                 model.Password,
                 false,
-                false);
+                true);
 
             if (!result.Succeeded)
             {
                 return Json(new
                 {
                     success = false,
-                    error = "Email ou senha inválidos."
+                    error = result.IsLockedOut
+                        ? "Muitas tentativas de login. Tente novamente em alguns minutos."
+                        : result.IsNotAllowed
+                            ? "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada."
+                            : "Email ou senha inválidos."
                 });
             }
 
@@ -325,6 +377,35 @@ namespace EmpresaAgendamento.Controllers
                     sucesso = false,
                     mensagem = "Este horário acabou de ser ocupado. Escolha outro horário."
                 });
+            }
+
+            // ======================================
+            // LIMITE DO PLANO (agendamentos/mês)
+            // ======================================
+            var limiteAgendamentosMes = await _context.Empresas
+                .Where(e => e.Id == model.EmpresaId)
+                .Select(e => e.Plano != null ? e.Plano.LimiteAgendamentosMes : 0)
+                .FirstOrDefaultAsync();
+
+            if (limiteAgendamentosMes > 0)
+            {
+                var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                var fimMes = inicioMes.AddMonths(1);
+
+                var totalNoMes = await _context.Agendamentos.CountAsync(a =>
+                    a.EmpresaId == model.EmpresaId &&
+                    a.Ativo &&
+                    a.DataCriacao >= inicioMes &&
+                    a.DataCriacao < fimMes);
+
+                if (totalNoMes >= limiteAgendamentosMes)
+                {
+                    return BadRequest(new
+                    {
+                        sucesso = false,
+                        mensagem = "Esta empresa atingiu o limite de agendamentos do mês. Entre em contato diretamente com o estabelecimento."
+                    });
+                }
             }
 
             // ======================================

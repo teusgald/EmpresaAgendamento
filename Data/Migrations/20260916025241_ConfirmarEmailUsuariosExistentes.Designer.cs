@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmpresaAgendamento.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260916025241_ConfirmarEmailUsuariosExistentes")]
+    partial class ConfirmarEmailUsuariosExistentes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -470,13 +473,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<int?>("AnoFundacao")
                         .HasColumnType("int");
 
-                    b.Property<string>("AssinaturaStatus")
-                        .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)");
-
-                    b.Property<DateTime?>("AssinaturaValidaAte")
-                        .HasColumnType("datetime2");
-
                     b.Property<bool>("AtendimentoOnline")
                         .HasColumnType("bit");
 
@@ -586,14 +582,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<string>("Slug")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<string>("StripeCustomerId")
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<string>("StripeSubscriptionId")
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
                     b.Property<string>("Telefone")
                         .HasColumnType("nvarchar(max)");
 
@@ -611,10 +599,6 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.Property<string>("TikTok")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("TipoPlanoEscolhido")
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
 
                     b.Property<int?>("TotalAvaliacoes")
                         .HasColumnType("int");
@@ -892,22 +876,6 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.Property<bool>("PermiteWhatsapp")
                         .HasColumnType("bit");
-
-                    b.Property<string>("StripeCouponIdPromocional")
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<string>("StripePriceIdAnual")
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<string>("StripePriceIdMensal")
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<decimal?>("ValorAnual")
-                        .HasPrecision(10, 2)
-                        .HasColumnType("decimal(10,2)");
 
                     b.Property<decimal>("ValorMensal")
                         .HasPrecision(10, 2)

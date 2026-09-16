@@ -34,6 +34,7 @@ namespace EmpresaAgendamento.Controllers
         public IActionResult Login() => View();
 
         [HttpPost("login")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Login(EmpresaLoginViewModel model)
         {
             if (!ModelState.IsValid)
@@ -61,7 +62,9 @@ namespace EmpresaAgendamento.Controllers
         public IActionResult Register() => View();
 
         [HttpPost("registro")]
-        public async Task<IActionResult> Register(EmpresaRegisterViewModel model)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Register(
+            EmpresaRegisterViewModel model, bool aceitaTermos = false, string? tipoPlanoEscolhido = null)
         {
             if (!ModelState.IsValid)
             {
@@ -72,22 +75,80 @@ namespace EmpresaAgendamento.Controllers
                 });
             }
 
-            var result = await _empresaService.RegisterAsync(model);
-
-            if (result.Success)
+            if (!aceitaTermos)
             {
                 return Json(new
                 {
-                    success = true,
-                    redirect = "/Empresa/Dashboard"
+                    success = false,
+                    error = "É necessário aceitar os Termos de Uso e a Política de Privacidade."
                 });
+            }
+
+            var result = await _empresaService.RegisterAsync(model, tipoPlanoEscolhido);
+
+            if (!result.Success)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = result.Error
+                });
+            }
+
+            try
+            {
+                var token = await _userManager.GenerateEmailConfirmationTokenAsync(result.User!);
+
+                var link =
+                    $"{Request.Scheme}://{Request.Host}/empresa/confirmar-email" +
+                    $"?userId={Uri.EscapeDataString(result.User!.Id)}" +
+                    $"&token={Uri.EscapeDataString(token)}";
+
+                await _emailService.SendEmailAsync(
+                    model.Email,
+                    "Confirme seu e-mail — Simpli Time",
+                    $@"
+                    <h2>Bem-vindo ao Simpli Time!</h2>
+                    <p>Falta pouco — confirme seu e-mail para ativar sua conta:</p>
+                    <p><a href='{link}'>Confirmar e-mail</a></p>
+                    <p>Se você não fez esse cadastro, ignore este e-mail.</p>"
+                );
+            }
+            catch
+            {
+                // Não falha o cadastro por causa do e-mail — a empresa pode
+                // pedir reenvio depois; a conta já foi criada normalmente.
             }
 
             return Json(new
             {
-                success = false,
-                error = result.Error
+                success = true,
+                message = "Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de entrar."
             });
+        }
+
+        [HttpGet("confirmar-email")]
+        public async Task<IActionResult> ConfirmarEmail(string userId, string token)
+        {
+            if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(token))
+            {
+                return Redirect("/");
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                return Redirect("/");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+
+            // A home page já sabe abrir o modal de login via esses parâmetros
+            // (mesmo padrão usado no link de reset de senha).
+            return Redirect(result.Succeeded
+                ? "/?login=true&type=empresa&confirmado=true"
+                : "/?login=true&type=empresa&confirmado=false");
         }
 
      
@@ -110,6 +171,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpPost("forgot")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Forgot(ForgotViewModel model)
         {
             try
@@ -187,6 +249,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpPost("resetpassword")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ResetPassword(
             ResetPasswordViewModel model)
         {

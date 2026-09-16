@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Filters;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Services;
 
@@ -10,15 +11,23 @@ var builder = WebApplication.CreateBuilder(args);
 // 🔥 DATABASE
 // =========================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .EnableSensitiveDataLogging());
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+
+    // Loga valores de parâmetro nas queries — só em Development, nunca em
+    // produção (vazaria dados sensíveis nos logs do servidor).
+    if (builder.Environment.IsDevelopment())
+    {
+        options.EnableSensitiveDataLogging();
+    }
+});
 
 // =========================
 // 🔥 IDENTITY (ÚNICO - SEM DUPLICAÇÃO)
 // =========================
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 {
-    options.SignIn.RequireConfirmedEmail = false;
+    options.SignIn.RequireConfirmedEmail = true;
 
     options.Tokens.PasswordResetTokenProvider = TokenOptions.DefaultProvider;
 
@@ -29,6 +38,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequireNonAlphanumeric = true;    // pelo menos 1 caractere especial (!@#$...)
     options.Password.RequiredLength = 8;               // tamanho mínimo 8
     options.Password.RequiredUniqueChars = 1;          // pelo menos 1 caractere único
+
+    // 🔐 Bloqueio contra força bruta de senha
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    options.Lockout.MaxFailedAccessAttempts = 5;
+    options.Lockout.AllowedForNewUsers = true;
 })
 .AddRoles<IdentityRole>() // necessário para roles
 .AddEntityFrameworkStores<ApplicationDbContext>()
@@ -42,6 +56,12 @@ builder.Services.AddScoped<IEmpresaService, EmpresaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
+builder.Services.AddScoped<IStripeService, StripeService>();
+
+// =========================
+// 🔥 STRIPE
+// =========================
+Stripe.StripeConfiguration.ApiKey = builder.Configuration["Stripe:SecretKey"];
 
 // =========================
 // 🔥 SESSION
@@ -56,7 +76,12 @@ builder.Services.AddSession(options =>
 // =========================
 // 🔥 MVC + RAZOR
 // =========================
-builder.Services.AddControllersWithViews();
+builder.Services.AddControllersWithViews(options =>
+{
+    // Global: bloqueia o portal (agendamentos, financeiro, cadastros...)
+    // enquanto a empresa não tiver assinatura ativa no Stripe.
+    options.Filters.Add<RequerAssinaturaAtivaFilter>();
+});
 builder.Services.AddRazorPages();
 
 // =========================
@@ -71,7 +96,7 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    string[] roles = { "Cliente", "Empresa" };
+    string[] roles = { "Cliente", "Empresa", "Funcionario" };
 
     foreach (var role in roles)
     {

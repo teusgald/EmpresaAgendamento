@@ -10,4 +10,18 @@ public class HomeController : Controller
     {
         return View();
     }
+
+    [HttpGet("/termos-de-uso")]
+    [AllowAnonymous]
+    public IActionResult Termos()
+    {
+        return View();
+    }
+
+    [HttpGet("/politica-de-privacidade")]
+    [AllowAnonymous]
+    public IActionResult Privacidade()
+    {
+        return View();
+    }
 }

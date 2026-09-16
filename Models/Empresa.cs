@@ -140,6 +140,28 @@ namespace EmpresaAgendamento.Models
         public bool Ativo { get; set; } = true;
 
         // ─────────────────────────────────────────────
+        // 💳 ASSINATURA (STRIPE)
+        // ─────────────────────────────────────────────
+
+        [StringLength(60)]
+        public string? StripeCustomerId { get; set; }
+
+        [StringLength(60)]
+        public string? StripeSubscriptionId { get; set; }
+
+        // Espelha o status da assinatura no Stripe (active, trialing,
+        // past_due, canceled, incomplete...) — atualizado via webhook.
+        [StringLength(30)]
+        public string? AssinaturaStatus { get; set; }
+
+        public DateTime? AssinaturaValidaAte { get; set; }
+
+        // "mensal" ou "anual" — escolhido na página de vendas antes do
+        // cadastro; usado para já abrir o checkout certo no primeiro login.
+        [StringLength(20)]
+        public string? TipoPlanoEscolhido { get; set; }
+
+        // ─────────────────────────────────────────────
         // 🔗 RELACIONAMENTOS
         // ─────────────────────────────────────────────
 

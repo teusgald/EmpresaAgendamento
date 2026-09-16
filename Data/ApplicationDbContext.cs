@@ -279,6 +279,10 @@ namespace EmpresaAgendamento.Data
                 .Property(x => x.ValorMensal)
                 .HasPrecision(10, 2);
 
+            builder.Entity<Plano>()
+                .Property(x => x.ValorAnual)
+                .HasPrecision(10, 2);
+
             #endregion
 
             #region Financeiro

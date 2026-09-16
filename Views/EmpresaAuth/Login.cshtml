@@ -9,6 +9,7 @@
     </div>
 
     <form method="post" id="empresaLoginForm" data-type="empresa-login">
+        @Html.AntiForgeryToken()
 
         <div asp-validation-summary="All" class="text-danger mb-3"></div>
 

@@ -835,6 +835,21 @@
                                 return;
                             }
 
+                            if (data.message) {
+
+                                mostrarAlertaCliente(
+                                    data.message,
+                                    "success"
+                                );
+
+                                setTimeout(
+                                    () => location.reload(),
+                                    2500
+                                );
+
+                                return;
+                            }
+
                             location.reload();
 
                             return;
@@ -1095,6 +1110,11 @@
                     "FuncionarioId"
                 ).value;
 
+            const servicoId =
+                document.getElementById(
+                    "ServicoId"
+                ).value;
+
             const data =
                 document.getElementById(
                     "DataAgendamento"
@@ -1105,7 +1125,7 @@
 
             const response =
                 await fetch(
-                    `/Publico/HorariosDisponiveis?empresaId=${empresaId}&funcionarioId=${funcionarioId}&data=${data}`
+                    `/Publico/HorariosDisponiveis?empresaId=${empresaId}&servicoId=${servicoId}&funcionarioId=${funcionarioId}&data=${data}`
                 );
 
             const horarios =

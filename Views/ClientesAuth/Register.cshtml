@@ -1,4 +1,4 @@
-﻿@model ClienteRegisterViewModel
+@model ClienteRegisterViewModel
 @{
     Layout = null;
 }
@@ -6,21 +6,45 @@
 <div class="auth-card">
 
     <div class="text-center mb-4">
-        <h4>Criar conta</h4>
-        <p class="text-muted">Cadastro de cliente</p>
+        <i class="bi bi-person-circle auth-icon"></i>
+        <h4 class="mb-1">Crie sua conta</h4>
+        <p class="text-muted small mb-0">Leva menos de 1 minuto.</p>
     </div>
 
     <form id="clienteRegisterForm" data-type="cliente-register">
+        @Html.AntiForgeryToken()
 
-        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+        <div asp-validation-summary="All" class="text-danger mb-3 small"></div>
 
-        <input asp-for="Nome" class="form-control mb-3" placeholder="Nome completo" />
+        <div class="row g-2">
+            <div class="col-md-7 mb-3">
+                <label class="form-label small fw-semibold">Nome completo</label>
+                <input asp-for="Nome" class="form-control" placeholder="Seu nome" />
+            </div>
 
-        <input asp-for="Telefone" class="form-control mb-3" placeholder="Telefone" />
+            <div class="col-md-5 mb-3">
+                <label class="form-label small fw-semibold">Telefone</label>
+                <input asp-for="Telefone" class="form-control" placeholder="(00) 00000-0000" />
+            </div>
+        </div>
 
-        <input asp-for="Email" class="form-control mb-3" placeholder="Email" />
+        <div class="mb-3">
+            <label class="form-label small fw-semibold">E-mail</label>
+            <input asp-for="Email" type="email" class="form-control" placeholder="seuemail@exemplo.com" />
+        </div>
 
-        <input asp-for="Password" type="password" class="form-control mb-3" placeholder="Senha" />
+        <div class="mb-3">
+            <label class="form-label small fw-semibold">Senha</label>
+            <input asp-for="Password" type="password" class="form-control" placeholder="Mínimo 8 caracteres" />
+        </div>
+
+        <div class="form-check mb-3">
+            <input type="checkbox" name="aceitaTermos" value="true" class="form-check-input" id="aceitaTermosCliente" required />
+            <label class="form-check-label small" for="aceitaTermosCliente">
+                Li e aceito os <a href="/termos-de-uso" target="_blank">Termos de Uso</a>
+                e a <a href="/politica-de-privacidade" target="_blank">Política de Privacidade</a>.
+            </label>
+        </div>
 
         <button class="btn btn-dark w-100 mb-3">
             Criar conta
