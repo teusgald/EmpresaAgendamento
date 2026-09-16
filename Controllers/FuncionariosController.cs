@@ -1,6 +1,8 @@
 ﻿using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.ViewModels;
+using EmpresaAgendamento.Services;
 using EmpresaAgendamento.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,13 +15,16 @@ public class FuncionariosController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IEmailService _emailService;
 
     public FuncionariosController(
         ApplicationDbContext context,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        IEmailService emailService)
     {
         _context = context;
         _userManager = userManager;
+        _emailService = emailService;
     }
 
     private async Task<int?> GetEmpresaId()
@@ -145,6 +150,36 @@ public class FuncionariosController : Controller
 
                 ToastHelper.Warning(TempData, "Verifique os dados informados.");
                 return View(vm);
+            }
+
+            var limite = await _context.Empresas
+                .Where(e => e.Id == empresaId)
+                .Select(e => e.Plano != null ? e.Plano.LimiteFuncionarios : 0)
+                .FirstOrDefaultAsync();
+
+            if (limite > 0)
+            {
+                var totalAtivos = await _context.Funcionarios
+                    .CountAsync(f => f.EmpresaId == empresaId && f.Ativo);
+
+                if (totalAtivos >= limite)
+                {
+                    vm.ServicosDisponiveis = await _context.Servicos
+                        .Where(s => s.EmpresaId == empresaId && s.Ativo)
+                        .OrderBy(s => s.Nome)
+                        .Select(s => new SelectListItem
+                        {
+                            Value = s.Id.ToString(),
+                            Text = s.Nome
+                        })
+                        .ToListAsync();
+
+                    ToastHelper.Warning(
+                        TempData,
+                        $"Seu plano permite até {limite} funcionário(s) ativo(s). Inative algum ou faça upgrade do plano.");
+
+                    return View(vm);
+                }
             }
 
             var funcionario = new Funcionario
@@ -375,5 +410,205 @@ public class FuncionariosController : Controller
             ToastHelper.Error(TempData, "Erro ao alterar status.");
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    // =========================
+    // CRIAR ACESSO (LOGIN DO FUNCIONÁRIO)
+    // =========================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CriarAcesso(int id)
+    {
+        var empresaId = await GetEmpresaId();
+
+        if (empresaId == null)
+        {
+            ToastHelper.Error(TempData, "Sessão expirada.");
+            return RedirectToAction("Login", "Account");
+        }
+
+        var funcionario = await _context.Funcionarios
+            .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+
+        if (funcionario == null)
+        {
+            ToastHelper.Error(TempData, "Funcionário não encontrado.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (funcionario.UserId != null)
+        {
+            ToastHelper.Warning(TempData, "Este funcionário já possui acesso.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (string.IsNullOrWhiteSpace(funcionario.Email))
+        {
+            ToastHelper.Warning(TempData, "Cadastre um e-mail para o funcionário antes de criar o acesso.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var emailEmUso = await _userManager.Users.AnyAsync(u => u.Email == funcionario.Email);
+
+        if (emailEmUso)
+        {
+            ToastHelper.Error(TempData, "Já existe uma conta cadastrada com este e-mail.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var user = new ApplicationUser
+        {
+            UserName = $"funcionario-{Guid.NewGuid()}",
+            Email = funcionario.Email,
+            NomeCompleto = funcionario.Nome,
+            PhoneNumber = funcionario.Telefone,
+            EmpresaId = empresaId,
+            EmailConfirmed = true
+        };
+
+        // Senha aleatória descartável — o funcionário nunca a vê, ele define
+        // a própria senha pelo link enviado por e-mail (ResetPasswordAsync).
+        var senhaDescartavel = Guid.NewGuid().ToString("N") + "Aa1!";
+
+        var result = await _userManager.CreateAsync(user, senhaDescartavel);
+
+        if (!result.Succeeded)
+        {
+            ToastHelper.Error(
+                TempData,
+                string.Join(" ", result.Errors.Select(x => x.Description)));
+
+            return RedirectToAction(nameof(Index));
+        }
+
+        await _userManager.AddToRoleAsync(user, "Funcionario");
+
+        funcionario.UserId = user.Id;
+        await _context.SaveChangesAsync();
+
+        try
+        {
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var link =
+                $"{Request.Scheme}://{Request.Host}/funcionario/definir-senha" +
+                $"?email={Uri.EscapeDataString(user.Email)}" +
+                $"&token={Uri.EscapeDataString(token)}";
+
+            await _emailService.SendEmailAsync(
+                user.Email,
+                "Seu acesso ao Simpli Time",
+                $@"
+                <h2>Olá {funcionario.Nome}</h2>
+                <p>Você agora tem acesso ao sistema de agendamentos da empresa.</p>
+                <p><a href='{link}'>Clique aqui para definir sua senha</a></p>
+                <p>Depois de definir a senha, entre em <a href='{Request.Scheme}://{Request.Host}/funcionario/login'>{Request.Scheme}://{Request.Host}/funcionario/login</a>.</p>");
+
+            ToastHelper.Success(TempData, "Acesso criado! Enviamos um e-mail para o funcionário definir a senha.");
+        }
+        catch (Exception ex)
+        {
+            ToastHelper.Warning(TempData, $"Acesso criado, mas não foi possível enviar o e-mail: {ex.Message}");
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    // =========================
+    // HORÁRIOS DE TRABALHO (GET)
+    // =========================
+    [HttpGet]
+    public async Task<IActionResult> Horarios(int id)
+    {
+        var empresaId = await GetEmpresaId();
+
+        if (empresaId == null)
+        {
+            ToastHelper.Error(TempData, "Sessão expirada.");
+            return RedirectToAction("Login", "Account");
+        }
+
+        var funcionario = await _context.Funcionarios
+            .Include(f => f.Horarios)
+            .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+
+        if (funcionario == null)
+        {
+            ToastHelper.Error(TempData, "Funcionário não encontrado.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var lista = new List<FuncionarioHorarioItemViewModel>();
+
+        foreach (DayOfWeek dia in Enum.GetValues<DayOfWeek>())
+        {
+            var existente = funcionario.Horarios.FirstOrDefault(h => h.DiaSemana == dia);
+
+            lista.Add(new FuncionarioHorarioItemViewModel
+            {
+                DiaSemana = dia,
+                TrabalhaNoDia = existente?.TrabalhaNoDia ?? (dia != DayOfWeek.Sunday),
+                HoraInicio = existente?.HoraInicio ?? new TimeSpan(8, 0, 0),
+                HoraFim = existente?.HoraFim ?? new TimeSpan(18, 0, 0),
+                InicioIntervalo = existente?.InicioIntervalo,
+                FimIntervalo = existente?.FimIntervalo
+            });
+        }
+
+        ViewBag.FuncionarioId = funcionario.Id;
+        ViewBag.FuncionarioNome = funcionario.Nome;
+        ViewBag.JaConfigurado = funcionario.Horarios.Any();
+
+        return View(lista);
+    }
+
+    // =========================
+    // HORÁRIOS DE TRABALHO (POST)
+    // =========================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Horarios(int id, List<FuncionarioHorarioItemViewModel> horarios)
+    {
+        var empresaId = await GetEmpresaId();
+
+        if (empresaId == null)
+        {
+            ToastHelper.Error(TempData, "Sessão expirada.");
+            return RedirectToAction("Login", "Account");
+        }
+
+        var funcionario = await _context.Funcionarios
+            .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+
+        if (funcionario == null)
+        {
+            ToastHelper.Error(TempData, "Funcionário não encontrado.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var existentes = await _context.FuncionariosHorarios
+            .Where(h => h.FuncionarioId == id)
+            .ToListAsync();
+
+        _context.FuncionariosHorarios.RemoveRange(existentes);
+
+        foreach (var item in horarios ?? new List<FuncionarioHorarioItemViewModel>())
+        {
+            _context.FuncionariosHorarios.Add(new FuncionarioHorario
+            {
+                FuncionarioId = id,
+                DiaSemana = item.DiaSemana,
+                TrabalhaNoDia = item.TrabalhaNoDia,
+                HoraInicio = item.HoraInicio ?? TimeSpan.Zero,
+                HoraFim = item.HoraFim ?? TimeSpan.Zero,
+                InicioIntervalo = item.TrabalhaNoDia ? item.InicioIntervalo : null,
+                FimIntervalo = item.TrabalhaNoDia ? item.FimIntervalo : null
+            });
+        }
+
+        await _context.SaveChangesAsync();
+
+        ToastHelper.Success(TempData, "Horários de trabalho atualizados com sucesso!");
+        return RedirectToAction(nameof(Index));
     }
 }

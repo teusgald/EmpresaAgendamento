@@ -10,6 +10,17 @@
             <h4 class="mb-4">Novo Agendamento</h4>
             <form asp-action="Create" method="post">
                 <div class="mb-3">
+                    <label class="form-label">Categoria</label>
+                    <select class="form-select" id="segmentoSelect">
+                        <option value="">Todas as categorias</option>
+                        @foreach (var segmento in (List<string>)ViewBag.Segmentos)
+                        {
+                            <option value="@segmento">@segmento</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label">Empresa</label>
                     <select asp-for="EmpresaId" class="form-select" asp-items="ViewBag.Empresas" id="empresaSelect">
                         <option value="">Selecione</option>
@@ -44,10 +55,44 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
 
+        const segmentoSelect = document.getElementById("segmentoSelect");
         const empresaSelect = document.getElementById("empresaSelect");
         const servicoSelect = document.getElementById("servicoSelect");
 
         if (!empresaSelect) return;
+
+        if (segmentoSelect) {
+            segmentoSelect.addEventListener("change", function () {
+
+                const segmento = this.value;
+
+                empresaSelect.innerHTML = '<option value="">Carregando...</option>';
+                servicoSelect.innerHTML = '<option value="">Selecione</option>';
+
+                const url = segmento
+                    ? `/cliente/agendamentos/empresas?segmento=${encodeURIComponent(segmento)}`
+                    : `/cliente/agendamentos/empresas`;
+
+                fetch(url)
+                    .then(response => response.json())
+                    .then(data => {
+
+                        empresaSelect.innerHTML = '<option value="">Selecione</option>';
+
+                        data.forEach(function (empresa) {
+                            const option = document.createElement("option");
+                            option.value = empresa.id;
+                            option.text = empresa.nome;
+                            empresaSelect.appendChild(option);
+                        });
+
+                    })
+                    .catch(error => {
+                        console.error("Erro ao carregar empresas:", error);
+                        empresaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    });
+            });
+        }
 
         empresaSelect.addEventListener("change", function () {
 

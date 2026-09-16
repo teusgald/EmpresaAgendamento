@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-[Authorize(Roles = "Empresa")]
+[Authorize(Roles = "Empresa,Funcionario")]
 public class ClientesController : Controller
 {
     private readonly ApplicationDbContext _context;

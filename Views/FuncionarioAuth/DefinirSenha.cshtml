@@ -1,0 +1,54 @@
+@model EmpresaAgendamento.Models.ViewModels.ResetPasswordViewModel
+@{
+    Layout = null;
+    ViewData["Title"] = "Definir senha";
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - Simpli Time</title>
+    <link rel="icon" type="image/png" href="/img/icon.png?v=3" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+    <div class="d-flex align-items-center justify-content-center" style="min-height:100vh;">
+        <div class="card shadow-sm" style="width:100%;max-width:380px;">
+            <div class="card-body p-4">
+
+                <div class="text-center mb-4">
+                    <i class="bi bi-key" style="font-size:2rem;"></i>
+                    <h4 class="mt-2 mb-1">Definir sua senha</h4>
+                    <p class="text-muted small mb-0">Escolha a senha de acesso ao sistema.</p>
+                </div>
+
+                <form asp-action="DefinirSenha" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" asp-for="Email" />
+                    <input type="hidden" asp-for="Token" />
+
+                    <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Nova senha</label>
+                        <input asp-for="Password" type="password" class="form-control" placeholder="Mínimo 8 caracteres" />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Confirmar senha</label>
+                        <input asp-for="ConfirmPassword" type="password" class="form-control" placeholder="Repita a senha" />
+                    </div>
+
+                    <button type="submit" class="btn btn-dark w-100">Salvar e continuar</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

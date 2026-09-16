@@ -68,12 +68,40 @@ public class AgendamentosClientesController : Controller
         if (user == null || user.ClienteId == null)
             return RedirectLogin();
 
+        ViewBag.Segmentos = await _context.Empresas
+            .Where(e => e.Ativo && e.SegmentoAtuacao != null)
+            .Select(e => e.SegmentoAtuacao!)
+            .Distinct()
+            .OrderBy(s => s)
+            .ToListAsync();
+
         ViewBag.Empresas = new SelectList(
             await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
             "Id", "Nome"
         );
 
         return View();
+    }
+
+    // =========================
+    // AJAX EMPRESAS (filtradas por categoria/segmento)
+    // =========================
+    [HttpGet("empresas")]
+    public async Task<IActionResult> Empresas(string? segmento)
+    {
+        var query = _context.Empresas.Where(e => e.Ativo);
+
+        if (!string.IsNullOrWhiteSpace(segmento))
+        {
+            query = query.Where(e => e.SegmentoAtuacao == segmento);
+        }
+
+        var empresas = await query
+            .OrderBy(e => e.Nome)
+            .Select(e => new { e.Id, e.Nome })
+            .ToListAsync();
+
+        return Json(empresas);
     }
 
     // =========================
@@ -176,6 +204,36 @@ public class AgendamentosClientesController : Controller
                 await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
                 "Id", "Nome");
             return View(agendamento);
+        }
+
+        // LIMITE DO PLANO (agendamentos/mês)
+        var limiteAgendamentosMes = await _context.Empresas
+            .Where(e => e.Id == agendamento.EmpresaId)
+            .Select(e => e.Plano != null ? e.Plano.LimiteAgendamentosMes : 0)
+            .FirstOrDefaultAsync();
+
+        if (limiteAgendamentosMes > 0)
+        {
+            var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+            var fimMes = inicioMes.AddMonths(1);
+
+            var totalNoMes = await _context.Agendamentos.CountAsync(a =>
+                a.EmpresaId == agendamento.EmpresaId &&
+                a.Ativo &&
+                a.DataCriacao >= inicioMes &&
+                a.DataCriacao < fimMes);
+
+            if (totalNoMes >= limiteAgendamentosMes)
+            {
+                ModelState.AddModelError(
+                    "",
+                    "Esta empresa atingiu o limite de agendamentos do mês. Entre em contato diretamente com o estabelecimento.");
+
+                ViewBag.Empresas = new SelectList(
+                    await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                    "Id", "Nome");
+                return View(agendamento);
+            }
         }
 
         agendamento.Status = StatusAgendamento.Agendado;

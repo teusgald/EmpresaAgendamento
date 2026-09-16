@@ -1,0 +1,111 @@
+@model List<EmpresaAgendamento.Models.ViewModels.FuncionarioHorarioItemViewModel>
+
+@{
+    ViewData["Title"] = "Horários de Trabalho";
+
+    string NomeDia(DayOfWeek dia) => dia switch
+    {
+        DayOfWeek.Sunday => "Domingo",
+        DayOfWeek.Monday => "Segunda-feira",
+        DayOfWeek.Tuesday => "Terça-feira",
+        DayOfWeek.Wednesday => "Quarta-feira",
+        DayOfWeek.Thursday => "Quinta-feira",
+        DayOfWeek.Friday => "Sexta-feira",
+        DayOfWeek.Saturday => "Sábado",
+        _ => dia.ToString()
+    };
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Horários de @ViewBag.FuncionarioNome</h3>
+        <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+    </div>
+
+    @if (!(bool)ViewBag.JaConfigurado)
+    {
+        <div class="alert alert-info">
+            Este funcionário ainda não tem expediente configurado — por padrão, o sistema
+            considera disponibilidade das 08:00 às 18:00 de segunda a sábado até que você
+            salve os horários reais aqui.
+        </div>
+    }
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <form asp-action="Horarios" asp-route-id="@ViewBag.FuncionarioId" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Dia</th>
+                                <th>Trabalha</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                                <th>Início do intervalo</th>
+                                <th>Fim do intervalo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Count; i++)
+                            {
+                                var item = Model[i];
+                                var prefixo = $"horarios[{i}]";
+
+                                <tr>
+                                    <td class="fw-semibold">
+                                        @NomeDia(item.DiaSemana)
+                                        <input type="hidden" name="@(prefixo).DiaSemana" value="@item.DiaSemana" />
+                                    </td>
+                                    <td>
+                                        <input type="checkbox"
+                                               name="@(prefixo).TrabalhaNoDia"
+                                               value="true"
+                                               class="form-check-input"
+                                               checked="@item.TrabalhaNoDia" />
+                                    </td>
+                                    <td>
+                                        <input type="time"
+                                               name="@(prefixo).HoraInicio"
+                                               value="@item.HoraInicio?.ToString(@"hh\:mm")"
+                                               class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input type="time"
+                                               name="@(prefixo).HoraFim"
+                                               value="@item.HoraFim?.ToString(@"hh\:mm")"
+                                               class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input type="time"
+                                               name="@(prefixo).InicioIntervalo"
+                                               value="@item.InicioIntervalo?.ToString(@"hh\:mm")"
+                                               class="form-control form-control-sm" />
+                                    </td>
+                                    <td>
+                                        <input type="time"
+                                               name="@(prefixo).FimIntervalo"
+                                               value="@item.FimIntervalo?.ToString(@"hh\:mm")"
+                                               class="form-control form-control-sm" />
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="text-muted small">
+                    Intervalo é opcional — deixe em branco se o funcionário não tem pausa fixa.
+                </p>
+
+                <button type="submit" class="btn btn-success">Salvar Horários</button>
+            </form>
+
+        </div>
+    </div>
+
+</div>

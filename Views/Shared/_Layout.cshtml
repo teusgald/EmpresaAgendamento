@@ -110,13 +110,23 @@
 		<hr />
 		<ul class="nav flex-column">
 
-			<!-- DASHBOARD -->
-			<li class="nav-item">
-				<a class="nav-link" asp-controller="Empresas" asp-action="Dashboard">
-					<i class="bi bi-bar-chart"></i>
-					<span class="link-text">Dashboard</span>
-				</a>
-			</li>
+			@{
+				// Funcionário só enxerga Calendário, Agendamentos e Clientes —
+				// o resto (Dashboard, Serviços, Funcionários, Financeiro,
+				// Empresas, Assinatura) é exclusivo do dono da empresa.
+				var ehFuncionario = User.IsInRole("Funcionario");
+			}
+
+			@if (!ehFuncionario)
+			{
+				<!-- DASHBOARD -->
+				<li class="nav-item">
+					<a class="nav-link" asp-controller="Empresas" asp-action="Dashboard">
+						<i class="bi bi-bar-chart"></i>
+						<span class="link-text">Dashboard</span>
+					</a>
+				</li>
+			}
 
 			<!-- CALENDÁRIO -->
 			<li class="nav-item">
@@ -134,155 +144,176 @@
 				</a>
 			</li>
 
-			<!-- ========================= -->
-			<!-- CADASTROS (DROPDOWN) -->
-			<!-- ========================= -->
-			<li class="nav-item">
+			@if (ehFuncionario)
+			{
+				<!-- CLIENTES (funcionário não tem o dropdown "Cadastros" inteiro) -->
+				<li class="nav-item">
+					<a class="nav-link" asp-controller="Clientes" asp-action="Index">
+						<i class="bi bi-people"></i>
+						<span class="link-text">Clientes</span>
+					</a>
+				</li>
+			}
+			else
+			{
+				<!-- ========================= -->
+				<!-- CADASTROS (DROPDOWN) -->
+				<!-- ========================= -->
+				<li class="nav-item">
 
-				<a class="nav-link d-flex justify-content-between align-items-center"
-				   data-bs-toggle="collapse"
-				   href="#cadastrosMenu"
-				   role="button"
-				   aria-expanded="false">
+					<a class="nav-link d-flex justify-content-between align-items-center"
+					   data-bs-toggle="collapse"
+					   href="#cadastrosMenu"
+					   role="button"
+					   aria-expanded="false">
 
-					<span>
-						<i class="bi bi-folder"></i>
-						<span class="link-text">Cadastros</span>
-					</span>
+						<span>
+							<i class="bi bi-folder"></i>
+							<span class="link-text">Cadastros</span>
+						</span>
 
-					<i class="bi bi-chevron-down small"></i>
-				</a>
+						<i class="bi bi-chevron-down small"></i>
+					</a>
 
-				<div class="collapse ps-3" id="cadastrosMenu">
+					<div class="collapse ps-3" id="cadastrosMenu">
 
-					<ul class="nav flex-column">
+						<ul class="nav flex-column">
 
-						<li>
-							<a class="nav-link" asp-controller="Clientes" asp-action="Index">
-								<i class="bi bi-people"></i>
-								<span class="link-text">Clientes</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Clientes" asp-action="Index">
+									<i class="bi bi-people"></i>
+									<span class="link-text">Clientes</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="Servicos" asp-action="Index">
-								<i class="bi bi-scissors"></i>
-								<span class="link-text">Serviços</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Servicos" asp-action="Index">
+									<i class="bi bi-scissors"></i>
+									<span class="link-text">Serviços</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="Funcionarios" asp-action="Index">
-								<i class="bi bi-person-badge"></i>
-								<span class="link-text">Funcionários</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Funcionarios" asp-action="Index">
+									<i class="bi bi-person-badge"></i>
+									<span class="link-text">Funcionários</span>
+								</a>
+							</li>
 
-					</ul>
+						</ul>
 
-				</div>
+					</div>
 
-			</li>
+				</li>
 
-			<!-- ========================= -->
-			<!-- FINANCEIRO -->
-			<!-- ========================= -->
-			<li class="nav-item">
+				<!-- ========================= -->
+				<!-- FINANCEIRO -->
+				<!-- ========================= -->
+				<li class="nav-item">
 
-				<a class="nav-link d-flex justify-content-between align-items-center"
-				   data-bs-toggle="collapse"
-				   href="#financeiroMenu"
-				   role="button"
-				   aria-expanded="false">
+					<a class="nav-link d-flex justify-content-between align-items-center"
+					   data-bs-toggle="collapse"
+					   href="#financeiroMenu"
+					   role="button"
+					   aria-expanded="false">
 
-					<span>
-						<i class="bi bi-cash-coin"></i>
-						<span class="link-text">Financeiro</span>
-					</span>
+						<span>
+							<i class="bi bi-cash-coin"></i>
+							<span class="link-text">Financeiro</span>
+						</span>
 
-					<i class="bi bi-chevron-down small"></i>
-				</a>
+						<i class="bi bi-chevron-down small"></i>
+					</a>
 
-				<div class="collapse ps-3" id="financeiroMenu">
+					<div class="collapse ps-3" id="financeiroMenu">
 
-					<ul class="nav flex-column">
+						<ul class="nav flex-column">
 
-						<li>
-							<a class="nav-link" asp-controller="Financeiro" asp-action="Dashboard">
-								<i class="bi bi-speedometer2"></i>
-								<span class="link-text">Dashboard</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Financeiro" asp-action="Dashboard">
+									<i class="bi bi-speedometer2"></i>
+									<span class="link-text">Dashboard</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="Financeiro" asp-action="Caixa">
-								<i class="bi bi-safe"></i>
-								<span class="link-text">Caixa</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Financeiro" asp-action="Caixa">
+									<i class="bi bi-safe"></i>
+									<span class="link-text">Caixa</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="ContasReceber" asp-action="Index">
-								<i class="bi bi-cash-stack"></i>
-								<span class="link-text">Contas a Receber</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="ContasReceber" asp-action="Index">
+									<i class="bi bi-cash-stack"></i>
+									<span class="link-text">Contas a Receber</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="ContasReceber" asp-action="Receitas">
-								<i class="bi bi-receipt"></i>
-								<span class="link-text">Receitas</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="ContasReceber" asp-action="Receitas">
+									<i class="bi bi-receipt"></i>
+									<span class="link-text">Receitas</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="ContasPagar" asp-action="Index">
-								<i class="bi bi-cash-coin"></i>
-								<span class="link-text">Contas a Pagar</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="ContasPagar" asp-action="Index">
+									<i class="bi bi-cash-coin"></i>
+									<span class="link-text">Contas a Pagar</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="ContasPagar" asp-action="Despesas">
-								<i class="bi bi-wallet2"></i>
-								<span class="link-text">Despesas</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="ContasPagar" asp-action="Despesas">
+									<i class="bi bi-wallet2"></i>
+									<span class="link-text">Despesas</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="Comissoes" asp-action="Index">
-								<i class="bi bi-percent"></i>
-								<span class="link-text">Comissões</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Comissoes" asp-action="Index">
+									<i class="bi bi-percent"></i>
+									<span class="link-text">Comissões</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="CategoriasFinanceiras" asp-action="Index">
-								<i class="bi bi-tags"></i>
-								<span class="link-text">Categorias</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="CategoriasFinanceiras" asp-action="Index">
+									<i class="bi bi-tags"></i>
+									<span class="link-text">Categorias</span>
+								</a>
+							</li>
 
-						<li>
-							<a class="nav-link" asp-controller="Financeiro" asp-action="Relatorios">
-								<i class="bi bi-graph-up"></i>
-								<span class="link-text">Relatórios</span>
-							</a>
-						</li>
+							<li>
+								<a class="nav-link" asp-controller="Financeiro" asp-action="Relatorios">
+									<i class="bi bi-graph-up"></i>
+									<span class="link-text">Relatórios</span>
+								</a>
+							</li>
 
-					</ul>
+						</ul>
 
-				</div>
+					</div>
 
-			</li>
+				</li>
 
-			<!-- EMPRESAS -->
-			<li class="nav-item">
-				<a class="nav-link" asp-controller="Empresas" asp-action="Index">
-					<i class="bi bi-building"></i>
-					<span class="link-text">Empresas</span>
-				</a>
-			</li>
+				<!-- EMPRESAS -->
+				<li class="nav-item">
+					<a class="nav-link" asp-controller="Empresas" asp-action="Index">
+						<i class="bi bi-building"></i>
+						<span class="link-text">Empresas</span>
+					</a>
+				</li>
+
+				<!-- ASSINATURA -->
+				<li class="nav-item">
+					<a class="nav-link" asp-controller="Assinatura" asp-action="Index">
+						<i class="bi bi-credit-card"></i>
+						<span class="link-text">Assinatura</span>
+					</a>
+				</li>
+			}
 
 		</ul>
 

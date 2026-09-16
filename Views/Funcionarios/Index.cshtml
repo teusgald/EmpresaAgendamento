@@ -123,6 +123,27 @@
                                     Editar
                                 </a>
 
+                                <a asp-action="Horarios"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    Horários
+                                </a>
+
+                                @if (item.UserId != null)
+                                {
+                                    <span class="badge bg-info text-dark">Acesso ativo</span>
+                                }
+                                else if (!string.IsNullOrWhiteSpace(item.Email))
+                                {
+                                    <form asp-action="CriarAcesso" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-info">
+                                            Criar acesso
+                                        </button>
+                                    </form>
+                                }
+
                                 <form asp-action="ToggleAtivo"
                                       method="post"
                                       class="d-inline">
@@ -263,6 +284,27 @@
                            class="btn btn-outline-primary">
                             Editar
                         </a>
+
+                        <a asp-action="Horarios"
+                           asp-route-id="@item.Id"
+                           class="btn btn-outline-secondary">
+                            Horários
+                        </a>
+
+                        @if (item.UserId != null)
+                        {
+                            <span class="badge bg-info text-dark align-self-center">Acesso ativo</span>
+                        }
+                        else if (!string.IsNullOrWhiteSpace(item.Email))
+                        {
+                            <form asp-action="CriarAcesso" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="btn btn-outline-info w-100 mt-2">
+                                    Criar acesso
+                                </button>
+                            </form>
+                        }
 
                         <form asp-action="ToggleAtivo"
                               method="post">

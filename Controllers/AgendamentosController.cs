@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace EmpresaAgendamento.Controllers
 {
     [Route("agendamentos")]
-    [Authorize(Roles = "Empresa")]
+    [Authorize(Roles = "Empresa,Funcionario")]
     public class AgendamentosController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -34,6 +34,25 @@ namespace EmpresaAgendamento.Controllers
             return user?.EmpresaId;
         }
 
+        // Não nulo só quando quem está logado é um Funcionário (não a Empresa
+        // dona) — usado pra restringir a que só veja/mexa nos agendamentos
+        // dele, sem afetar os colegas.
+        private async Task<int?> GetFuncionarioIdAsync()
+        {
+            if (!User.IsInRole("Funcionario"))
+                return null;
+
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+                return null;
+
+            return await _context.Funcionarios
+                .Where(f => f.UserId == user.Id)
+                .Select(f => (int?)f.Id)
+                .FirstOrDefaultAsync();
+        }
+
         // =========================
         // CARREGAR COMBOS
         // =========================
@@ -50,8 +69,18 @@ namespace EmpresaAgendamento.Controllers
                 .OrderBy(s => s.Nome)
                 .ToListAsync() ?? new List<Servico>();
 
-            ViewBag.Funcionarios = await _context.Funcionarios
-                .Where(f => f.Ativo && f.EmpresaId == empresaId)
+            var funcionarioId = await GetFuncionarioIdAsync();
+
+            var funcionariosQuery = _context.Funcionarios
+                .Where(f => f.Ativo && f.EmpresaId == empresaId);
+
+            // Funcionário só pode agendar em nome dele mesmo, nunca de um colega.
+            if (funcionarioId.HasValue)
+            {
+                funcionariosQuery = funcionariosQuery.Where(f => f.Id == funcionarioId.Value);
+            }
+
+            ViewBag.Funcionarios = await funcionariosQuery
                 .OrderBy(f => f.Nome)
                 .ToListAsync() ?? new List<Funcionario>();
         }
@@ -74,11 +103,18 @@ namespace EmpresaAgendamento.Controllers
 
                 int pageSize = 10;
 
+                var funcionarioId = await GetFuncionarioIdAsync();
+
                 var query = _context.Agendamentos
                     .Include(a => a.Cliente)
                     .Include(a => a.Servico)
                     .Include(a => a.Funcionario)
                     .Where(a => a.EmpresaId == empresaId);
+
+                if (funcionarioId.HasValue)
+                {
+                    query = query.Where(a => a.FuncionarioId == funcionarioId.Value);
+                }
 
                 // CLIENTE
                 if (!string.IsNullOrWhiteSpace(cliente))
@@ -152,11 +188,13 @@ namespace EmpresaAgendamento.Controllers
        StatusAgendamento status)
         {
             var empresaId = await GetEmpresaId();
+            var funcionarioId = await GetFuncionarioIdAsync();
 
             var agendamento = await _context.Agendamentos
                 .FirstOrDefaultAsync(x =>
                     x.Id == id &&
-                    x.EmpresaId == empresaId);
+                    x.EmpresaId == empresaId &&
+                    (funcionarioId == null || x.FuncionarioId == funcionarioId));
 
             if (agendamento == null)
             {
@@ -312,7 +350,15 @@ namespace EmpresaAgendamento.Controllers
                 // FUNCIONÁRIO
                 // =========================
 
-                if (funcionarioAleatorio || !model.FuncionarioId.HasValue)
+                var funcionarioLogadoId = await GetFuncionarioIdAsync();
+
+                if (funcionarioLogadoId.HasValue)
+                {
+                    // Funcionário só agenda em nome dele mesmo — ignora
+                    // qualquer valor de FuncionarioId vindo do formulário.
+                    model.FuncionarioId = funcionarioLogadoId.Value;
+                }
+                else if (funcionarioAleatorio || !model.FuncionarioId.HasValue)
                 {
                     var funcionarioDisponivel =
                         await _context.Funcionarios
@@ -362,6 +408,37 @@ namespace EmpresaAgendamento.Controllers
 
                     await CarregarCombos(empresaId.Value);
                     return View(model);
+                }
+
+                // =========================
+                // LIMITE DO PLANO (agendamentos/mês)
+                // =========================
+
+                var limiteAgendamentosMes = await _context.Empresas
+                    .Where(e => e.Id == empresaId)
+                    .Select(e => e.Plano != null ? e.Plano.LimiteAgendamentosMes : 0)
+                    .FirstOrDefaultAsync();
+
+                if (limiteAgendamentosMes > 0)
+                {
+                    var inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                    var fimMes = inicioMes.AddMonths(1);
+
+                    var totalNoMes = await _context.Agendamentos.CountAsync(a =>
+                        a.EmpresaId == empresaId &&
+                        a.Ativo &&
+                        a.DataCriacao >= inicioMes &&
+                        a.DataCriacao < fimMes);
+
+                    if (totalNoMes >= limiteAgendamentosMes)
+                    {
+                        ToastHelper.Warning(
+                            TempData,
+                            $"Seu plano permite até {limiteAgendamentosMes} agendamento(s) por mês. Faça upgrade do plano para continuar.");
+
+                        await CarregarCombos(empresaId.Value);
+                        return View(model);
+                    }
                 }
 
                 // =========================
@@ -418,9 +495,13 @@ namespace EmpresaAgendamento.Controllers
             try
             {
                 var empresaId = await GetEmpresaId();
+                var funcionarioId = await GetFuncionarioIdAsync();
 
                 var agendamento = await _context.Agendamentos
-                    .FirstOrDefaultAsync(a => a.Id == id && a.EmpresaId == empresaId);
+                    .FirstOrDefaultAsync(a =>
+                        a.Id == id &&
+                        a.EmpresaId == empresaId &&
+                        (funcionarioId == null || a.FuncionarioId == funcionarioId));
 
                 if (agendamento == null)
                 {
@@ -456,15 +537,25 @@ namespace EmpresaAgendamento.Controllers
                     return RedirectToAction("Login", "Account");
                 }
 
+                var funcionarioId = await GetFuncionarioIdAsync();
+
                 var agendamento = await _context.Agendamentos
                     .FirstOrDefaultAsync(a =>
                         a.Id == id &&
-                        a.EmpresaId == empresaId);
+                        a.EmpresaId == empresaId &&
+                        (funcionarioId == null || a.FuncionarioId == funcionarioId));
 
                 if (agendamento == null)
                 {
                     ToastHelper.Error(TempData, "Agendamento não encontrado.");
                     return RedirectToAction(nameof(Index));
+                }
+
+                // Funcionário não pode passar o agendamento pra outro colega.
+                if (funcionarioId.HasValue)
+                {
+                    funcionarioAleatorio = false;
+                    model.FuncionarioId = funcionarioId.Value;
                 }
 
                 // =========================
@@ -638,9 +729,13 @@ namespace EmpresaAgendamento.Controllers
             try
             {
                 var empresaId = await GetEmpresaId();
+                var funcionarioId = await GetFuncionarioIdAsync();
 
                 var agendamento = await _context.Agendamentos
-                    .FirstOrDefaultAsync(a => a.Id == id && a.EmpresaId == empresaId);
+                    .FirstOrDefaultAsync(a =>
+                        a.Id == id &&
+                        a.EmpresaId == empresaId &&
+                        (funcionarioId == null || a.FuncionarioId == funcionarioId));
 
                 if (agendamento == null)
                 {
@@ -680,14 +775,22 @@ namespace EmpresaAgendamento.Controllers
                 if (empresaId == null)
                     return Json(new List<object>());
 
-                var eventos = await _context.Agendamentos
+                var funcionarioId = await GetFuncionarioIdAsync();
+
+                var eventosQuery = _context.Agendamentos
                     .Include(a => a.Cliente)
                     .Include(a => a.Servico)
                     .Include(a => a.Funcionario)
                     .Where(a =>
                         a.EmpresaId == empresaId &&
-                        a.Ativo)
-                    .ToListAsync();
+                        a.Ativo);
+
+                if (funcionarioId.HasValue)
+                {
+                    eventosQuery = eventosQuery.Where(a => a.FuncionarioId == funcionarioId.Value);
+                }
+
+                var eventos = await eventosQuery.ToListAsync();
 
                 var lista = eventos.Select(a => new
                 {
