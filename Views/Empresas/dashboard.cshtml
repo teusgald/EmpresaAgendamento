@@ -6,6 +6,78 @@
 
 <div class="container-fluid mt-4">
 
+    @if (!Model.AssinaturaAtiva)
+    {
+        <div class="alert alert-warning d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-4">
+            <div>
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                <strong>Sua assinatura ainda não está ativa.</strong>
+                Você pode configurar sua empresa por aqui, mas agendamentos, clientes e os
+                demais recursos só são liberados depois do pagamento.
+            </div>
+            <a asp-controller="Assinatura" asp-action="Index" class="btn btn-dark btn-sm text-nowrap">
+                Assinar agora
+            </a>
+        </div>
+    }
+
+    @if (!Model.OnboardingConcluido)
+    {
+        var totalPassos = Model.OnboardingPassos.Count;
+        var passosConcluidos = Model.OnboardingPassos.Count(p => p.Concluido);
+        var progresso = totalPassos == 0 ? 0 : (int)Math.Round(passosConcluidos * 100.0 / totalPassos);
+
+        <div class="card shadow-sm mb-4 border-primary">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-rocket-takeoff text-primary"></i>
+                        Vamos configurar sua empresa
+                    </h5>
+                    <span class="text-muted small">@passosConcluidos de @totalPassos concluídos</span>
+                </div>
+
+                <div class="progress mb-3" style="height:8px;">
+                    <div class="progress-bar bg-primary" role="progressbar"
+                         style="width:@progresso%;" aria-valuenow="@progresso" aria-valuemin="0" aria-valuemax="100"></div>
+                </div>
+
+                <div class="row g-2">
+                    @foreach (var passo in Model.OnboardingPassos)
+                    {
+                        <div class="col-md-6 col-lg-3">
+                            <a asp-controller="@passo.ControllerName" asp-action="@passo.ActionName"
+                               class="text-decoration-none">
+                                <div class="border rounded p-3 h-100 @(passo.Concluido ? "bg-light" : "")">
+                                    <div class="d-flex align-items-start gap-2">
+                                        @if (passo.Concluido)
+                                        {
+                                            <i class="bi bi-check-circle-fill text-success fs-5"></i>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi @passo.Icone text-primary fs-5"></i>
+                                        }
+                                        <div>
+                                            <div class="fw-semibold small text-dark @(passo.Concluido ? "text-decoration-line-through text-muted" : "")">
+                                                @passo.Titulo
+                                            </div>
+                                            <div class="text-muted small">
+                                                @passo.Descricao
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                    }
+                </div>
+
+            </div>
+        </div>
+    }
+
     <!-- KPIs -->
     <div class="row g-3 mb-4">
 

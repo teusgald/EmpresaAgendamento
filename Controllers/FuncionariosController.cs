@@ -16,15 +16,18 @@ public class FuncionariosController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IEmailService _emailService;
+    private readonly ILogger<FuncionariosController> _logger;
 
     public FuncionariosController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<FuncionariosController> logger)
     {
         _context = context;
         _userManager = userManager;
         _emailService = emailService;
+        _logger = logger;
     }
 
     private async Task<int?> GetEmpresaId()
@@ -508,7 +511,8 @@ public class FuncionariosController : Controller
         }
         catch (Exception ex)
         {
-            ToastHelper.Warning(TempData, $"Acesso criado, mas não foi possível enviar o e-mail: {ex.Message}");
+            _logger.LogError(ex, "Falha ao enviar e-mail de acesso pro funcionário {FuncionarioId}.", funcionario.Id);
+            ToastHelper.Warning(TempData, "Acesso criado, mas não foi possível enviar o e-mail. Tente reenviar mais tarde ou repasse a senha manualmente.");
         }
 
         return RedirectToAction(nameof(Index));

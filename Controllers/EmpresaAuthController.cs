@@ -15,19 +15,22 @@ namespace EmpresaAgendamento.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailService _emailService;
+        private readonly ILogger<EmpresaAuthController> _logger;
 
         public EmpresaAuthController(
             IEmpresaService empresaService,
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
-            IEmailService emailService)
+            IEmailService emailService,
+            ILogger<EmpresaAuthController> logger)
         {
             _empresaService = empresaService;
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
             _emailService = emailService;
+            _logger = logger;
         }
 
         [HttpGet("login")]
@@ -230,10 +233,12 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Falha ao processar recuperação de senha (empresa, e-mail {Email}).", model.Email);
+
                 return Json(new
                 {
                     success = false,
-                    error = ex.Message
+                    error = "Não foi possível enviar o e-mail de recuperação agora. Tente novamente em alguns instantes."
                 });
             }
         }
@@ -307,10 +312,12 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Falha ao redefinir senha (empresa, e-mail {Email}).", model.Email);
+
                 return Json(new
                 {
                     success = false,
-                    error = ex.Message
+                    error = "Não foi possível redefinir sua senha agora. Tente novamente em alguns instantes."
                 });
             }
         }

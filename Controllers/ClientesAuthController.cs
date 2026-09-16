@@ -13,17 +13,20 @@ public class ClientesAuthController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IEmailService _emailService;
+    private readonly ILogger<ClientesAuthController> _logger;
 
     public ClientesAuthController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<ClientesAuthController> logger)
     {
         _context = context;
         _userManager = userManager;
         _signInManager = signInManager;
         _emailService = emailService;
+        _logger = logger;
     }
 
     // =========================
@@ -109,13 +112,16 @@ public class ClientesAuthController : Controller
             return View(model);
         }
 
-        // LOGIN VIA MODAL PÚBLICO
+        // LOGIN VIA MODAL PÚBLICO — fica na própria página (só recarrega),
+        // não manda pro portal do cliente. Quem abriu o login pode estar no
+        // meio de um agendamento ou de uma avaliação; sair da página perdia
+        // esse contexto.
         if (origem == "publico")
         {
             return Json(new
             {
                 success = true,
-                redirect = "/Cliente/Agendamentos"
+                reload = true
             });
         }
 
@@ -359,10 +365,12 @@ public class ClientesAuthController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Falha ao processar recuperação de senha (cliente, e-mail {Email}).", model.Email);
+
             return Json(new
             {
                 success = false,
-                error = ex.Message
+                error = "Não foi possível enviar o e-mail de recuperação agora. Tente novamente em alguns instantes."
             });
         }
     }
@@ -431,10 +439,12 @@ public class ClientesAuthController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Falha ao redefinir senha (cliente, e-mail {Email}).", model.Email);
+
             return Json(new
             {
                 success = false,
-                error = ex.Message
+                error = "Não foi possível redefinir sua senha agora. Tente novamente em alguns instantes."
             });
         }
     }

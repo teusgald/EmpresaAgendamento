@@ -51,6 +51,11 @@ namespace EmpresaAgendamento.Models
 
         public bool ClienteAvulso { get; set; }
 
+        // Marca se o lembrete automático (WhatsApp) já foi enviado pra esse
+        // agendamento — evita mandar duplicado a cada ciclo do serviço em
+        // segundo plano (ver LembreteAgendamentoBackgroundService).
+        public bool LembreteEnviado { get; set; }
+
         // =========================
         // 🔁 NAVIGATION
         // =========================

@@ -13,21 +13,27 @@ namespace EmpresaAgendamento.Controllers
     [Authorize(Roles = "Empresa")]
     public class AssinaturaController : Controller
     {
+        private const string MensagemErroGenerica =
+            "Não foi possível concluir essa ação agora. Tente novamente em alguns instantes ou fale com o suporte.";
+
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IStripeService _stripeService;
         private readonly IConfiguration _configuration;
+        private readonly ILogger<AssinaturaController> _logger;
 
         public AssinaturaController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IStripeService stripeService,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            ILogger<AssinaturaController> logger)
         {
             _context = context;
             _userManager = userManager;
             _stripeService = stripeService;
             _configuration = configuration;
+            _logger = logger;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -71,7 +77,8 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
-                ToastHelper.Error(TempData, $"Não foi possível carregar os planos do Stripe: {ex.Message}");
+                _logger.LogError(ex, "Falha ao carregar plano padrão do Stripe.");
+                ToastHelper.Error(TempData, MensagemErroGenerica);
             }
 
             // Plano escolhido: monta o Checkout embutido (mesmo formulário do
@@ -89,7 +96,8 @@ namespace EmpresaAgendamento.Controllers
                 }
                 catch (Exception ex)
                 {
-                    ToastHelper.Error(TempData, $"Erro ao iniciar o pagamento: {ex.Message}");
+                    _logger.LogError(ex, "Falha ao iniciar pagamento (empresa {EmpresaId}, plano {TipoPlano}).", empresaId, tipoPlano);
+                    ToastHelper.Error(TempData, "Não foi possível iniciar o pagamento agora. Tente novamente em alguns instantes.");
                 }
             }
 
@@ -143,7 +151,8 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
-                ToastHelper.Error(TempData, ex.Message);
+                _logger.LogError(ex, "Falha ao confirmar retorno do checkout (session {SessionId}).", session_id);
+                ToastHelper.Error(TempData, MensagemErroGenerica);
             }
 
             return RedirectToAction(nameof(Index));
@@ -169,7 +178,8 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
-                ToastHelper.Error(TempData, ex.Message);
+                _logger.LogError(ex, "Falha ao abrir portal de faturamento (empresa {EmpresaId}).", empresaId);
+                ToastHelper.Error(TempData, MensagemErroGenerica);
                 return RedirectToAction(nameof(Index));
             }
         }

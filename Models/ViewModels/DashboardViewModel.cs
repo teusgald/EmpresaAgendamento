@@ -17,5 +17,12 @@ namespace EmpresaAgendamento.Models.ViewModels
         public List<FaturamentoMesDto> FaturamentoPorMes { get; set; } = new();
 
         public List<ServicoPopularDto> ServicosPopulares { get; set; } = new();
+
+        public List<OnboardingPassoDto> OnboardingPassos { get; set; } = new();
+
+        public bool AssinaturaAtiva { get; set; }
+
+        public bool OnboardingConcluido =>
+            OnboardingPassos.All(p => p.Concluido);
     }
 }

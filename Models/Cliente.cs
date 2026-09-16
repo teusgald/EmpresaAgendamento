@@ -30,5 +30,8 @@ namespace EmpresaAgendamento.Models
      = new List<Agendamento>();
         public ICollection<EmpresaCliente> EmpresaClientes { get; set; }
     = new List<EmpresaCliente>();
+
+        public ICollection<Avaliacao> Avaliacoes { get; set; }
+    = new List<Avaliacao>();
     }
 }

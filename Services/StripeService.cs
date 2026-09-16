@@ -81,7 +81,7 @@ namespace EmpresaAgendamento.Services
                     LimiteFuncionarios = 0,
                     LimiteAgendamentosMes = 0,
                     PermiteFinanceiro = true,
-                    PermiteWhatsapp = false,
+                    PermiteWhatsapp = true,
                     PermiteRelatorios = true,
                     PermiteMultiFuncionarios = true,
                     PermiteLandingPage = true,
@@ -160,7 +160,9 @@ namespace EmpresaAgendamento.Services
             var options = new SessionCreateOptions
             {
                 Mode = "subscription",
-                UiMode = "embedded",
+                // O Stripe descontinuou "embedded" em favor de "embedded_page"
+                // (o valor antigo agora retorna invalid_request_error).
+                UiMode = "embedded_page",
                 Customer = customerId,
                 ClientReferenceId = empresaId.ToString(),
                 LineItems = new List<SessionLineItemOptions>

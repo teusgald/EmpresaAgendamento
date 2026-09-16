@@ -12,7 +12,12 @@ var builder = WebApplication.CreateBuilder(args);
 // =========================
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"));
+    // Azure SQL solta conexão de vez em quando por motivo transitório (rede,
+    // failover, throttling) — sem isso, qualquer query nesse instante falha
+    // direto em vez de tentar de novo.
+    options.UseSqlServer(
+        builder.Configuration.GetConnectionString("DefaultConnection"),
+        sqlOptions => sqlOptions.EnableRetryOnFailure());
 
     // Loga valores de parâmetro nas queries — só em Development, nunca em
     // produção (vazaria dados sensíveis nos logs do servidor).
@@ -48,6 +53,14 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// Sem isso, um usuário logado que tenta acessar algo fora da role dele
+// (ex.: Funcionário tentando abrir /Servicos) cai no /Account/AccessDenied
+// padrão do Identity, que não existe nesse projeto.
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.AccessDeniedPath = "/acesso-negado";
+});
+
 // =========================
 // 🔥 SERVICES
 // =========================
@@ -55,8 +68,11 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IEmpresaService, EmpresaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<INotificacaoAgendamentoService, NotificacaoAgendamentoService>();
 builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
+builder.Services.AddSingleton<IWhatsAppService, WhatsAppService>();
+builder.Services.AddHostedService<LembreteAgendamentoBackgroundService>();
 
 // =========================
 // 🔥 STRIPE
