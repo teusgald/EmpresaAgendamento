@@ -693,9 +693,10 @@ body {
 }
 
 @media (min-width: 769px) {
+    /* No desktop a topbar não tem mais nada dentro (o título de cada tela
+       já aparece uma vez só, no conteúdo) — só ocuparia espaço à toa. */
     .topbar {
-        width: 100%;
-        position: relative;
+        display: none;
     }
 }
 
@@ -712,6 +713,9 @@ body {
 
     .content {
         padding: 16px;
+        /* Compensa a topbar fixa (60px) só existir no mobile — sem isso o
+           topo do conteúdo fica escondido atrás dela. */
+        padding-top: 76px;
     }
 }
 

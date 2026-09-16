@@ -83,16 +83,17 @@
     <!-- CONTEÚDO -->
     <div class="content" id="content">
 
-        <!-- TOPBAR -->
+        <!-- TOPBAR (só existe de verdade no mobile — é onde mora o botão do
+             menu; o título de cada tela já aparece uma vez só, dentro do
+             conteúdo, no padrão do Dashboard) -->
         <div class="topbar">
             <span class="hamburger" id="hamburger">
                 <i class="bi bi-list"></i>
             </span>
-            <h5 class="mb-0">@ViewData["Title"]</h5>
         </div>
 
         <!-- BODY -->
-        <div class="mt-5 p-4">
+        <div class="p-4">
             @RenderBody()
         </div>
 
