@@ -35,6 +35,14 @@ public class ClientesAuthController : Controller
     [HttpGet("login")]
     public IActionResult Login() => View();
 
+    // Sempre responde em JSON — todo lugar que chama isso (home e a página
+    // pública da empresa) manda a requisição via fetch()/AJAX e espera JSON
+    // de volta, nunca um formulário nativo. Antes, fora do fluxo "publico"
+    // essa ação devolvia um RedirectToAction (uma resposta HTML de
+    // verdade) — o fetch().then(res => res.json()) do Home/index.cshtml
+    // não sabe ler isso e quebrava com erro de requisição, mesmo com a
+    // senha certa. O Home/index nunca manda o campo "Origem", só a página
+    // pública manda — por isso só quebrava a partir do Home.
     [HttpPost("login")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(ClienteLoginViewModel model)
@@ -43,18 +51,16 @@ public class ClientesAuthController : Controller
 
         if (!ModelState.IsValid)
         {
-            if (origem == "publico")
+            return Json(new
             {
-                return Json(new
-                {
-                    success = false,
-                    error = "Dados inválidos."
-                });
-            }
-
-            return View(model);
+                success = false,
+                error = "Dados inválidos."
+            });
         }
 
+        // Mesmo e-mail pode estar cadastrado tanto como Empresa quanto como
+        // Cliente (são contas separadas) — por isso filtra pela role certa
+        // em vez de assumir que o primeiro resultado é o certo.
         var users = await _userManager.Users
             .Where(u => u.Email == model.Email)
             .ToListAsync();
@@ -72,17 +78,11 @@ public class ClientesAuthController : Controller
 
         if (user == null)
         {
-            if (origem == "publico")
+            return Json(new
             {
-                return Json(new
-                {
-                    success = false,
-                    error = "Usuário não encontrado."
-                });
-            }
-
-            ModelState.AddModelError("", "Usuário não encontrado.");
-            return View(model);
+                success = false,
+                error = "Usuário não encontrado."
+            });
         }
 
         var result = await _signInManager.PasswordSignInAsync(
@@ -99,17 +99,11 @@ public class ClientesAuthController : Controller
                     ? "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada."
                     : "Email ou senha inválidos.";
 
-            if (origem == "publico")
+            return Json(new
             {
-                return Json(new
-                {
-                    success = false,
-                    error = mensagemErro
-                });
-            }
-
-            ModelState.AddModelError("", mensagemErro);
-            return View(model);
+                success = false,
+                error = mensagemErro
+            });
         }
 
         // LOGIN VIA MODAL PÚBLICO — fica na própria página (só recarrega),
@@ -125,10 +119,12 @@ public class ClientesAuthController : Controller
             });
         }
 
-        // LOGIN NORMAL HOME 
-        return RedirectToAction(
-            "Agendamentos",
-            "Cliente");
+        // LOGIN NORMAL (home ou qualquer outro lugar) — manda pro portal do cliente.
+        return Json(new
+        {
+            success = true,
+            redirect = "/Cliente/Agendamentos"
+        });
     }
 
     // =========================

@@ -586,6 +586,12 @@ namespace EmpresaAgendamento.Data
                 .HasForeignKey(a => a.ClienteId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            builder.Entity<Agendamento>()
+                .HasOne(a => a.AssinaturaPlanoServico)
+                .WithMany()
+                .HasForeignKey(a => a.AssinaturaPlanoServicoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             #endregion
         }
     }

@@ -17,15 +17,18 @@ namespace EmpresaAgendamento.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFinanceiroService _financeiroService;
+        private readonly IPlanoCreditoService _planoCreditoService;
 
         public AgendamentosController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IFinanceiroService financeiroService)
+            IFinanceiroService financeiroService,
+            IPlanoCreditoService planoCreditoService)
         {
             _context = context;
             _userManager = userManager;
             _financeiroService = financeiroService;
+            _planoCreditoService = planoCreditoService;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -89,10 +92,12 @@ namespace EmpresaAgendamento.Controllers
         // INDEX
         // =========================
         [HttpGet("")]
-        public async Task<IActionResult> Index( string? cliente, StatusAgendamento? status,  DateTime? dataInicial, DateTime? dataFinal,  int page = 1)
+        public async Task<IActionResult> Index( string? cliente, string? aba,  DateTime? dataInicial, DateTime? dataFinal,  int page = 1)
         {
             try
             {
+                aba = string.IsNullOrWhiteSpace(aba) ? "proximos" : aba.ToLowerInvariant();
+
                 var empresaId = await GetEmpresaId();
 
                 if (empresaId == null)
@@ -129,11 +134,27 @@ namespace EmpresaAgendamento.Controllers
                          a.NomeClienteAvulso.Contains(cliente)));
                 }
 
-                // STATUS
-                if (status.HasValue)
+                // ABA (igual concorrente: por padrão só mostra o que ainda
+                // vai acontecer — não empilha vencido/finalizado/cancelado
+                // junto por padrão, isso fica em abas separadas).
+                switch (aba)
                 {
-                    query = query.Where(a =>
-                        a.Status == status.Value);
+                    case "concluidos":
+                        query = query.Where(a => a.Status == StatusAgendamento.Finalizado);
+                        break;
+
+                    case "cancelados":
+                        query = query.Where(a => a.Status == StatusAgendamento.Cancelado);
+                        break;
+
+                    case "todos":
+                        break;
+
+                    default: // "proximos"
+                        query = query.Where(a =>
+                            a.Status == StatusAgendamento.Agendado ||
+                            a.Status == StatusAgendamento.Confirmado);
+                        break;
                 }
 
                 // DATA INICIAL
@@ -150,7 +171,12 @@ namespace EmpresaAgendamento.Controllers
                         a.DataHora <= dataFinal.Value.AddDays(1));
                 }
 
-                query = query.OrderByDescending(a => a.DataHora);
+                // "Próximos" ordena do mais próximo pra frente (o de hoje
+                // aparece antes do de semana que vem); histórico ordena do
+                // mais recente pro mais antigo.
+                query = aba == "proximos"
+                    ? query.OrderBy(a => a.DataHora)
+                    : query.OrderByDescending(a => a.DataHora);
 
                 var totalItems = await query.CountAsync();
 
@@ -160,7 +186,7 @@ namespace EmpresaAgendamento.Controllers
                     .ToListAsync();
 
                 ViewBag.Cliente = cliente;
-                ViewBag.Status = status;
+                ViewBag.Aba = aba;
                 ViewBag.DataInicial = dataInicial;
                 ViewBag.DataFinal = dataFinal;
 
@@ -238,47 +264,15 @@ namespace EmpresaAgendamento.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            if (status == StatusAgendamento.Finalizado)
+            // O crédito é debitado na hora de agendar (ver Create), não ao
+            // finalizar — então, se cancelar, devolve pro cliente o crédito
+            // que tinha sido reservado.
+            if (status == StatusAgendamento.Cancelado && agendamento.AssinaturaPlanoServicoId.HasValue)
             {
-                await ConsumirCreditoDoPlanoSeAplicavelAsync(agendamento);
+                await _planoCreditoService.DevolverCreditoAsync(agendamento.AssinaturaPlanoServicoId.Value);
             }
 
             return RedirectToAction(nameof(Index));
-        }
-
-        // Se o cliente tiver um plano ativo (ver módulo Planos) que cobre o
-        // serviço desse agendamento, desconta 1 crédito do período atual —
-        // sem isso, um plano nunca teria seu uso registrado. Não gera/altera
-        // nada no financeiro (o cliente já "pagou" o plano por fora).
-        private async Task ConsumirCreditoDoPlanoSeAplicavelAsync(Agendamento agendamento)
-        {
-            if (agendamento.ClienteId == null)
-                return;
-
-            try
-            {
-                var assinatura = await _context.AssinaturasPlanoServico
-                    .Include(a => a.PlanoServico)
-                    .Where(a =>
-                        a.Status == Models.Enums.StatusAssinaturaPlano.Ativa &&
-                        a.ClienteId == agendamento.ClienteId &&
-                        a.PlanoServico.EmpresaId == agendamento.EmpresaId &&
-                        a.PlanoServico.Servicos.Any(x => x.ServicoId == agendamento.ServicoId))
-                    .FirstOrDefaultAsync();
-
-                if (assinatura == null)
-                    return;
-
-                if (!assinatura.TemCreditoDisponivel())
-                    return;
-
-                assinatura.CreditosUsados++;
-                await _context.SaveChangesAsync();
-            }
-            catch
-            {
-                // Não bloqueia a finalização do agendamento por isso.
-            }
         }
 
         // =========================
@@ -298,6 +292,7 @@ namespace EmpresaAgendamento.Controllers
                 }
 
                 await CarregarCombos(empresaId.Value);
+                ViewBag.EmpresaId = empresaId.Value;
 
                 return View(new Agendamento());
             }
@@ -495,6 +490,22 @@ namespace EmpresaAgendamento.Controllers
 
                 await _context.SaveChangesAsync();
 
+                // Se o cliente tem plano ativo que cobre esse serviço, o
+                // agendamento já nasce usando 1 crédito do período (em vez de
+                // só descontar quando finalizar — assim ele aparece de
+                // imediato como "usado" na tela de Assinantes).
+                if (model.ClienteId.HasValue)
+                {
+                    var assinaturaUsada = await _planoCreditoService.ConsumirSeAplicavelAsync(
+                        empresaId.Value, model.ClienteId.Value, model.ServicoId);
+
+                    if (assinaturaUsada.HasValue)
+                    {
+                        model.AssinaturaPlanoServicoId = assinaturaUsada;
+                        await _context.SaveChangesAsync();
+                    }
+                }
+
                 // Todo agendamento já entra no financeiro como previsão de
                 // receita (Contas a Receber pendente) — não só quando finalizado.
                 try
@@ -551,6 +562,7 @@ namespace EmpresaAgendamento.Controllers
                 }
 
                 await CarregarCombos(empresaId.Value);
+                ViewBag.EmpresaId = empresaId.Value;
 
                 return View(agendamento);
             }

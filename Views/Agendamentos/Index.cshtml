@@ -5,10 +5,47 @@
     ViewData["Title"] = "Agendamentos";
 }
 
+@{
+    var abaAtual = ViewBag.Aba as string ?? "proximos";
+}
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link @(abaAtual == "proximos" ? "active" : "")"
+           asp-action="Index" asp-route-aba="proximos"
+           asp-route-cliente="@ViewBag.Cliente" asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
+            Próximos
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(abaAtual == "concluidos" ? "active" : "")"
+           asp-action="Index" asp-route-aba="concluidos"
+           asp-route-cliente="@ViewBag.Cliente" asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
+            Concluídos
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(abaAtual == "cancelados" ? "active" : "")"
+           asp-action="Index" asp-route-aba="cancelados"
+           asp-route-cliente="@ViewBag.Cliente" asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
+            Cancelados
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link @(abaAtual == "todos" ? "active" : "")"
+           asp-action="Index" asp-route-aba="todos"
+           asp-route-cliente="@ViewBag.Cliente" asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
+            Todos
+        </a>
+    </li>
+</ul>
+
 <div class="card shadow-sm mb-3">
     <div class="card-body">
 
         <form method="get">
+
+            <input type="hidden" name="aba" value="@abaAtual" />
 
             <div class="row g-2">
 
@@ -20,37 +57,14 @@
                            placeholder="Cliente ou cliente avulso" />
                 </div>
 
-                <div class="col-lg-2">
-
-                    <select name="status"
-                            class="form-select">
-
-                        <option value="">
-                            Todos Status
-                        </option>
-
-                        @foreach (var status in Enum.GetValues<StatusAgendamento>())
-                        {
-                            <option value="@status"
-                                    selected="@(ViewBag.Status?.ToString() == status.ToString())">
-
-                                @status
-
-                            </option>
-                        }
-
-                    </select>
-
-                </div>
-
-                <div class="col-lg-2">
+                <div class="col-lg-3">
                     <input type="date"
                            name="dataInicial"
                            value="@ViewBag.DataInicial?.ToString("yyyy-MM-dd")"
                            class="form-control" />
                 </div>
 
-                <div class="col-lg-2">
+                <div class="col-lg-3">
                     <input type="date"
                            name="dataFinal"
                            value="@ViewBag.DataFinal?.ToString("yyyy-MM-dd")"
@@ -395,7 +409,9 @@
                     <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
                         <a class="page-link"
                            asp-action="Index"
-                           asp-route-page="@(ViewBag.CurrentPage - 1)">
+                           asp-route-page="@(ViewBag.CurrentPage - 1)"
+                           asp-route-aba="@abaAtual" asp-route-cliente="@ViewBag.Cliente"
+                           asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
                             Anterior
                         </a>
                     </li>
@@ -406,7 +422,9 @@
                         <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
                             <a class="page-link"
                                asp-action="Index"
-                               asp-route-page="@i">
+                               asp-route-page="@i"
+                               asp-route-aba="@abaAtual" asp-route-cliente="@ViewBag.Cliente"
+                               asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
                                 @i
                             </a>
                         </li>
@@ -416,7 +434,9 @@
                     <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
                         <a class="page-link"
                            asp-action="Index"
-                           asp-route-page="@(ViewBag.CurrentPage + 1)">
+                           asp-route-page="@(ViewBag.CurrentPage + 1)"
+                           asp-route-aba="@abaAtual" asp-route-cliente="@ViewBag.Cliente"
+                           asp-route-dataInicial="@ViewBag.DataInicial" asp-route-dataFinal="@ViewBag.DataFinal">
                             Próximo
                         </a>
                     </li>

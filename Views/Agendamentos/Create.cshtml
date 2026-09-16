@@ -67,13 +67,22 @@
                 </div>
 
                 <!-- DATA -->
-                <div class="mb-3">
-                    <label class="form-label">Data e Hora</label>
-                    <input asp-for="DataHora"
-                           type="datetime-local"
-                           class="form-control"
-                           value="@DateTime.Now.ToString("yyyy-MM-ddTHH:mm")" />
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="dataAgendamento"
+                               value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Horário</label>
+                        <select class="form-select" id="horarioSelect">
+                            <option value="">Selecione o serviço e a data</option>
+                        </select>
+                    </div>
                 </div>
+
+                <input type="hidden" asp-for="DataHora" id="dataHoraHidden" />
 
                 <!-- OBS -->
                 <div class="mb-3">
@@ -104,4 +113,69 @@
     check.addEventListener('change', function () {
         box.classList.toggle('d-none', !this.checked);
     });
+
+    // ==========================================
+    // HORÁRIOS DISPONÍVEIS (mesma regra do agendamento público —
+    // respeita expediente do funcionário e conflitos já marcados)
+    // ==========================================
+
+    const empresaId = @ViewBag.EmpresaId;
+    const servicoSelect = document.getElementById("ServicoId");
+    const funcionarioSelect = document.getElementById("FuncionarioId");
+    const dataInput = document.getElementById("dataAgendamento");
+    const horarioSelect = document.getElementById("horarioSelect");
+    const dataHoraHidden = document.getElementById("dataHoraHidden");
+
+    function carregarHorarios() {
+
+        const servicoId = servicoSelect.value;
+        const funcionarioId = funcionarioSelect.value;
+        const data = dataInput.value;
+
+        if (!servicoId || !data) {
+            horarioSelect.innerHTML = '<option value="">Selecione o serviço e a data</option>';
+            return;
+        }
+
+        horarioSelect.innerHTML = '<option value="">Carregando...</option>';
+
+        const url = `/Publico/HorariosDisponiveis?empresaId=${empresaId}&servicoId=${servicoId}` +
+            `&funcionarioId=${funcionarioId}&data=${data}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(horarios => {
+
+                if (!horarios.length) {
+                    horarioSelect.innerHTML = '<option value="">Nenhum horário disponível nesse dia</option>';
+                    return;
+                }
+
+                horarioSelect.innerHTML = '<option value="">Selecione</option>';
+
+                horarios.forEach(h => {
+                    const option = document.createElement("option");
+                    option.value = h;
+                    option.text = h;
+                    horarioSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error("Erro ao carregar horários:", error);
+                horarioSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+            });
+    }
+
+    function atualizarDataHoraHidden() {
+        dataHoraHidden.value = (dataInput.value && horarioSelect.value)
+            ? `${dataInput.value}T${horarioSelect.value}:00`
+            : "";
+    }
+
+    servicoSelect.addEventListener("change", carregarHorarios);
+    funcionarioSelect.addEventListener("change", carregarHorarios);
+    dataInput.addEventListener("change", carregarHorarios);
+    horarioSelect.addEventListener("change", atualizarDataHoraHidden);
+
+    document.querySelector("form").addEventListener("submit", atualizarDataHoraHidden);
 </script>

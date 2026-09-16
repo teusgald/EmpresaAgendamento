@@ -18,19 +18,22 @@ namespace EmpresaAgendamento.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IFinanceiroService _financeiroService;
         private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
+        private readonly IPlanoCreditoService _planoCreditoService;
 
         public PublicoController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IFinanceiroService financeiroService,
-            INotificacaoAgendamentoService notificacaoAgendamentoService)
+            INotificacaoAgendamentoService notificacaoAgendamentoService,
+            IPlanoCreditoService planoCreditoService)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
             _financeiroService = financeiroService;
             _notificacaoAgendamentoService = notificacaoAgendamentoService;
+            _planoCreditoService = planoCreditoService;
         }
 
         [HttpGet("{slug}")]
@@ -110,7 +113,8 @@ namespace EmpresaAgendamento.Controllers
             int empresaId,
             int? servicoId,
             int? funcionarioId,
-            DateTime data)
+            DateTime data,
+            int? excluirAgendamentoId = null)
         {
             // Duração do serviço define o tamanho real do slot — sem isso,
             // caímos de volta pra um bloco de 30 min só por compatibilidade.
@@ -149,7 +153,8 @@ namespace EmpresaAgendamento.Controllers
                     a.EmpresaId == empresaId &&
                     a.Ativo &&
                     a.Status != StatusAgendamento.Cancelado &&
-                    a.DataHora.Date == data.Date)
+                    a.DataHora.Date == data.Date &&
+                    (excluirAgendamentoId == null || a.Id != excluirAgendamentoId))
                 .ToListAsync();
 
             var slotsDisponiveis = new SortedSet<string>();
@@ -481,6 +486,21 @@ namespace EmpresaAgendamento.Controllers
             _context.Agendamentos.Add(agendamento);
 
             await _context.SaveChangesAsync();
+
+            // Se o cliente logado tem plano ativo que cobre esse serviço, já
+            // usa 1 crédito do período agora (cliente avulso não tem como
+            // ter plano).
+            if (clienteId.HasValue)
+            {
+                var assinaturaUsada = await _planoCreditoService.ConsumirSeAplicavelAsync(
+                    agendamento.EmpresaId, clienteId.Value, agendamento.ServicoId);
+
+                if (assinaturaUsada.HasValue)
+                {
+                    agendamento.AssinaturaPlanoServicoId = assinaturaUsada;
+                    await _context.SaveChangesAsync();
+                }
+            }
 
             // Todo agendamento já entra no financeiro como previsão de receita
             // (Contas a Receber pendente) — mesmo criado pelo cliente aqui.

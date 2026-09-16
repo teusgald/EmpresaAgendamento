@@ -17,19 +17,22 @@ public class AgendamentosClientesController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IFinanceiroService _financeiroService;
     private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
+    private readonly IPlanoCreditoService _planoCreditoService;
 
     public AgendamentosClientesController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         IFinanceiroService financeiroService,
-        INotificacaoAgendamentoService notificacaoAgendamentoService)
+        INotificacaoAgendamentoService notificacaoAgendamentoService,
+        IPlanoCreditoService planoCreditoService)
     {
         _context = context;
         _userManager = userManager;
         _signInManager = signInManager;
         _financeiroService = financeiroService;
         _notificacaoAgendamentoService = notificacaoAgendamentoService;
+        _planoCreditoService = planoCreditoService;
     }
 
     private async Task<ApplicationUser?> GetCurrentUserAsync()
@@ -42,20 +45,40 @@ public class AgendamentosClientesController : Controller
     // LISTA
     // =========================
     [HttpGet("")]
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? aba)
     {
         var user = await GetCurrentUserAsync();
 
         if (user == null || user.ClienteId == null)
             return RedirectLogin();
 
-        var agendamentos = await _context.Agendamentos
+        aba = string.IsNullOrWhiteSpace(aba) ? "proximos" : aba.ToLowerInvariant();
+
+        var query = _context.Agendamentos
             .AsNoTracking()
             .Include(a => a.Servico)
             .Include(a => a.Empresa)
-            .Where(a => a.ClienteId == user.ClienteId)
-            .OrderByDescending(a => a.DataCriacao)
-            .ToListAsync();
+            .Where(a => a.ClienteId == user.ClienteId);
+
+        // Por padrão só mostra o que ainda vai acontecer — vencido/cancelado
+        // vira aba de histórico separada, não fica tudo empilhado junto.
+        query = aba switch
+        {
+            "historico" => query.Where(a =>
+                a.Status == StatusAgendamento.Finalizado ||
+                a.Status == StatusAgendamento.Cancelado),
+            _ => query.Where(a =>
+                a.Status == StatusAgendamento.Agendado ||
+                a.Status == StatusAgendamento.Confirmado)
+        };
+
+        query = aba == "historico"
+            ? query.OrderByDescending(a => a.DataHora)
+            : query.OrderBy(a => a.DataHora);
+
+        var agendamentos = await query.ToListAsync();
+
+        ViewBag.Aba = aba;
 
         return View(agendamentos);
     }
@@ -246,6 +269,17 @@ public class AgendamentosClientesController : Controller
         _context.Agendamentos.Add(agendamento);
         await _context.SaveChangesAsync();
 
+        // Se o cliente tem plano ativo que cobre esse serviço, já usa 1
+        // crédito do período agora — não só quando a empresa finalizar.
+        var assinaturaUsada = await _planoCreditoService.ConsumirSeAplicavelAsync(
+            agendamento.EmpresaId, agendamento.ClienteId!.Value, agendamento.ServicoId);
+
+        if (assinaturaUsada.HasValue)
+        {
+            agendamento.AssinaturaPlanoServicoId = assinaturaUsada;
+            await _context.SaveChangesAsync();
+        }
+
         // Todo agendamento já entra no financeiro como previsão de receita
         // (Contas a Receber pendente) — mesmo criado pelo cliente aqui.
         try
@@ -301,8 +335,15 @@ public class AgendamentosClientesController : Controller
 
         if (agendamento != null)
         {
+            var assinaturaId = agendamento.AssinaturaPlanoServicoId;
+
             _context.Agendamentos.Remove(agendamento);
             await _context.SaveChangesAsync();
+
+            if (assinaturaId.HasValue)
+            {
+                await _planoCreditoService.DevolverCreditoAsync(assinaturaId.Value);
+            }
         }
 
         return RedirectToAction(nameof(Index));

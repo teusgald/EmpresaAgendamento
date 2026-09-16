@@ -69,6 +69,7 @@ builder.Services.AddScoped<IEmpresaService, EmpresaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificacaoAgendamentoService, NotificacaoAgendamentoService>();
+builder.Services.AddScoped<IPlanoCreditoService, PlanoCreditoService>();
 builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddSingleton<IWhatsAppService, WhatsAppService>();

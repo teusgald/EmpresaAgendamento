@@ -5,6 +5,10 @@
     ViewData["Title"] = "Meus Agendamentos";
 }
 
+@{
+    var abaAtual = ViewBag.Aba as string ?? "proximos";
+}
+
 <div class="container mt-4">
 
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -12,6 +16,21 @@
             + Novo Agendamento
         </a>
     </div>
+
+    <ul class="nav nav-pills mb-3">
+        <li class="nav-item">
+            <a class="nav-link @(abaAtual == "proximos" ? "active" : "")"
+               asp-action="Index" asp-route-aba="proximos">
+                Próximos
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link @(abaAtual == "historico" ? "active" : "")"
+               asp-action="Index" asp-route-aba="historico">
+                Histórico
+            </a>
+        </li>
+    </ul>
 
 
     <!-- DESKTOP -->

@@ -56,6 +56,13 @@ namespace EmpresaAgendamento.Models
         // segundo plano (ver LembreteAgendamentoBackgroundService).
         public bool LembreteEnviado { get; set; }
 
+        // Se esse agendamento consumiu 1 crédito de um plano do cliente (ver
+        // módulo Planos), guarda qual assinatura foi debitada — assim, se o
+        // agendamento for cancelado, devolve o crédito certo (ver
+        // IPlanoCreditoService.DevolverCreditoAsync).
+        public int? AssinaturaPlanoServicoId { get; set; }
+        public AssinaturaPlanoServico? AssinaturaPlanoServico { get; set; }
+
         // =========================
         // 🔁 NAVIGATION
         // =========================
