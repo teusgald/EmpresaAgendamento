@@ -242,6 +242,13 @@
 								</a>
 							</li>
 
+							<li>
+								<a class="nav-link" asp-controller="Empresas" asp-action="Horarios">
+									<i class="bi bi-clock"></i>
+									<span class="link-text">Horário de Funcionamento</span>
+								</a>
+							</li>
+
 						</ul>
 
 					</div>
@@ -345,14 +352,6 @@
 					<a class="nav-link" asp-controller="Empresas" asp-action="Index">
 						<i class="bi bi-building"></i>
 						<span class="link-text">Empresas</span>
-					</a>
-				</li>
-
-				<!-- HORÁRIO DE FUNCIONAMENTO -->
-				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
-					<a class="nav-link" asp-controller="Empresas" asp-action="Horarios">
-						<i class="bi bi-clock"></i>
-						<span class="link-text">Horário de Funcionamento</span>
 					</a>
 				</li>
 

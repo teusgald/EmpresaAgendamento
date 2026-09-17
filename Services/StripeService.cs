@@ -101,19 +101,58 @@ namespace EmpresaAgendamento.Services
             return plano;
         }
 
-        private async Task<string> ObterOuCriarStripeCustomerIdAsync(Empresa empresa)
+        // Endereço só entra se houver pelo menos algum dado — não faz sentido
+        // mandar um AddressOptions todo vazio pro Stripe.
+        private static AddressOptions? MontarEnderecoStripe(Empresa empresa)
         {
-            if (!string.IsNullOrEmpty(empresa.StripeCustomerId))
+            if (string.IsNullOrWhiteSpace(empresa.Endereco) &&
+                string.IsNullOrWhiteSpace(empresa.Cidade) &&
+                string.IsNullOrWhiteSpace(empresa.CEP))
             {
-                return empresa.StripeCustomerId;
+                return null;
             }
 
+            var linha1 = string.Join(", ", new[] { empresa.Endereco, empresa.Numero }
+                .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+            return new AddressOptions
+            {
+                Line1 = string.IsNullOrWhiteSpace(linha1) ? null : linha1,
+                Line2 = string.IsNullOrWhiteSpace(empresa.Complemento) ? empresa.Bairro : empresa.Complemento,
+                City = empresa.Cidade,
+                State = empresa.UF,
+                PostalCode = empresa.CEP,
+                Country = "BR"
+            };
+        }
+
+        private async Task<string> ObterOuCriarStripeCustomerIdAsync(Empresa empresa)
+        {
             var customerService = new CustomerService();
+
+            // Mantém os dados do cliente Stripe sempre sincronizados com o
+            // cadastro da empresa — antes, uma vez criado, o Customer nunca
+            // era atualizado, então telefone/endereço preenchidos depois
+            // nunca apareciam no Portal de faturamento.
+            if (!string.IsNullOrEmpty(empresa.StripeCustomerId))
+            {
+                await customerService.UpdateAsync(empresa.StripeCustomerId, new CustomerUpdateOptions
+                {
+                    Email = empresa.EmailContato ?? empresa.Email,
+                    Name = empresa.NomeFantasia ?? empresa.Nome,
+                    Phone = empresa.Telefone ?? empresa.WhatsApp,
+                    Address = MontarEnderecoStripe(empresa)
+                });
+
+                return empresa.StripeCustomerId;
+            }
 
             var customer = await customerService.CreateAsync(new CustomerCreateOptions
             {
                 Email = empresa.EmailContato ?? empresa.Email,
                 Name = empresa.NomeFantasia ?? empresa.Nome,
+                Phone = empresa.Telefone ?? empresa.WhatsApp,
+                Address = MontarEnderecoStripe(empresa),
                 Metadata = new Dictionary<string, string>
                 {
                     ["empresaId"] = empresa.Id.ToString()
@@ -205,6 +244,11 @@ namespace EmpresaAgendamento.Services
             {
                 throw new InvalidOperationException("Empresa ainda não possui assinatura no Stripe.");
             }
+
+            // Sincroniza telefone/endereço/e-mail atuais da empresa com o
+            // Customer antes de abrir o portal — sem isso, quem preencheu
+            // esses dados depois de já ter assinado nunca via isso lá.
+            await ObterOuCriarStripeCustomerIdAsync(empresa);
 
             var portalService = new Stripe.BillingPortal.SessionService();
 
