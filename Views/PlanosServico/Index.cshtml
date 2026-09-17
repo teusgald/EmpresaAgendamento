@@ -178,20 +178,6 @@
                                 Editar
                             </a>
 
-                            <form asp-action="ToggleAtivo" method="post">
-                                @Html.AntiForgeryToken()
-                                <input type="hidden" name="id" value="@plano.Id" />
-
-                                @if (plano.Ativo)
-                                {
-                                    <button type="submit" class="btn btn-warning w-100">Inativar</button>
-                                }
-                                else
-                                {
-                                    <button type="submit" class="btn btn-success w-100">Ativar</button>
-                                }
-                            </form>
-
                         </div>
 
                     </div>

@@ -178,9 +178,10 @@
 
             @if (Model.AgendamentosHoje.Any())
             {
-                <div class="table-responsive">
+                <!-- DESKTOP -->
+                <div class="table-responsive d-none d-lg-block">
 
-                    <table class="table table-hover align-middle table-cards-mobile">
+                    <table class="table table-hover align-middle">
 
                         <thead class="table-light">
                             <tr>
@@ -207,25 +208,25 @@
 
                                 <tr>
 
-                                    <td class="td-header">
+                                    <td>
                                         @ag.DataHora.ToString("HH:mm")
                                     </td>
 
-                                    <td data-label="Cliente">
+                                    <td>
                                         @(ag.Cliente?.Nome
                                             ?? ag.NomeClienteAvulso
                                             ?? "-")
                                     </td>
 
-                                    <td data-label="Funcionário">
+                                    <td>
                                         @(ag.Funcionario?.Nome ?? "-")
                                     </td>
 
-                                    <td data-label="Serviço">
+                                    <td>
                                         @ag.Servico?.Nome
                                     </td>
 
-                                    <td data-label="Status">
+                                    <td>
                                         <span class="badge @badge">
                                             @ag.Status
                                         </span>
@@ -238,6 +239,36 @@
 
                     </table>
 
+                </div>
+
+                <!-- MOBILE: lista compacta, não card -->
+                <div class="agenda-lista d-lg-none">
+                    @foreach (var ag in Model.AgendamentosHoje)
+                    {
+                        string badge = ag.Status.ToString() switch
+                        {
+                            "Agendado" => "bg-primary",
+                            "Confirmado" => "bg-success",
+                            "Cancelado" => "bg-danger",
+                            "Finalizado" => "bg-secondary",
+                            _ => "bg-secondary"
+                        };
+
+                        <div class="agenda-lista-item">
+                            <div class="agenda-lista-hora">@ag.DataHora.ToString("HH:mm")</div>
+                            <div class="agenda-lista-info">
+                                <div class="fw-semibold">@(ag.Cliente?.Nome ?? ag.NomeClienteAvulso ?? "-")</div>
+                                <div class="text-muted small">
+                                    @ag.Servico?.Nome
+                                    @if (ag.Funcionario != null)
+                                    {
+                                        @:· @ag.Funcionario.Nome
+                                    }
+                                </div>
+                            </div>
+                            <span class="badge @badge">@ag.Status</span>
+                        </div>
+                    }
                 </div>
             }
             else

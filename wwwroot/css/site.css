@@ -735,15 +735,23 @@ body {
 
 .topbar {
     height: 60px;
-    background: var(--st-white);
-    border-bottom: 1px solid var(--st-gray-300);
+    background: var(--st-black);
+    border-bottom: 1px solid rgba(255, 255, 255, .12);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
+    gap: 14px;
     padding: 0 24px;
     box-sizing: border-box;
     z-index: 1100;
 }
+
+    .topbar .topbar-brand {
+        color: var(--st-white);
+        font-weight: 600;
+        font-size: 1rem;
+        letter-spacing: .02em;
+    }
 
 @media (min-width: 769px) {
     /* No desktop a topbar não tem mais nada dentro (o título de cada tela
@@ -776,7 +784,7 @@ body {
     display: none;
     font-size: 1.5rem;
     cursor: pointer;
-    color: var(--st-gray-900);
+    color: var(--st-white);
     min-width: 44px;
     min-height: 44px;
     align-items: center;
@@ -835,16 +843,53 @@ body {
    CARDS MOBILE (listagens que viram cards em telas pequenas)
    =========================================================================== */
 
+/* Lista compacta (não card) — usada onde faz mais sentido escanear rápido
+   várias linhas (ex.: agendamentos de hoje no dashboard) do que abrir um
+   card por item. */
+.agenda-lista-item {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .6rem 0;
+    border-bottom: 1px solid var(--st-gray-300);
+}
+
+    .agenda-lista-item:last-child {
+        border-bottom: none;
+    }
+
+.agenda-lista-hora {
+    flex-shrink: 0;
+    width: 3.2rem;
+    font-weight: 700;
+    color: var(--st-black);
+}
+
+.agenda-lista-info {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+    .agenda-lista-info > div {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
 .mobile-card {
     border: 1px solid var(--st-gray-300);
     border-radius: var(--st-radius);
 }
 
+    .mobile-card .card-body {
+        padding: .9rem 1rem;
+    }
+
 .mobile-info {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 6px;
     gap: 10px;
 }
 
@@ -860,26 +905,23 @@ body {
         word-break: break-word;
     }
 
+/* Lado a lado (Editar + o que sobrar) em vez de empilhado — depois que os
+   botões de "ativar/inativar" saíram do card (o status já aparece no badge),
+   normalmente sobra só 1 botão mesmo, mas isso segura bem se tiver mais. */
 .mobile-actions {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     gap: .5rem;
 }
 
+    .mobile-actions .btn,
+    .mobile-actions form {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
 @media (max-width: 576px) {
-
-    .mobile-info {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-        .mobile-info span {
-            text-align: left;
-        }
-
-    .mobile-card .btn {
-        width: 100%;
-    }
 
     /* Formulários em coluna única no celular */
     .row > [class*="col-"] {
