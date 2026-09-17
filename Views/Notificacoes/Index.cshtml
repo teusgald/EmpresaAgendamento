@@ -1,0 +1,71 @@
+@model List<EmpresaAgendamento.Models.Notificacao>
+@using EmpresaAgendamento.Models.Enums
+
+@{
+    ViewData["Title"] = "Notificações";
+    Layout = User.IsInRole("Cliente") ? "_LayoutCliente" : "_Layout";
+
+    string IconePorTipo(TipoNotificacao tipo) => tipo switch
+    {
+        TipoNotificacao.Agendamento => "bi-calendar-check",
+        TipoNotificacao.Pagamento => "bi-cash-coin",
+        TipoNotificacao.Cadastro => "bi-person-plus",
+        _ => "bi-bell"
+    };
+
+    var idsRecemLidos = ViewBag.IdsRecemLidos as HashSet<int> ?? new HashSet<int>();
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Notificações</h3>
+            <p class="page-subtitle">Agendamentos, pagamentos e cadastros recentes.</p>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-bell"></i>
+                <p>Nenhuma notificação ainda.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body p-0">
+                <ul class="list-group list-group-flush">
+                    @foreach (var item in Model)
+                    {
+                        var ehRecemLida = idsRecemLidos.Contains(item.Id);
+
+                        <li class="list-group-item @(ehRecemLida ? "bg-light" : "") d-flex align-items-start gap-3 py-3">
+                            <i class="bi @IconePorTipo(item.Tipo) fs-5 text-muted mt-1"></i>
+                            <div class="flex-grow-1">
+                                @if (!string.IsNullOrWhiteSpace(item.Link))
+                                {
+                                    <a href="@item.Link" class="fw-semibold text-decoration-none">@item.Titulo</a>
+                                }
+                                else
+                                {
+                                    <div class="fw-semibold">@item.Titulo</div>
+                                }
+                                <div class="text-muted small">@item.Mensagem</div>
+                                <div class="text-muted small mt-1">@item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</div>
+                            </div>
+                            @if (ehRecemLida)
+                            {
+                                <span class="badge bg-primary align-self-center">Nova</span>
+                            }
+                        </li>
+                    }
+                </ul>
+            </div>
+        </div>
+    }
+
+</div>

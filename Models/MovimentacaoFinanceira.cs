@@ -34,6 +34,11 @@ namespace EmpresaAgendamento.Models
         // Quando esta linha é o estorno de outra, aponta para a original.
         public int? MovimentacaoOrigemEstornoId { get; set; }
 
+        // Id da transação no extrato importado (FITID do OFX) — evita reimportar
+        // o mesmo lançamento duas vezes se o mesmo arquivo for enviado de novo.
+        [StringLength(100)]
+        public string? ReferenciaExterna { get; set; }
+
         [ValidateNever]
         public MovimentacaoFinanceira? MovimentacaoOrigemEstorno { get; set; }
 

@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmpresaAgendamento.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917170747_AddAtendimento")]
+    partial class AddAtendimento
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1070,57 +1073,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.ToTable("MovimentacoesFinanceiras");
                 });
 
-            modelBuilder.Entity("EmpresaAgendamento.Models.Notificacao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int?>("ClienteId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("DataCriacao")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DataLeitura")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("EmpresaId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("Lida")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Link")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<string>("Mensagem")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<string>("Tipo")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<string>("Titulo")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClienteId", "Lida", "DataCriacao");
-
-                    b.HasIndex("EmpresaId", "Lida", "DataCriacao");
-
-                    b.ToTable("Notificacoes");
-                });
-
             modelBuilder.Entity("EmpresaAgendamento.Models.Plano", b =>
                 {
                     b.Property<int>("Id")
@@ -1772,24 +1724,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("MovimentacaoOrigemEstorno");
 
                     b.Navigation("Usuario");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.Notificacao", b =>
-                {
-                    b.HasOne("EmpresaAgendamento.Models.Cliente", "Cliente")
-                        .WithMany()
-                        .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
-                        .WithMany()
-                        .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Cliente");
-
-                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.PlanoServico", b =>

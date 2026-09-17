@@ -140,6 +140,13 @@
                                         Cancelar
                                     </button>
                                 }
+                                @if (item.ValorRecebido > 0)
+                                {
+                                    <a asp-action="Recibo" asp-route-id="@item.Id" target="_blank"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        Recibo
+                                    </a>
+                                }
                             </td>
                         </tr>
                     }
@@ -197,6 +204,13 @@
                                     data-id="@item.Id">
                                 Cancelar
                             </button>
+                        }
+                        @if (item.ValorRecebido > 0)
+                        {
+                            <a asp-action="Recibo" asp-route-id="@item.Id" target="_blank"
+                               class="btn btn-outline-secondary">
+                                Recibo
+                            </a>
                         }
                     </div>
                 </div>

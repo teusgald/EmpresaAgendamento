@@ -1,9 +1,11 @@
 ﻿using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EmpresaAgendamento.Controllers
 {
@@ -15,6 +17,7 @@ namespace EmpresaAgendamento.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
         private readonly ILogger<EmpresaAuthController> _logger;
 
         public EmpresaAuthController(
@@ -23,6 +26,7 @@ namespace EmpresaAgendamento.Controllers
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailService emailService,
+            IConfiguration configuration,
             ILogger<EmpresaAuthController> logger)
         {
             _empresaService = empresaService;
@@ -30,6 +34,7 @@ namespace EmpresaAgendamento.Controllers
             _userManager = userManager;
             _signInManager = signInManager;
             _emailService = emailService;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -38,6 +43,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("login")]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Login(EmpresaLoginViewModel model)
         {
             if (!ModelState.IsValid)
@@ -54,6 +60,8 @@ namespace EmpresaAgendamento.Controllers
                 });
             }
 
+            _logger.LogWarning("Login de empresa falhou para o e-mail {Email}.", model.Email);
+
             return Json(new
             {
                 success = false,
@@ -66,6 +74,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("registro")]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Register(
             EmpresaRegisterViewModel model, bool aceitaTermos = false, string? tipoPlanoEscolhido = null)
         {
@@ -103,7 +112,7 @@ namespace EmpresaAgendamento.Controllers
                 var token = await _userManager.GenerateEmailConfirmationTokenAsync(result.User!);
 
                 var link =
-                    $"{Request.Scheme}://{Request.Host}/empresa/confirmar-email" +
+                    $"{LinkBaseHelper.ObterBase(Request, _configuration)}/empresa/confirmar-email" +
                     $"?userId={Uri.EscapeDataString(result.User!.Id)}" +
                     $"&token={Uri.EscapeDataString(token)}";
 
@@ -157,6 +166,7 @@ namespace EmpresaAgendamento.Controllers
      
 
         [HttpPost("logout")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout()
         {
             await _signInManager.SignOutAsync();
@@ -175,6 +185,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("forgot")]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Forgot(ForgotViewModel model)
         {
             try
@@ -193,43 +204,47 @@ namespace EmpresaAgendamento.Controllers
                                 x.Email == model.Email &&
                                 x.EmpresaId != null);
 
-                if (user == null)
+                // Resposta sempre igual, exista ou não a conta — senão dá pra
+                // descobrir quais e-mails têm cadastro só testando esse formulário.
+                if (user != null)
                 {
-                    return Json(new
-                    {
-                        success = false,
-                        error = "Email não encontrado"
-                    });
+                    var token =
+                        await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                    var link =
+                               $"{LinkBaseHelper.ObterBase(Request, _configuration)}/" +
+                               $"?mode=reset" +
+                               $"&type=empresa" +
+                               $"&email={Uri.EscapeDataString(model.Email)}" +
+                               $"&token={Uri.EscapeDataString(token)}";
+
+                    await _emailService.SendEmailAsync(
+                        model.Email,
+                        "Recuperação de Senha",
+                        $@"
+                        <h2>Recuperação de Senha</h2>
+
+                        <p>Recebemos uma solicitação para redefinir sua senha.</p>
+
+                        <p>
+                            <a href='{link}'>
+                                Clique aqui para redefinir sua senha
+                            </a>
+                        </p>
+
+                        <p>Se você não solicitou essa alteração, ignore este email.</p>"
+                    );
+                }
+                else
+                {
+                    _logger.LogInformation("Recuperação de senha solicitada para e-mail de empresa não cadastrado: {Email}.", model.Email);
                 }
 
-                var token =
-                    await _userManager.GeneratePasswordResetTokenAsync(user);
-
-                var link =
-                           $"{Request.Scheme}://{Request.Host}/" +
-                           $"?mode=reset" +
-                           $"&type=empresa" +
-                           $"&email={Uri.EscapeDataString(model.Email)}" +
-                           $"&token={Uri.EscapeDataString(token)}";
-
-                await _emailService.SendEmailAsync(
-                    model.Email,
-                    "Recuperação de Senha",
-                    $@"
-                    <h2>Recuperação de Senha</h2>
-
-                    <p>Recebemos uma solicitação para redefinir sua senha.</p>
-
-                    <p>
-                        <a href='{link}'>
-                            Clique aqui para redefinir sua senha
-                        </a>
-                    </p>
-
-                    <p>Se você não solicitou essa alteração, ignore este email.</p>"
-                );
-
-                return Json(new { success = true });
+                return Json(new
+                {
+                    success = true,
+                    message = "Se esse e-mail estiver cadastrado, enviamos um link de recuperação para ele."
+                });
             }
             catch (Exception ex)
             {
@@ -255,6 +270,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("resetpassword")]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ResetPassword(
             ResetPasswordViewModel model)
         {
@@ -269,6 +285,11 @@ namespace EmpresaAgendamento.Controllers
                     });
                 }
 
+                // Mensagem genérica tanto pra "e-mail não encontrado" quanto pra
+                // "token inválido/expirado" — do contrário, dava pra descobrir
+                // se um e-mail tem conta de empresa só testando esse formulário.
+                const string erroGenerico = "Não foi possível redefinir a senha. O link pode ter expirado — solicite um novo.";
+
                 var user = _userManager.Users
                             .FirstOrDefault(x =>
                                 x.Email == model.Email &&
@@ -276,11 +297,9 @@ namespace EmpresaAgendamento.Controllers
 
                 if (user == null)
                 {
-                    return Json(new
-                    {
-                        success = false,
-                        error = "Usuário não encontrado"
-                    });
+                    _logger.LogWarning("Tentativa de redefinir senha de empresa com e-mail não cadastrado: {Email}.", model.Email);
+
+                    return Json(new { success = false, error = erroGenerico });
                 }
 
                 var result = await _userManager.ResetPasswordAsync(
@@ -290,6 +309,7 @@ namespace EmpresaAgendamento.Controllers
 
                 if (result.Succeeded)
                 {
+                    _logger.LogInformation("Senha redefinida com sucesso (empresa, e-mail {Email}).", model.Email);
 
                     return Json(new
                     {
@@ -298,17 +318,23 @@ namespace EmpresaAgendamento.Controllers
                     });
                 }
 
-                var erros = result.Errors
-                    .Select(x => $"{x.Code} - {x.Description}")
-                    .ToList();
+                _logger.LogWarning(
+                    "Falha ao redefinir senha de empresa para {Email}: {Erros}.",
+                    model.Email,
+                    string.Join("; ", result.Errors.Select(x => x.Code)));
+
+                // Token inválido/expirado é o mesmo caso de "e-mail não existe"
+                // (mensagem genérica); erro de política de senha (curta, sem
+                // maiúscula etc.) é feedback legítimo — não vaza nada sobre a conta.
+                var tokenInvalido = result.Errors.Any(e => e.Code.Contains("Token", StringComparison.OrdinalIgnoreCase));
 
                 return Json(new
                 {
                     success = false,
-                    error = string.Join("<br>", erros)
+                    error = tokenInvalido
+                        ? erroGenerico
+                        : string.Join("<br>", result.Errors.Select(x => x.Description))
                 });
-
-
             }
             catch (Exception ex)
             {

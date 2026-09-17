@@ -36,6 +36,11 @@ namespace EmpresaAgendamento.Models
         [StringLength(500)]
         public string? Observacao { get; set; }
 
+        // Identificador opaco pro link público do recibo (por e-mail) — nunca
+        // expor o Id sequencial direto, senão dá pra adivinhar/listar recibo
+        // de outras contas só incrementando o número na URL.
+        public Guid ReciboToken { get; set; } = Guid.NewGuid();
+
         // =========================
         // 🔗 RELACIONAMENTOS
         // =========================

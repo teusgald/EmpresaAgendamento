@@ -16,17 +16,20 @@ public class FuncionariosController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<FuncionariosController> _logger;
 
     public FuncionariosController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         IEmailService emailService,
+        IConfiguration configuration,
         ILogger<FuncionariosController> logger)
     {
         _context = context;
         _userManager = userManager;
         _emailService = emailService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -491,10 +494,12 @@ public class FuncionariosController : Controller
 
         try
         {
+            var baseUrl = LinkBaseHelper.ObterBase(Request, _configuration);
+
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
             var link =
-                $"{Request.Scheme}://{Request.Host}/funcionario/definir-senha" +
+                $"{baseUrl}/funcionario/definir-senha" +
                 $"?email={Uri.EscapeDataString(user.Email)}" +
                 $"&token={Uri.EscapeDataString(token)}";
 
@@ -505,7 +510,7 @@ public class FuncionariosController : Controller
                 <h2>Olá {funcionario.Nome}</h2>
                 <p>Você agora tem acesso ao sistema de agendamentos da empresa.</p>
                 <p><a href='{link}'>Clique aqui para definir sua senha</a></p>
-                <p>Depois de definir a senha, entre em <a href='{Request.Scheme}://{Request.Host}/funcionario/login'>{Request.Scheme}://{Request.Host}/funcionario/login</a>.</p>");
+                <p>Depois de definir a senha, entre em <a href='{baseUrl}/funcionario/login'>{baseUrl}/funcionario/login</a>.</p>");
 
             ToastHelper.Success(TempData, "Acesso criado! Enviamos um e-mail para o funcionário definir a senha.");
         }
@@ -513,6 +518,76 @@ public class FuncionariosController : Controller
         {
             _logger.LogError(ex, "Falha ao enviar e-mail de acesso pro funcionário {FuncionarioId}.", funcionario.Id);
             ToastHelper.Warning(TempData, "Acesso criado, mas não foi possível enviar o e-mail. Tente reenviar mais tarde ou repasse a senha manualmente.");
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    // =========================
+    // REENVIAR ACESSO (funcionário já tem conta, mas esqueceu a senha e não
+    // tem "esqueci senha" própria — a empresa manda um novo link)
+    // =========================
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ReenviarAcesso(int id)
+    {
+        var empresaId = await GetEmpresaId();
+
+        if (empresaId == null)
+        {
+            ToastHelper.Error(TempData, "Sessão expirada.");
+            return RedirectToAction("Login", "Account");
+        }
+
+        var funcionario = await _context.Funcionarios
+            .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+
+        if (funcionario == null)
+        {
+            ToastHelper.Error(TempData, "Funcionário não encontrado.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (funcionario.UserId == null)
+        {
+            ToastHelper.Warning(TempData, "Este funcionário ainda não tem acesso — use \"Criar acesso\".");
+            return RedirectToAction(nameof(Index));
+        }
+
+        var user = await _userManager.FindByIdAsync(funcionario.UserId);
+
+        if (user == null)
+        {
+            ToastHelper.Error(TempData, "Conta de acesso não encontrada.");
+            return RedirectToAction(nameof(Index));
+        }
+
+        try
+        {
+            var baseUrl = LinkBaseHelper.ObterBase(Request, _configuration);
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var link =
+                $"{baseUrl}/funcionario/definir-senha" +
+                $"?email={Uri.EscapeDataString(user.Email!)}" +
+                $"&token={Uri.EscapeDataString(token)}";
+
+            await _emailService.SendEmailAsync(
+                user.Email!,
+                "Novo link de acesso — Simpli Time",
+                $@"
+                <h2>Olá {funcionario.Nome}</h2>
+                <p>A empresa solicitou um novo link para você definir sua senha de acesso.</p>
+                <p><a href='{link}'>Clique aqui para definir uma nova senha</a></p>
+                <p>Depois de definir a senha, entre em <a href='{baseUrl}/funcionario/login'>{baseUrl}/funcionario/login</a>.</p>");
+
+            ToastHelper.Success(TempData, "Enviamos um novo link de acesso para o funcionário.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao reenviar e-mail de acesso pro funcionário {FuncionarioId}.", funcionario.Id);
+            ToastHelper.Error(TempData, "Não foi possível enviar o e-mail agora. Tente novamente em alguns instantes.");
         }
 
         return RedirectToAction(nameof(Index));

@@ -1,5 +1,6 @@
 ﻿@model EmpresaAgendamento.ViewModels.EmpresaPublicaViewModel
 @using EmpresaAgendamento.Helpers
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 
 @{
 
@@ -7,6 +8,11 @@
     string nome = empresa.NomeFantasia ?? empresa.Nome;
 
     ViewData["Title"] = nome;
+
+    // Usado pelo botão "Sair" do dropdown do cliente logado — ele monta o
+    // menu via JS (innerHTML), então precisa do token pronto pra montar um
+    // <form> de verdade em vez de um link GET pra uma rota que só aceita POST.
+    var csrfTokenLogout = Antiforgery.GetAndStoreTokens(Context).RequestToken;
 
     // Só entra na linha quem realmente tem valor — sem isso, endereço
     // incompleto sobrava vírgula/traço solto ("Rua X, , Bairro").
@@ -1375,11 +1381,12 @@
                         </li>
 
                         <li>
-                            <a class="dropdown-item text-danger"
-                               href="/cliente/logout">
-
-                                Sair
-                            </a>
+                            <form method="post" action="/cliente/logout" class="px-3">
+                                <input type="hidden" name="__RequestVerificationToken" value="@csrfTokenLogout" />
+                                <button type="submit" class="dropdown-item text-danger px-0">
+                                    Sair
+                                </button>
+                            </form>
                         </li>
 
                     </ul>

@@ -5,9 +5,11 @@ using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
+using EmpresaAgendamento.Services.Ofx;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmpresaAgendamento.Controllers
@@ -222,6 +224,261 @@ namespace EmpresaAgendamento.Controllers
             ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
             return View(lista);
+        }
+
+        // =========================
+        // IMPORTAR EXTRATO (OFX)
+        // =========================
+
+        [HttpGet("importar-extrato")]
+        public async Task<IActionResult> ImportarExtrato()
+        {
+            var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "EmpresaAuth");
+            }
+
+            return View();
+        }
+
+        [HttpPost("importar-extrato")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ImportarExtrato(IFormFile arquivo)
+        {
+            var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "EmpresaAuth");
+            }
+
+            if (arquivo == null || arquivo.Length == 0)
+            {
+                ToastHelper.Error(TempData, "Selecione um arquivo OFX.");
+                return View();
+            }
+
+            string conteudo;
+
+            using (var leitor = new StreamReader(arquivo.OpenReadStream(), System.Text.Encoding.Latin1))
+            {
+                conteudo = await leitor.ReadToEndAsync();
+            }
+
+            var transacoes = OfxParser.Parse(conteudo);
+
+            if (transacoes.Count == 0)
+            {
+                ToastHelper.Error(TempData, "Não encontramos lançamentos nesse arquivo. Confirme que é um extrato OFX válido.");
+                return View();
+            }
+
+            var fitIdsJaImportados = await _context.MovimentacoesFinanceiras
+                .Where(m => m.EmpresaId == empresaId && m.ReferenciaExterna != null)
+                .Select(m => m.ReferenciaExterna!)
+                .ToListAsync();
+
+            var contasReceberAbertas = await _context.ContasReceber
+                .Where(c => c.EmpresaId == empresaId && (c.Status == StatusConta.Pendente || c.Status == StatusConta.Parcial))
+                .OrderBy(c => c.DataVencimento)
+                .ToListAsync();
+
+            var contasPagarAbertas = await _context.ContasPagar
+                .Where(c => c.EmpresaId == empresaId && (c.Status == StatusConta.Pendente || c.Status == StatusConta.Parcial))
+                .OrderBy(c => c.DataVencimento)
+                .ToListAsync();
+
+            var itens = new List<ImportacaoExtratoItemViewModel>();
+
+            foreach (var transacao in transacoes.OrderBy(t => t.Data))
+            {
+                var jaImportado = !string.IsNullOrWhiteSpace(transacao.FitId) && fitIdsJaImportados.Contains(transacao.FitId);
+
+                var item = new ImportacaoExtratoItemViewModel
+                {
+                    Data = transacao.Data,
+                    Valor = transacao.Valor,
+                    Descricao = transacao.Descricao,
+                    FitId = transacao.FitId,
+                    JaImportado = jaImportado
+                };
+
+                if (jaImportado)
+                {
+                    item.Acao = "ignorar";
+                }
+                else if (transacao.Valor > 0)
+                {
+                    MontarSugestaoConciliacao(
+                        item,
+                        contasReceberAbertas,
+                        transacao.Data,
+                        transacao.Valor,
+                        c => c.Id,
+                        c => c.Descricao,
+                        c => c.ValorPrevisto - c.ValorRecebido,
+                        c => c.DataVencimento);
+                }
+                else if (transacao.Valor < 0)
+                {
+                    MontarSugestaoConciliacao(
+                        item,
+                        contasPagarAbertas,
+                        transacao.Data,
+                        -transacao.Valor,
+                        c => c.Id,
+                        c => c.Descricao,
+                        c => c.ValorPrevisto - c.ValorPago,
+                        c => c.DataVencimento);
+                }
+                else
+                {
+                    item.Acao = "ignorar";
+                }
+
+                itens.Add(item);
+            }
+
+            ViewBag.Categorias = new SelectList(
+                await _context.CategoriasFinanceiras
+                    .Where(c => c.EmpresaId == empresaId && c.Ativo)
+                    .OrderBy(c => c.Nome)
+                    .ToListAsync(),
+                "Id", "Nome");
+
+            return View("RevisarImportacao", itens);
+        }
+
+        // Preenche as opções do <select> de conciliação (todas as contas em
+        // aberto do tipo certo) e já pré-seleciona a melhor candidata — só
+        // quando o valor bate exatinho com o saldo em aberto (pra não arriscar
+        // conciliar com a conta errada por aproximação).
+        private static void MontarSugestaoConciliacao<TConta>(
+            ImportacaoExtratoItemViewModel item,
+            List<TConta> contasAbertas,
+            DateTime dataTransacao,
+            decimal valorAbsoluto,
+            Func<TConta, int> idSelector,
+            Func<TConta, string> descricaoSelector,
+            Func<TConta, decimal> saldoSelector,
+            Func<TConta, DateTime> vencimentoSelector)
+        {
+            var melhor = contasAbertas
+                .Where(c => Math.Abs(saldoSelector(c) - valorAbsoluto) < 0.01m)
+                .OrderBy(c => Math.Abs((vencimentoSelector(c) - dataTransacao).TotalDays))
+                .FirstOrDefault();
+
+            item.ContasDisponiveis = contasAbertas
+                .Select(c => new SelectListItem(
+                    $"{descricaoSelector(c)} — R$ {saldoSelector(c):N2} (venc. {vencimentoSelector(c):dd/MM/yyyy})",
+                    idSelector(c).ToString(),
+                    melhor != null && idSelector(c).Equals(idSelector(melhor))))
+                .ToList();
+
+            item.Acao = melhor != null ? "conciliar" : "novo";
+            item.ContaSelecionadaId = melhor != null ? idSelector(melhor) : null;
+        }
+
+        [HttpPost("confirmar-importacao")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmarImportacao(List<ImportacaoExtratoItemViewModel> itens)
+        {
+            var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "EmpresaAuth");
+            }
+
+            var usuarioId = _userManager.GetUserId(User);
+
+            var importados = 0;
+            var ignorados = 0;
+            var erros = new List<string>();
+
+            foreach (var item in itens ?? new List<ImportacaoExtratoItemViewModel>())
+            {
+                if (item.Acao == "ignorar")
+                {
+                    ignorados++;
+                    continue;
+                }
+
+                // Reconfere no banco (não confia só no que veio do form) — evita
+                // duplicar se o mesmo extrato foi confirmado em outra aba/tentativa.
+                if (!string.IsNullOrWhiteSpace(item.FitId))
+                {
+                    var jaExiste = await _context.MovimentacoesFinanceiras
+                        .AnyAsync(m => m.EmpresaId == empresaId && m.ReferenciaExterna == item.FitId);
+
+                    if (jaExiste)
+                    {
+                        ignorados++;
+                        continue;
+                    }
+                }
+
+                if (item.Acao == "conciliar" && item.ContaSelecionadaId.HasValue)
+                {
+                    if (item.Valor > 0)
+                    {
+                        var (sucesso, erro, _) = await _financeiroService.RegistrarRecebimentoAsync(
+                            item.ContaSelecionadaId.Value, empresaId.Value, item.Valor,
+                            FormaPagamento.Outro, usuarioId, item.Data, item.FitId);
+
+                        if (sucesso) importados++;
+                        else erros.Add($"{item.Descricao}: {erro}");
+                    }
+                    else
+                    {
+                        var (sucesso, erro, _) = await _financeiroService.RegistrarPagamentoAsync(
+                            item.ContaSelecionadaId.Value, empresaId.Value, -item.Valor,
+                            FormaPagamento.Outro, usuarioId, item.Data, item.FitId);
+
+                        if (sucesso) importados++;
+                        else erros.Add($"{item.Descricao}: {erro}");
+                    }
+                }
+                else
+                {
+                    // Sem conta pra conciliar — lançamento avulso direto no caixa.
+                    _context.MovimentacoesFinanceiras.Add(new MovimentacaoFinanceira
+                    {
+                        EmpresaId = empresaId.Value,
+                        Tipo = item.Valor >= 0 ? TipoMovimentacao.Entrada : TipoMovimentacao.Saida,
+                        Origem = OrigemMovimentacao.Ajuste,
+                        Valor = Math.Abs(item.Valor),
+                        DataMovimento = item.Data,
+                        Status = StatusMovimentacao.Confirmada,
+                        Descricao = item.Descricao,
+                        CategoriaId = item.CategoriaId,
+                        ReferenciaExterna = item.FitId,
+                        UsuarioId = usuarioId
+                    });
+
+                    await _context.SaveChangesAsync();
+                    importados++;
+                }
+            }
+
+            if (erros.Any())
+            {
+                ToastHelper.Warning(TempData, $"{importados} lançamento(s) importado(s), mas {erros.Count} falharam: {string.Join("; ", erros)}");
+            }
+            else
+            {
+                ToastHelper.Success(
+                    TempData,
+                    $"{importados} lançamento(s) importado(s) com sucesso!" +
+                    (ignorados > 0 ? $" ({ignorados} já tinham sido importados antes e foram ignorados.)" : ""));
+            }
+
+            return RedirectToAction(nameof(Caixa));
         }
 
         // =========================

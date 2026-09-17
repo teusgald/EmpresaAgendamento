@@ -10,13 +10,17 @@
 
 	var empresaInfo = await _context.Users
 		.Where(u => u.Id == userId)
-		.Select(u => new { u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus })
+		.Select(u => new { u.EmpresaId, u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus })
 		.FirstOrDefaultAsync();
 
 	var nomeUsuario = empresaInfo?.Nome;
 	var logoEmpresa = empresaInfo?.LogoUrl;
 
 	var assinaturaAtiva = empresaInfo?.AssinaturaStatus == "active" || empresaInfo?.AssinaturaStatus == "trialing";
+
+	var notificacoesNaoLidas = empresaInfo?.EmpresaId != null
+		? await _context.Notificacoes.CountAsync(n => n.EmpresaId == empresaInfo.EmpresaId && !n.Lida)
+		: 0;
 }
 
 <!DOCTYPE html>
@@ -110,6 +114,17 @@
 	</script>
 </head>
 <body>
+
+	@if (empresaInfo?.EmpresaId != null)
+	{
+		<a asp-controller="Notificacoes" asp-action="Index" class="sino-notificacoes" title="Notificações">
+			<i class="bi bi-bell"></i>
+			@if (notificacoesNaoLidas > 0)
+			{
+				<span class="badge-contador">@(notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas.ToString())</span>
+			}
+		</a>
+	}
 
 	<!-- SIDEBAR -->
 	<div class="sidebar" id="sidebar">
@@ -352,6 +367,13 @@
 
 		</ul>
 
+		<div class="sidebar-secondary px-2 py-2">
+			<a class="nav-link" asp-controller="Atendimento" asp-action="Index">
+				<i class="bi bi-headset"></i>
+				<span class="link-text">Atendimento</span>
+			</a>
+		</div>
+
 		<div class="sidebar-footer d-flex flex-column px-2 py-2">
 
 			<span class="mb-2 fw-semibold text-white">
@@ -359,6 +381,7 @@
 			</span>
 
 			<form method="post" action="/logout" class="d-inline">
+				@Html.AntiForgeryToken()
 				<button type="submit" class="btn btn-link text-danger text-decoration-none p-0">
 					<i class="bi bi-box-arrow-right me-1"></i> Sair
 				</button>

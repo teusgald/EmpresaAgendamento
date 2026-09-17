@@ -1,0 +1,142 @@
+@model List<EmpresaAgendamento.Models.ViewModels.ImportacaoExtratoItemViewModel>
+
+@{
+    ViewData["Title"] = "Revisar Importação";
+
+    var jaImportados = Model.Count(i => i.JaImportado);
+    var sugeridos = Model.Count(i => !i.JaImportado && i.Acao == "conciliar");
+    var semSugestao = Model.Count(i => !i.JaImportado && i.Acao != "conciliar");
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Revisar Importação</h3>
+            <p class="page-subtitle">Confira cada lançamento antes de confirmar — nada foi salvo ainda.</p>
+        </div>
+
+        <a asp-action="ImportarExtrato" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Enviar outro arquivo
+        </a>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4 mb-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Lançamentos no arquivo</div>
+                    <div class="fs-4 fw-bold">@Model.Count</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Conciliação sugerida</div>
+                    <div class="fs-4 fw-bold text-success">@sugeridos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-2">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Já importados antes</div>
+                    <div class="fs-4 fw-bold text-muted">@jaImportados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <form asp-action="ConfirmarImportacao" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <div class="table-responsive">
+                    <table class="table align-middle table-cards-mobile">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Valor</th>
+                                <th>O que fazer</th>
+                                <th>Conciliar com / Categoria</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (var i = 0; i < Model.Count; i++)
+                            {
+                                var item = Model[i];
+                                var prefixo = $"itens[{i}]";
+                                var corValor = item.Valor >= 0 ? "text-success" : "text-danger";
+
+                                <tr>
+                                    <td class="td-header" data-label="Data">
+                                        @item.Data.ToString("dd/MM/yyyy")
+                                        <input type="hidden" name="@(prefixo).Data" value="@item.Data.ToString("yyyy-MM-dd")" />
+                                    </td>
+                                    <td data-label="Descrição">
+                                        @item.Descricao
+                                        <input type="hidden" name="@(prefixo).Descricao" value="@item.Descricao" />
+                                        <input type="hidden" name="@(prefixo).FitId" value="@item.FitId" />
+                                    </td>
+                                    <td data-label="Valor" class="fw-semibold @corValor">
+                                        @item.Valor.ToString("C")
+                                        <input type="hidden" name="@(prefixo).Valor" value="@item.Valor.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+                                    </td>
+
+                                    @if (item.JaImportado)
+                                    {
+                                        <td data-label="O que fazer">
+                                            <span class="badge bg-secondary">Já importado — ignorado</span>
+                                            <input type="hidden" name="@(prefixo).Acao" value="ignorar" />
+                                        </td>
+                                        <td data-label="Conciliar com / Categoria">—</td>
+                                    }
+                                    else
+                                    {
+                                        <td data-label="O que fazer">
+                                            <select name="@(prefixo).Acao" class="form-select form-select-sm">
+                                                <option value="conciliar" selected="@(item.Acao == "conciliar")">Conciliar com uma conta</option>
+                                                <option value="novo" selected="@(item.Acao == "novo")">Lançar direto no caixa</option>
+                                                <option value="ignorar" selected="@(item.Acao == "ignorar")">Ignorar</option>
+                                            </select>
+                                        </td>
+                                        <td data-label="Conciliar com / Categoria">
+                                            @if (item.ContasDisponiveis.Any())
+                                            {
+                                                <select name="@(prefixo).ContaSelecionadaId" class="form-select form-select-sm mb-1">
+                                                    <option value="">Nenhuma / lançar direto</option>
+                                                    @foreach (var opcao in item.ContasDisponiveis)
+                                                    {
+                                                        <option value="@opcao.Value" selected="@opcao.Selected">@opcao.Text</option>
+                                                    }
+                                                </select>
+                                            }
+                                            <select name="@(prefixo).CategoriaId" class="form-select form-select-sm" asp-items="ViewBag.Categorias">
+                                                <option value="">Sem categoria</option>
+                                            </select>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <p class="text-muted small mt-2">
+                    "Conciliar com uma conta" baixa a conta a receber/pagar escolhida. "Lançar direto no caixa"
+                    cria um lançamento avulso (use a categoria pra classificar). "Ignorar" descarta a linha.
+                </p>
+
+                <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-lg me-1"></i>Confirmar importação
+                </button>
+            </div>
+        </div>
+
+    </form>
+
+</div>

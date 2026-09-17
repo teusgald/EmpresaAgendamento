@@ -36,7 +36,8 @@ namespace EmpresaAgendamento.Services
             decimal valor,
             FormaPagamento formaPagamento,
             string? usuarioId,
-            DateTime? dataRecebimento = null);
+            DateTime? dataRecebimento = null,
+            string? referenciaExterna = null);
 
         // Cancela ou estorna (se já houve recebimento confirmado) uma conta a
         // receber. Nunca exclui: preserva histórico via Status/MovimentacaoFinanceira.
@@ -57,7 +58,8 @@ namespace EmpresaAgendamento.Services
             decimal valor,
             FormaPagamento formaPagamento,
             string? usuarioId,
-            DateTime? dataPagamento = null);
+            DateTime? dataPagamento = null,
+            string? referenciaExterna = null);
 
         // Cancela ou estorna (se já houve pagamento confirmado) uma conta a
         // pagar. Nunca exclui: preserva histórico via Status/MovimentacaoFinanceira.

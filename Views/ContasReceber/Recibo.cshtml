@@ -1,0 +1,243 @@
+@model EmpresaAgendamento.Models.ContaReceber
+
+@{
+    Layout = null;
+
+    var empresa = Model.Empresa;
+    var nomeEmpresa = empresa.NomeFantasia ?? empresa.Nome;
+
+    var enderecoEmpresa = string.Join(", ", new[] { empresa.Endereco, empresa.Numero }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    var cidadeEmpresa = string.Join(" - ", new[]
+        {
+            empresa.Bairro,
+            string.Join("/", new[] { empresa.Cidade, empresa.UF }.Where(p => !string.IsNullOrWhiteSpace(p)))
+        }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    var nomeCliente = Model.Cliente?.Nome
+        ?? Model.Agendamento?.NomeClienteAvulso
+        ?? "Cliente não identificado";
+
+    var descricaoServico = Model.Agendamento?.Servico?.Nome ?? Model.Descricao;
+
+    var numeroRecibo = Model.Id.ToString("D6");
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Recibo Nº @numeroRecibo</title>
+    <link rel="icon" type="image/png" href="/img/icon.png?v=3" />
+    <style>
+        :root {
+            --preto: #111111;
+            --cinza-escuro: #2b2b2b;
+            --cinza: #6b7280;
+            --cinza-claro: #e5e7eb;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--preto);
+            background: #f8f9fa;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .recibo {
+            max-width: 720px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid var(--cinza-claro);
+            border-radius: 8px;
+            padding: 32px;
+        }
+
+        .cabecalho {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid var(--preto);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+
+        .logo-empresa {
+            max-height: 56px;
+            max-width: 220px;
+            object-fit: contain;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .cabecalho h1 {
+            font-size: 20px;
+            margin: 0 0 4px 0;
+        }
+
+        .cabecalho p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--cinza);
+        }
+
+        .titulo-recibo {
+            text-align: right;
+        }
+
+        .titulo-recibo h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .titulo-recibo p {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            color: var(--cinza);
+        }
+
+        .corpo p {
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .valor-destaque {
+            font-weight: bold;
+            font-size: 17px;
+        }
+
+        table.detalhes {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table.detalhes td {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--cinza-claro);
+            font-size: 14px;
+        }
+
+        table.detalhes td:first-child {
+            color: var(--cinza);
+            width: 40%;
+        }
+
+        .assinatura {
+            margin-top: 56px;
+            text-align: center;
+        }
+
+        .assinatura .linha {
+            border-top: 1px solid var(--preto);
+            width: 320px;
+            margin: 0 auto;
+            padding-top: 6px;
+            font-size: 13px;
+            color: var(--cinza);
+        }
+
+        .acoes {
+            max-width: 720px;
+            margin: 16px auto 0 auto;
+            text-align: right;
+        }
+
+        .acoes button {
+            background: var(--preto);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        @@media print {
+            body { background: #fff; padding: 0; }
+            .recibo { border: none; padding: 0; }
+            .no-print { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="recibo">
+
+        <div class="cabecalho">
+            <div>
+                @if (!string.IsNullOrWhiteSpace(empresa.LogoUrl))
+                {
+                    <img src="@empresa.LogoUrl" alt="@nomeEmpresa" class="logo-empresa" />
+                }
+                <h1>@nomeEmpresa</h1>
+                @if (!string.IsNullOrWhiteSpace(enderecoEmpresa))
+                {
+                    <p>@enderecoEmpresa</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(cidadeEmpresa))
+                {
+                    <p>@cidadeEmpresa</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(empresa.DocumentoNumero))
+                {
+                    <p>@empresa.DocumentoTipo: @empresa.DocumentoNumero</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(empresa.Telefone))
+                {
+                    <p>Tel: @empresa.Telefone</p>
+                }
+            </div>
+
+            <div class="titulo-recibo">
+                <h2>RECIBO</h2>
+                <p>Nº @numeroRecibo</p>
+            </div>
+        </div>
+
+        <div class="corpo">
+            <p>
+                Recebi de <strong>@nomeCliente</strong> a quantia de
+                <span class="valor-destaque">@Model.ValorRecebido.ToString("C")</span>
+                referente a <strong>@descricaoServico</strong>.
+            </p>
+        </div>
+
+        <table class="detalhes">
+            <tr>
+                <td>Data do recebimento</td>
+                <td>@(Model.DataRecebimento?.ToString("dd/MM/yyyy") ?? "-")</td>
+            </tr>
+            <tr>
+                <td>Forma de pagamento</td>
+                <td>@(Model.FormaPagamento?.ToString() ?? "-")</td>
+            </tr>
+            <tr>
+                <td>Valor total do serviço</td>
+                <td>@Model.ValorPrevisto.ToString("C")</td>
+            </tr>
+            <tr>
+                <td>Valor recebido</td>
+                <td>@Model.ValorRecebido.ToString("C")</td>
+            </tr>
+        </table>
+
+        <div class="assinatura">
+            <div class="linha">@nomeEmpresa</div>
+        </div>
+
+    </div>
+
+    <div class="acoes no-print">
+        <button type="button" onclick="window.print()">Imprimir / Salvar como PDF</button>
+    </div>
+
+</body>
+</html>

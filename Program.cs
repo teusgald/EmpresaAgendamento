@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Filters;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Services;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -59,6 +60,34 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.AccessDeniedPath = "/acesso-negado";
+
+    // 🔐 Sem isso, o padrão é SameAsRequest — o cookie de sessão pode ser
+    // mandado numa conexão HTTP se algum endpoint acabar respondendo assim.
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.SlidingExpiration = true;
+});
+
+// =========================
+// 🔥 RATE LIMITING (login, registro, recuperação de senha)
+// =========================
+// O lockout do Identity (5 tentativas/15min) só entra depois de identificar
+// uma conta específica — não impede alguém martelando esses endpoints com
+// e-mails diferentes, ou spammando "esqueci senha" (custa envio de e-mail).
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("auth", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "desconhecido",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                Window = TimeSpan.FromMinutes(5),
+                PermitLimit = 20,
+                QueueLimit = 0
+            }));
 });
 
 // =========================
@@ -71,6 +100,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificacaoAgendamentoService, NotificacaoAgendamentoService>();
 builder.Services.AddScoped<IPlanoCreditoService, PlanoCreditoService>();
 builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
+builder.Services.AddScoped<INotificacaoService, NotificacaoService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddSingleton<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<LembreteAgendamentoBackgroundService>();
@@ -164,6 +194,8 @@ app.Use(async (context, next) =>
 });
 
 app.UseRouting();
+
+app.UseRateLimiter();
 
 app.UseSession();
 

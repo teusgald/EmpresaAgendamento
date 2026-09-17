@@ -1,0 +1,53 @@
+@{
+    ViewData["Title"] = "Importar Extrato";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Importar Extrato</h3>
+            <p class="page-subtitle">Envie um arquivo OFX do seu banco pra conciliar com as contas em aberto.</p>
+        </div>
+
+        <a asp-action="Caixa" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar ao Caixa
+        </a>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            <form asp-action="ImportarExtrato" method="post" enctype="multipart/form-data">
+                @Html.AntiForgeryToken()
+
+                <div class="mb-3">
+                    <label class="form-label">Arquivo OFX</label>
+                    <input type="file" name="arquivo" accept=".ofx" class="form-control" required />
+                    <div class="form-text">
+                        A maioria dos bancos exporta esse formato na tela de extrato/conta corrente
+                        do internet banking, como "Exportar OFX" ou "Money/Quicken (OFX)".
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-upload me-1"></i>Enviar e revisar
+                </button>
+            </form>
+
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-3">
+        <div class="card-body">
+            <h6 class="fw-bold">Como funciona</h6>
+            <ol class="mb-0 small text-muted">
+                <li>Enviamos o arquivo e lemos cada lançamento do extrato.</li>
+                <li>Pra cada um, tentamos achar automaticamente uma conta a receber/pagar em aberto com o mesmo valor.</li>
+                <li>Você revisa e confirma antes de qualquer coisa ser lançada — nada é salvo sem sua confirmação.</li>
+                <li>Reenviar o mesmo extrato depois não duplica os lançamentos já importados.</li>
+            </ol>
+        </div>
+    </div>
+
+</div>

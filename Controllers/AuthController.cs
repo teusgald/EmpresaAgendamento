@@ -8,6 +8,7 @@ namespace EmpresaAgendamento.Controllers
     public class AuthController : Controller
     {
         [HttpPost("logout")]
+        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout(
             [FromServices] SignInManager<ApplicationUser> signInManager)
         {

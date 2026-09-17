@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmpresaAgendamento.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260917171748_AddNotificacao")]
+    partial class AddNotificacao
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1078,9 +1081,6 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int?>("ClienteId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("datetime2");
 
@@ -1113,8 +1113,6 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasColumnType("nvarchar(150)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("ClienteId", "Lida", "DataCriacao");
 
                     b.HasIndex("EmpresaId", "Lida", "DataCriacao");
 
@@ -1776,18 +1774,11 @@ namespace EmpresaAgendamento.Data.Migrations
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Notificacao", b =>
                 {
-                    b.HasOne("EmpresaAgendamento.Models.Cliente", "Cliente")
-                        .WithMany()
-                        .HasForeignKey("ClienteId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
                     b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
                         .WithMany()
                         .HasForeignKey("EmpresaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Cliente");
 
                     b.Navigation("Empresa");
                 });

@@ -20,15 +20,27 @@ namespace EmpresaAgendamento.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFinanceiroService _financeiroService;
+        private readonly IEmailService _emailService;
+        private readonly INotificacaoService _notificacaoService;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<ContasReceberController> _logger;
 
         public ContasReceberController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IFinanceiroService financeiroService)
+            IFinanceiroService financeiroService,
+            IEmailService emailService,
+            INotificacaoService notificacaoService,
+            IConfiguration configuration,
+            ILogger<ContasReceberController> logger)
         {
             _context = context;
             _userManager = userManager;
             _financeiroService = financeiroService;
+            _emailService = emailService;
+            _notificacaoService = notificacaoService;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -292,9 +304,65 @@ namespace EmpresaAgendamento.Controllers
             else
             {
                 ToastHelper.Success(TempData, "Recebimento registrado com sucesso!");
+                await EnviarReciboPorEmailAsync(id);
+
+                await _notificacaoService.NotificarEmpresaAsync(
+                    empresaId.Value,
+                    TipoNotificacao.Pagamento,
+                    "Pagamento recebido",
+                    $"Recebimento de {valor:C} registrado.",
+                    "/financeiro/contas-a-receber");
+
+                var clienteId = await _context.ContasReceber
+                    .Where(c => c.Id == id)
+                    .Select(c => c.ClienteId)
+                    .FirstOrDefaultAsync();
+
+                if (clienteId.HasValue)
+                {
+                    await _notificacaoService.NotificarClienteAsync(
+                        clienteId.Value,
+                        empresaId.Value,
+                        TipoNotificacao.Pagamento,
+                        "Pagamento confirmado",
+                        $"Recebemos seu pagamento de {valor:C}.",
+                        null);
+                }
             }
 
             return RedirectToAction(origem == "receitas" ? nameof(Receitas) : nameof(Index));
+        }
+
+        // Manda o link do recibo pro cliente por e-mail — só quando ele tem
+        // e-mail cadastrado (cliente avulso não tem). Nunca bloqueia o
+        // recebimento em si por causa de falha no envio.
+        private async Task EnviarReciboPorEmailAsync(int contaId)
+        {
+            try
+            {
+                var conta = await _context.ContasReceber
+                    .Include(c => c.Cliente)
+                    .Include(c => c.Empresa)
+                    .FirstOrDefaultAsync(c => c.Id == contaId);
+
+                if (string.IsNullOrWhiteSpace(conta?.Cliente?.Email))
+                    return;
+
+                var nomeEmpresa = conta.Empresa.NomeFantasia ?? conta.Empresa.Nome;
+                var link = $"{LinkBaseHelper.ObterBase(Request, _configuration)}/recibo/{conta.ReciboToken}";
+
+                await _emailService.SendEmailAsync(
+                    conta.Cliente.Email,
+                    $"Recibo de pagamento — {nomeEmpresa}",
+                    $@"
+                    <h2>Pagamento confirmado</h2>
+                    <p>Olá {conta.Cliente.Nome}, recebemos seu pagamento de {conta.ValorRecebido:C} referente a {conta.Descricao}.</p>
+                    <p><a href='{link}'>Clique aqui para ver ou imprimir seu recibo</a></p>");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao enviar recibo por e-mail da conta {ContaId}.", contaId);
+            }
         }
 
         // =========================
@@ -330,6 +398,41 @@ namespace EmpresaAgendamento.Controllers
             }
 
             return RedirectToAction(origem == "receitas" ? nameof(Receitas) : nameof(Index));
+        }
+
+        // =========================
+        // RECIBO (impressão do navegador — sem valor fiscal)
+        // =========================
+        [HttpGet("{id}/recibo")]
+        public async Task<IActionResult> Recibo(int id)
+        {
+            var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "EmpresaAuth");
+            }
+
+            var conta = await _context.ContasReceber
+                .Include(c => c.Cliente)
+                .Include(c => c.Agendamento).ThenInclude(a => a!.Servico)
+                .Include(c => c.Empresa)
+                .FirstOrDefaultAsync(c => c.Id == id && c.EmpresaId == empresaId);
+
+            if (conta == null)
+            {
+                ToastHelper.Error(TempData, "Conta não encontrada.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (conta.ValorRecebido <= 0)
+            {
+                ToastHelper.Warning(TempData, "Essa conta ainda não teve nenhum recebimento — não há o que emitir recibo.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            return View(conta);
         }
     }
 }

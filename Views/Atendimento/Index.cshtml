@@ -1,0 +1,169 @@
+@model EmpresaAgendamento.Models.ViewModels.AtendimentoViewModel
+@using EmpresaAgendamento.Models
+@using EmpresaAgendamento.Models.Enums
+
+@{
+    ViewData["Title"] = "Atendimento";
+    Layout = User.IsInRole("Cliente") ? "_LayoutCliente" : "_Layout";
+
+    var lista = ViewBag.Lista as List<Atendimento> ?? new List<Atendimento>();
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Atendimento</h3>
+            <p class="page-subtitle">Precisa de ajuda ou quer pedir algo pra nossa equipe? Fala com a gente.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7">
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <form asp-action="Index" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Assunto</label>
+                            <input asp-for="Assunto" class="form-control" placeholder="Ex.: Dúvida sobre horários" />
+                            <span asp-validation-for="Assunto" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Mensagem</label>
+                            <textarea asp-for="Mensagem" class="form-control" rows="6"
+                                      placeholder="Descreva o que você precisa"></textarea>
+                            <span asp-validation-for="Mensagem" class="text-danger small"></span>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-send me-1"></i>Enviar
+                        </button>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h6 class="fw-bold">Fale conosco</h6>
+                    <p class="text-muted small mb-2">
+                        Sua mensagem vai direto pra nossa equipe de atendimento, junto com seu nome e e-mail
+                        pra gente te responder.
+                    </p>
+                    <p class="text-muted small mb-0">
+                        <i class="bi bi-envelope me-1"></i>atendimento.simplitime@sistemateus.com
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="page-header mt-4">
+        <div>
+            <h5 class="fw-bold mb-0">Meus atendimentos</h5>
+        </div>
+    </div>
+
+    @if (!lista.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-headset"></i>
+                <p>Você ainda não abriu nenhum atendimento.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- DESKTOP -->
+        <div class="card shadow-sm d-none d-lg-block">
+            <div class="card-body">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Data</th>
+                            <th>Assunto</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in lista)
+                        {
+                            <tr>
+                                <td>@item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@item.Assunto</td>
+                                <td>
+                                    @if (item.Status == StatusAtendimento.Finalizado)
+                                    {
+                                        <span class="badge bg-success">Finalizado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-warning text-dark">Aguardando</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (item.Status == StatusAtendimento.Aguardando)
+                                    {
+                                        <form asp-action="Concluir" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@item.Id" />
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                Marcar como concluído
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MOBILE -->
+        <div class="d-lg-none">
+            @foreach (var item in lista)
+            {
+                <div class="card mobile-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0">@item.Assunto</h6>
+                            @if (item.Status == StatusAtendimento.Finalizado)
+                            {
+                                <span class="badge bg-success">Finalizado</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark">Aguardando</span>
+                            }
+                        </div>
+
+                        <div class="mobile-info"><label>Data</label><span>@item.DataCriacao.ToString("dd/MM/yyyy HH:mm")</span></div>
+
+                        @if (item.Status == StatusAtendimento.Aguardando)
+                        {
+                            <form asp-action="Concluir" method="post" class="mt-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="btn btn-outline-secondary w-100">
+                                    Marcar como concluído
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>

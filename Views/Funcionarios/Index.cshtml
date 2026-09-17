@@ -146,6 +146,14 @@
                                 @if (item.UserId != null)
                                 {
                                     <span class="badge bg-info text-dark">Acesso ativo</span>
+
+                                    <form asp-action="ReenviarAcesso" method="post" class="d-inline">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary" title="Manda um novo link pro funcionário definir a senha">
+                                            Reenviar acesso
+                                        </button>
+                                    </form>
                                 }
                                 else if (!string.IsNullOrWhiteSpace(item.Email))
                                 {
@@ -308,6 +316,14 @@
                         @if (item.UserId != null)
                         {
                             <span class="badge bg-info text-dark align-self-center">Acesso ativo</span>
+
+                            <form asp-action="ReenviarAcesso" method="post">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <button type="submit" class="btn btn-outline-secondary w-100 mt-2">
+                                    Reenviar acesso
+                                </button>
+                            </form>
                         }
                         else if (!string.IsNullOrWhiteSpace(item.Email))
                         {

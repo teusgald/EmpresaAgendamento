@@ -1,8 +1,10 @@
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.ViewModels;
+using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace EmpresaAgendamento.Controllers
 {
@@ -11,13 +13,22 @@ namespace EmpresaAgendamento.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
+        private readonly ILogger<FuncionarioAuthController> _logger;
 
         public FuncionarioAuthController(
             UserManager<ApplicationUser> userManager,
-            SignInManager<ApplicationUser> signInManager)
+            SignInManager<ApplicationUser> signInManager,
+            IEmailService emailService,
+            IConfiguration configuration,
+            ILogger<FuncionarioAuthController> logger)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _emailService = emailService;
+            _configuration = configuration;
+            _logger = logger;
         }
 
         [HttpGet("login")]
@@ -25,6 +36,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("login")]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Login(FuncionarioLoginViewModel model)
         {
             if (!ModelState.IsValid)
@@ -47,6 +59,7 @@ namespace EmpresaAgendamento.Controllers
 
             if (user == null)
             {
+                _logger.LogWarning("Login de funcionário falhou (e-mail não encontrado): {Email}.", model.Email);
                 ModelState.AddModelError("", "Email ou senha inválidos.");
                 return View(model);
             }
@@ -59,6 +72,7 @@ namespace EmpresaAgendamento.Controllers
                     ? "Muitas tentativas de login. Tente novamente em alguns minutos."
                     : "Email ou senha inválidos.";
 
+                _logger.LogWarning("Login de funcionário falhou para {Email}: {Motivo}.", model.Email, erro);
                 ModelState.AddModelError("", erro);
                 return View(model);
             }
@@ -74,6 +88,73 @@ namespace EmpresaAgendamento.Controllers
             return RedirectToAction(nameof(Login));
         }
 
+        // ======================================
+        // RECUPERAR SENHA
+        // ======================================
+
+        [HttpGet("forgot")]
+        public IActionResult Forgot() => View(new ForgotViewModel());
+
+        [HttpPost("forgot")]
+        [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> Forgot(ForgotViewModel model)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            try
+            {
+                var users = _userManager.Users.Where(u => u.Email == model.Email).ToList();
+
+                ApplicationUser? user = null;
+
+                foreach (var u in users)
+                {
+                    if (await _userManager.IsInRoleAsync(u, "Funcionario"))
+                    {
+                        user = u;
+                        break;
+                    }
+                }
+
+                // Resposta sempre igual, exista ou não a conta — senão dá pra
+                // descobrir quais e-mails têm acesso de funcionário só testando
+                // esse formulário.
+                if (user != null)
+                {
+                    var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                    var link =
+                        $"{LinkBaseHelper.ObterBase(Request, _configuration)}/funcionario/definir-senha" +
+                        $"?email={Uri.EscapeDataString(user.Email!)}" +
+                        $"&token={Uri.EscapeDataString(token)}";
+
+                    await _emailService.SendEmailAsync(
+                        user.Email!,
+                        "Recuperação de Senha — Simpli Time",
+                        $@"
+                        <h2>Recuperação de Senha</h2>
+                        <p>Recebemos uma solicitação para redefinir sua senha de acesso.</p>
+                        <p><a href='{link}'>Clique aqui para definir uma nova senha</a></p>
+                        <p>Se você não solicitou essa alteração, ignore este e-mail.</p>");
+                }
+                else
+                {
+                    _logger.LogInformation("Recuperação de senha solicitada para e-mail de funcionário não cadastrado: {Email}.", model.Email);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao processar recuperação de senha (funcionário, e-mail {Email}).", model.Email);
+            }
+
+            ToastHelper.Success(TempData, "Se esse e-mail estiver cadastrado, enviamos um link de recuperação para ele.");
+            return RedirectToAction(nameof(Login));
+        }
+
         [HttpGet("definir-senha")]
         public IActionResult DefinirSenha(string email, string token)
         {
@@ -86,6 +167,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("definir-senha")]
         [ValidateAntiForgeryToken]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> DefinirSenha(ResetPasswordViewModel model)
         {
             if (!ModelState.IsValid)

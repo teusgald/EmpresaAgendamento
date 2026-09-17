@@ -44,6 +44,10 @@ namespace EmpresaAgendamento.Data
         public DbSet<PlanoServicoItem> PlanosServicoItens { get; set; }
         public DbSet<AssinaturaPlanoServico> AssinaturasPlanoServico { get; set; }
 
+        public DbSet<Atendimento> Atendimentos { get; set; }
+
+        public DbSet<Notificacao> Notificacoes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -370,6 +374,17 @@ namespace EmpresaAgendamento.Data
                 .IsUnique()
                 .HasFilter("[AgendamentoId] IS NOT NULL");
 
+            // NEWID() no default (não um valor fixo) — cada conta já existente
+            // recebe seu próprio GUID novo ao aplicar a migration, em vez de
+            // todas caírem no mesmo valor e violar o índice único abaixo.
+            builder.Entity<ContaReceber>()
+                .Property(x => x.ReciboToken)
+                .HasDefaultValueSql("NEWID()");
+
+            builder.Entity<ContaReceber>()
+                .HasIndex(x => x.ReciboToken)
+                .IsUnique();
+
             // ---- ContaPagar ----
 
             builder.Entity<ContaPagar>()
@@ -486,6 +501,14 @@ namespace EmpresaAgendamento.Data
             builder.Entity<MovimentacaoFinanceira>()
                 .HasIndex(x => new { x.EmpresaId, x.DataMovimento });
 
+            // Reimportar o mesmo extrato (mesmo FITID) não pode duplicar o
+            // lançamento — índice único só entre linhas com referência (a
+            // maioria dos lançamentos manuais não tem uma).
+            builder.Entity<MovimentacaoFinanceira>()
+                .HasIndex(x => new { x.EmpresaId, x.ReferenciaExterna })
+                .IsUnique()
+                .HasFilter("[ReferenciaExterna] IS NOT NULL");
+
             // ---- Comissão (AgendamentoFuncionario -> ContaPagar) ----
 
             builder.Entity<AgendamentoFuncionario>()
@@ -593,6 +616,53 @@ namespace EmpresaAgendamento.Data
                 .WithMany()
                 .HasForeignKey(a => a.AssinaturaPlanoServicoId)
                 .OnDelete(DeleteBehavior.SetNull);
+
+            #endregion
+
+            #region Atendimento
+
+            builder.Entity<Atendimento>()
+                .Property(x => x.Status)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<Atendimento>()
+                .HasOne(x => x.Usuario)
+                .WithMany()
+                .HasForeignKey(x => x.UsuarioId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            builder.Entity<Atendimento>()
+                .HasIndex(x => new { x.UsuarioId, x.DataCriacao });
+
+            #endregion
+
+            #region Notificacao
+
+            builder.Entity<Notificacao>()
+                .Property(x => x.Tipo)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<Notificacao>()
+                .HasOne(x => x.Empresa)
+                .WithMany()
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Notificacao>()
+                .HasOne(x => x.Cliente)
+                .WithMany()
+                .HasForeignKey(x => x.ClienteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<Notificacao>()
+                .HasIndex(x => new { x.EmpresaId, x.Lida, x.DataCriacao });
+
+            builder.Entity<Notificacao>()
+                .HasIndex(x => new { x.ClienteId, x.Lida, x.DataCriacao });
 
             #endregion
         }

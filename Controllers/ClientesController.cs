@@ -1,6 +1,8 @@
 ﻿using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.Enums;
+using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -11,13 +13,16 @@ public class ClientesController : Controller
 {
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly INotificacaoService _notificacaoService;
 
     public ClientesController(
         ApplicationDbContext context,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        INotificacaoService notificacaoService)
     {
         _context = context;
         _userManager = userManager;
+        _notificacaoService = notificacaoService;
     }
 
     private async Task<int?> GetEmpresaId()
@@ -128,6 +133,13 @@ public class ClientesController : Controller
             });
 
             await _context.SaveChangesAsync();
+
+            await _notificacaoService.NotificarEmpresaAsync(
+                empresaId.Value,
+                TipoNotificacao.Cadastro,
+                "Novo cliente cadastrado",
+                $"{cliente.Nome} foi cadastrado(a).",
+                "/Clientes");
 
             ToastHelper.Success(TempData, "Cliente cadastrado com sucesso.");
 

@@ -6,6 +6,7 @@ using EmpresaAgendamento.Services;
 using EmpresaAgendamento.ViewModels;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace EmpresaAgendamento.Controllers
@@ -18,6 +19,7 @@ namespace EmpresaAgendamento.Controllers
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IFinanceiroService _financeiroService;
         private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
+        private readonly INotificacaoService _notificacaoService;
         private readonly IPlanoCreditoService _planoCreditoService;
 
         public PublicoController(
@@ -26,6 +28,7 @@ namespace EmpresaAgendamento.Controllers
             SignInManager<ApplicationUser> signInManager,
             IFinanceiroService financeiroService,
             INotificacaoAgendamentoService notificacaoAgendamentoService,
+            INotificacaoService notificacaoService,
             IPlanoCreditoService planoCreditoService)
         {
             _context = context;
@@ -33,7 +36,25 @@ namespace EmpresaAgendamento.Controllers
             _signInManager = signInManager;
             _financeiroService = financeiroService;
             _notificacaoAgendamentoService = notificacaoAgendamentoService;
+            _notificacaoService = notificacaoService;
             _planoCreditoService = planoCreditoService;
+        }
+
+        // Link público do recibo (mandado por e-mail pro cliente quando o
+        // pagamento é confirmado) — token opaco, sem exigir login.
+        [HttpGet("recibo/{token:guid}")]
+        public async Task<IActionResult> Recibo(Guid token)
+        {
+            var conta = await _context.ContasReceber
+                .Include(c => c.Cliente)
+                .Include(c => c.Agendamento).ThenInclude(a => a!.Servico)
+                .Include(c => c.Empresa)
+                .FirstOrDefaultAsync(c => c.ReciboToken == token);
+
+            if (conta == null || conta.ValorRecebido <= 0)
+                return NotFound();
+
+            return View("~/Views/ContasReceber/Recibo.cshtml", conta);
         }
 
         [HttpGet("{slug}")]
@@ -280,6 +301,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Login(ClienteLoginViewModel model)
         {
             if (!ModelState.IsValid)
@@ -306,10 +328,12 @@ namespace EmpresaAgendamento.Controllers
 
             if (user == null)
             {
+                // Mesma mensagem de senha errada — não dá pra revelar se o
+                // e-mail tem conta de cliente só pelo texto do erro de login.
                 return Json(new
                 {
                     success = false,
-                    error = "Usuário não encontrado."
+                    error = "Email ou senha inválidos."
                 });
             }
 
@@ -546,6 +570,24 @@ namespace EmpresaAgendamento.Controllers
             }
 
             await _notificacaoAgendamentoService.EnviarConfirmacaoAsync(agendamento.Id);
+
+            await _notificacaoService.NotificarEmpresaAsync(
+                agendamento.EmpresaId,
+                TipoNotificacao.Agendamento,
+                "Novo agendamento",
+                $"{model.Nome} agendou para {model.DataHora:dd/MM/yyyy HH:mm}.",
+                "/Agendamentos");
+
+            if (clienteId.HasValue)
+            {
+                await _notificacaoService.NotificarClienteAsync(
+                    clienteId.Value,
+                    agendamento.EmpresaId,
+                    TipoNotificacao.Agendamento,
+                    "Agendamento confirmado",
+                    $"Seu agendamento para {model.DataHora:dd/MM/yyyy HH:mm} foi confirmado.",
+                    "/Cliente/Agendamentos");
+            }
 
             return Ok(new
             {

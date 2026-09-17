@@ -17,6 +17,7 @@ public class AgendamentosClientesController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IFinanceiroService _financeiroService;
     private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
+    private readonly INotificacaoService _notificacaoService;
     private readonly IPlanoCreditoService _planoCreditoService;
 
     public AgendamentosClientesController(
@@ -25,6 +26,7 @@ public class AgendamentosClientesController : Controller
         SignInManager<ApplicationUser> signInManager,
         IFinanceiroService financeiroService,
         INotificacaoAgendamentoService notificacaoAgendamentoService,
+        INotificacaoService notificacaoService,
         IPlanoCreditoService planoCreditoService)
     {
         _context = context;
@@ -32,6 +34,7 @@ public class AgendamentosClientesController : Controller
         _signInManager = signInManager;
         _financeiroService = financeiroService;
         _notificacaoAgendamentoService = notificacaoAgendamentoService;
+        _notificacaoService = notificacaoService;
         _planoCreditoService = planoCreditoService;
     }
 
@@ -281,6 +284,26 @@ public class AgendamentosClientesController : Controller
         }
 
         await _notificacaoAgendamentoService.EnviarConfirmacaoAsync(agendamento.Id);
+
+        var clienteNome = await _context.Clientes
+            .Where(c => c.Id == agendamento.ClienteId)
+            .Select(c => c.Nome)
+            .FirstOrDefaultAsync();
+
+        await _notificacaoService.NotificarEmpresaAsync(
+            agendamento.EmpresaId,
+            TipoNotificacao.Agendamento,
+            "Novo agendamento",
+            $"{clienteNome ?? "Um cliente"} agendou para {agendamento.DataHora:dd/MM/yyyy HH:mm}.",
+            "/Agendamentos");
+
+        await _notificacaoService.NotificarClienteAsync(
+            agendamento.ClienteId!.Value,
+            agendamento.EmpresaId,
+            TipoNotificacao.Agendamento,
+            "Agendamento confirmado",
+            $"Seu agendamento para {agendamento.DataHora:dd/MM/yyyy HH:mm} foi confirmado.",
+            "/Cliente/Agendamentos");
 
         return RedirectToAction(nameof(Index));
     }

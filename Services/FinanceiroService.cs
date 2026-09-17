@@ -220,7 +220,8 @@ namespace EmpresaAgendamento.Services
             decimal valor,
             FormaPagamento formaPagamento,
             string? usuarioId,
-            DateTime? dataRecebimento = null)
+            DateTime? dataRecebimento = null,
+            string? referenciaExterna = null)
         {
             // EmpresaId sempre validado no backend contra o dono real da conta.
             var conta = await _context.ContasReceber
@@ -265,7 +266,8 @@ namespace EmpresaAgendamento.Services
                 Descricao = conta.Descricao,
                 ContaReceberId = conta.Id,
                 CategoriaId = conta.CategoriaId,
-                UsuarioId = usuarioId
+                UsuarioId = usuarioId,
+                ReferenciaExterna = referenciaExterna
             };
 
             _context.MovimentacoesFinanceiras.Add(movimentacao);
@@ -351,7 +353,8 @@ namespace EmpresaAgendamento.Services
             decimal valor,
             FormaPagamento formaPagamento,
             string? usuarioId,
-            DateTime? dataPagamento = null)
+            DateTime? dataPagamento = null,
+            string? referenciaExterna = null)
         {
             // EmpresaId sempre validado no backend contra o dono real da conta.
             var conta = await _context.ContasPagar
@@ -396,7 +399,8 @@ namespace EmpresaAgendamento.Services
                 Descricao = conta.Descricao,
                 ContaPagarId = conta.Id,
                 CategoriaId = conta.CategoriaId,
-                UsuarioId = usuarioId
+                UsuarioId = usuarioId,
+                ReferenciaExterna = referenciaExterna
             };
 
             _context.MovimentacoesFinanceiras.Add(movimentacao);

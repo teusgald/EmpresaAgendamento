@@ -1,9 +1,11 @@
 ﻿using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 [Route("cliente")]
@@ -13,6 +15,7 @@ public class ClientesAuthController : Controller
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<ClientesAuthController> _logger;
 
     public ClientesAuthController(
@@ -20,12 +23,14 @@ public class ClientesAuthController : Controller
         UserManager<ApplicationUser> userManager,
         SignInManager<ApplicationUser> signInManager,
         IEmailService emailService,
+        IConfiguration configuration,
         ILogger<ClientesAuthController> logger)
     {
         _context = context;
         _userManager = userManager;
         _signInManager = signInManager;
         _emailService = emailService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -45,6 +50,7 @@ public class ClientesAuthController : Controller
     // pública manda — por isso só quebrava a partir do Home.
     [HttpPost("login")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login(ClienteLoginViewModel model)
     {
         var origem = Request.Form["Origem"].ToString();
@@ -78,10 +84,14 @@ public class ClientesAuthController : Controller
 
         if (user == null)
         {
+            // Mesma mensagem de senha errada — não dá pra revelar se o
+            // e-mail tem conta de cliente só pelo texto do erro de login.
+            _logger.LogWarning("Login de cliente falhou (e-mail não encontrado): {Email}.", model.Email);
+
             return Json(new
             {
                 success = false,
-                error = "Usuário não encontrado."
+                error = "Email ou senha inválidos."
             });
         }
 
@@ -98,6 +108,8 @@ public class ClientesAuthController : Controller
                 : result.IsNotAllowed
                     ? "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada."
                     : "Email ou senha inválidos.";
+
+            _logger.LogWarning("Login de cliente falhou para o e-mail {Email}: {Motivo}.", model.Email, mensagemErro);
 
             return Json(new
             {
@@ -135,6 +147,7 @@ public class ClientesAuthController : Controller
 
     [HttpPost("registro")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register(ClienteRegisterViewModel model, bool aceitaTermos = false)
     {
         if (!ModelState.IsValid)
@@ -161,7 +174,7 @@ public class ClientesAuthController : Controller
 
         var emailExistente = _userManager.Users
             .FirstOrDefault(x => x.Email == model.Email &&
-                    x.Cliente.Id != null);
+                    x.Cliente != null);
 
         if (emailExistente != null)
         {
@@ -234,7 +247,7 @@ public class ClientesAuthController : Controller
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
             var link =
-                $"{Request.Scheme}://{Request.Host}/cliente/confirmar-email" +
+                $"{LinkBaseHelper.ObterBase(Request, _configuration)}/cliente/confirmar-email" +
                 $"?userId={Uri.EscapeDataString(user.Id)}" +
                 $"&token={Uri.EscapeDataString(token)}";
 
@@ -255,7 +268,8 @@ public class ClientesAuthController : Controller
         }
         catch (Exception ex)
         {
-            erroEmail = ex.Message;
+            _logger.LogError(ex, "Falha ao enviar e-mail de confirmação de cadastro pro cliente {Email}.", user.Email);
+            erroEmail = "Não foi possível enviar o e-mail de confirmação agora.";
         }
 
         return Json(new
@@ -293,6 +307,7 @@ public class ClientesAuthController : Controller
     // LOGOUT
     // =========================
     [HttpPost("logout")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout([FromServices] SignInManager<ApplicationUser> signInManager)
     {
         await signInManager.SignOutAsync();
@@ -304,6 +319,7 @@ public class ClientesAuthController : Controller
 
     [HttpPost("forgot")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Forgot(ForgotViewModel model)
     {
         try
@@ -320,44 +336,48 @@ public class ClientesAuthController : Controller
             var user = _userManager.Users
                 .FirstOrDefault(x =>
                     x.Email == model.Email &&
-                    x.Cliente.Id != null);
+                    x.Cliente != null);
 
-            if (user == null)
+            // Resposta sempre igual, exista ou não a conta — senão dá pra
+            // descobrir quais e-mails têm cadastro só testando esse formulário.
+            if (user != null)
             {
-                return Json(new
-                {
-                    success = false,
-                    error = "Email não encontrado"
-                });
+                var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+                var link =
+                         $"{LinkBaseHelper.ObterBase(Request, _configuration)}/" +
+                         $"?mode=reset" +
+                         $"&type=cliente" +
+                         $"&email={Uri.EscapeDataString(model.Email)}" +
+                         $"&token={Uri.EscapeDataString(token)}";
+
+                await _emailService.SendEmailAsync(
+                    model.Email,
+                    "Recuperação de Senha",
+                    $@"
+                <h2>Recuperação de Senha</h2>
+
+                <p>Recebemos uma solicitação para redefinir sua senha.</p>
+
+                <p>
+                    <a href='{link}'>
+                        Clique aqui para redefinir sua senha
+                    </a>
+                </p>
+
+                <p>Se você não solicitou esta alteração, ignore este email.</p>"
+                );
+            }
+            else
+            {
+                _logger.LogInformation("Recuperação de senha solicitada para e-mail de cliente não cadastrado: {Email}.", model.Email);
             }
 
-            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-
-            var link =
-                     $"{Request.Scheme}://{Request.Host}/" +
-                     $"?mode=reset" +
-                     $"&type=cliente" +
-                     $"&email={Uri.EscapeDataString(model.Email)}" +
-                     $"&token={Uri.EscapeDataString(token)}";
-
-            await _emailService.SendEmailAsync(
-                model.Email,
-                "Recuperação de Senha",
-                $@"
-            <h2>Recuperação de Senha</h2>
-
-            <p>Recebemos uma solicitação para redefinir sua senha.</p>
-
-            <p>
-                <a href='{link}'>
-                    Clique aqui para redefinir sua senha
-                </a>
-            </p>
-
-            <p>Se você não solicitou esta alteração, ignore este email.</p>"
-            );
-
-            return Json(new { success = true });
+            return Json(new
+            {
+                success = true,
+                message = "Se esse e-mail estiver cadastrado, enviamos um link de recuperação para ele."
+            });
         }
         catch (Exception ex)
         {
@@ -383,6 +403,7 @@ public class ClientesAuthController : Controller
 
     [HttpPost("resetpassword")]
     [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> ResetPassword(
       ResetPasswordViewModel model)
     {
@@ -397,20 +418,23 @@ public class ClientesAuthController : Controller
                 });
             }
 
+            // Mensagem genérica tanto pra "e-mail não encontrado" quanto pra
+            // "token inválido/expirado" — do contrário, dava pra descobrir se
+            // um e-mail tem conta de cliente só testando esse formulário.
+            const string erroGenerico = "Não foi possível redefinir a senha. O link pode ter expirado — solicite um novo.";
+
             var user = _userManager.Users
                 .FirstOrDefault(x =>
                     x.Email == model.Email &&
-                    x.Cliente.Id != null);
+                    x.Cliente != null);
 
             if (user == null)
             {
-                return Json(new
-                {
-                    success = false,
-                    error = "Usuário não encontrado"
-                });
+                _logger.LogWarning("Tentativa de redefinir senha de cliente com e-mail não cadastrado: {Email}.", model.Email);
+
+                return Json(new { success = false, error = erroGenerico });
             }
-            var token = Uri.UnescapeDataString(model.Token);
+
             var result = await _userManager.ResetPasswordAsync(
                 user,
                 model.Token,
@@ -418,6 +442,8 @@ public class ClientesAuthController : Controller
 
             if (result.Succeeded)
             {
+                _logger.LogInformation("Senha redefinida com sucesso (cliente, e-mail {Email}).", model.Email);
+
                 return Json(new
                 {
                     success = true,
@@ -425,12 +451,19 @@ public class ClientesAuthController : Controller
                 });
             }
 
+            _logger.LogWarning(
+                "Falha ao redefinir senha de cliente para {Email}: {Erros}.",
+                model.Email,
+                string.Join("; ", result.Errors.Select(x => x.Code)));
+
+            var tokenInvalido = result.Errors.Any(e => e.Code.Contains("Token", StringComparison.OrdinalIgnoreCase));
+
             return Json(new
             {
                 success = false,
-                error = string.Join(
-                    "<br>",
-                    result.Errors.Select(x => x.Description))
+                error = tokenInvalido
+                    ? erroGenerico
+                    : string.Join("<br>", result.Errors.Select(x => x.Description))
             });
         }
         catch (Exception ex)

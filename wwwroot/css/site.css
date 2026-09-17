@@ -669,6 +669,59 @@ body {
         border-top: 1px solid rgba(255, 255, 255, .12);
     }
 
+    /* Seção secundária do menu (ex.: Atendimento) — fica grudada em cima do
+       rodapé (Bem-vindo/Sair), mas numa div própria, separada tanto da lista
+       principal de navegação quanto do rodapé. */
+    .sidebar .sidebar-secondary {
+        margin-top: auto;
+        padding: .75rem 1.15rem .25rem 1.15rem;
+    }
+
+    .sidebar .sidebar-secondary .nav-link {
+        padding: .4rem 0;
+    }
+
+/* ===========================================================================
+   SINO DE NOTIFICAÇÕES (fixo, fora do menu — empresa/funcionário e cliente)
+   =========================================================================== */
+
+.sino-notificacoes {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 1040;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--st-white, #fff);
+    border: 1px solid var(--st-gray-300, #e5e7eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    color: var(--st-black, #111);
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    text-decoration: none;
+}
+
+.sino-notificacoes .badge-contador {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 9px;
+    background: #dc3545;
+    color: #fff;
+    font-size: .65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
 /* ===========================================================================
    LAYOUT: CONTEÚDO / TOPBAR
    =========================================================================== */
