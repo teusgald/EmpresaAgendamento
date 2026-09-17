@@ -63,6 +63,10 @@ namespace EmpresaAgendamento.Models
         public int? AssinaturaPlanoServicoId { get; set; }
         public AssinaturaPlanoServico? AssinaturaPlanoServico { get; set; }
 
+        // Evita contar a mesma visita duas vezes no programa de fidelidade
+        // se o status for alterado para Finalizado mais de uma vez.
+        public bool VisitaFidelidadeContabilizada { get; set; }
+
         // =========================
         // 🔁 NAVIGATION
         // =========================

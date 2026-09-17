@@ -198,6 +198,7 @@ public class FuncionariosController : Controller
                 FotoUrl = vm.FotoUrl,
                 PercentualComissaoPadrao = vm.PercentualComissaoPadrao,
                 ValorComissaoFixa = vm.ValorComissaoFixa,
+                NivelAcesso = vm.NivelAcesso,
                 EmpresaId = empresaId.Value,
                 Ativo = true
             };
@@ -258,6 +259,7 @@ public class FuncionariosController : Controller
                 FotoUrl = funcionario.FotoUrl,
                 PercentualComissaoPadrao = funcionario.PercentualComissaoPadrao,
                 ValorComissaoFixa = funcionario.ValorComissaoFixa,
+                NivelAcesso = funcionario.NivelAcesso,
                 ServicosSelecionados = funcionario.Servicos.Select(x => x.ServicoId).ToList()
             };
 
@@ -337,6 +339,7 @@ public class FuncionariosController : Controller
             funcionario.FotoUrl = vm.FotoUrl;
             funcionario.PercentualComissaoPadrao = vm.PercentualComissaoPadrao;
             funcionario.ValorComissaoFixa = vm.ValorComissaoFixa;
+            funcionario.NivelAcesso = vm.NivelAcesso;
 
             var antigos = await _context.FuncionariosServicos
                 .Where(x => x.FuncionarioId == funcionario.Id)

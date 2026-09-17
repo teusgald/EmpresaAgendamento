@@ -50,7 +50,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("")]
-        public async Task<IActionResult> Index(string? tipoPlano)
+        public async Task<IActionResult> Index(string? tipoPlano, int? planoId)
         {
             var empresaId = await GetEmpresaId();
 
@@ -71,32 +71,36 @@ namespace EmpresaAgendamento.Controllers
 
             var temAssinaturaAtiva = empresa.AssinaturaStatus == "active" || empresa.AssinaturaStatus == "trialing";
 
+            List<Plano> planos = new();
+
             try
             {
-                ViewBag.Plano = await _stripeService.GarantirPlanoPadraoAsync();
+                planos = await _stripeService.GarantirPlanosAsync();
+                ViewBag.Planos = planos;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Falha ao carregar plano padrão do Stripe.");
+                _logger.LogError(ex, "Falha ao carregar os planos do Stripe.");
                 ToastHelper.Error(TempData, MensagemErroGenerica);
             }
 
             // Plano escolhido: monta o Checkout embutido (mesmo formulário do
             // Stripe, mas dentro da própria página) em vez de redirecionar.
-            if (!temAssinaturaAtiva && !string.IsNullOrEmpty(tipoPlano))
+            if (!temAssinaturaAtiva && !string.IsNullOrEmpty(tipoPlano) && planoId.HasValue)
             {
                 var urlRetorno = $"{Request.Scheme}://{Request.Host}/assinatura/retorno?session_id={{CHECKOUT_SESSION_ID}}";
 
                 try
                 {
                     ViewBag.ClientSecret = await _stripeService.CriarCheckoutClientSecretAsync(
-                        empresaId.Value, tipoPlano, urlRetorno);
+                        empresaId.Value, planoId.Value, tipoPlano, urlRetorno);
                     ViewBag.TipoPlanoSelecionado = tipoPlano;
+                    ViewBag.PlanoSelecionado = planos.FirstOrDefault(p => p.Id == planoId.Value);
                     ViewBag.StripePublishableKey = _configuration["Stripe:PublishableKey"];
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Falha ao iniciar pagamento (empresa {EmpresaId}, plano {TipoPlano}).", empresaId, tipoPlano);
+                    _logger.LogError(ex, "Falha ao iniciar pagamento (empresa {EmpresaId}, plano {PlanoId}, período {TipoPlano}).", empresaId, planoId, tipoPlano);
                     ToastHelper.Error(TempData, "Não foi possível iniciar o pagamento agora. Tente novamente em alguns instantes.");
                 }
             }
@@ -125,7 +129,14 @@ namespace EmpresaAgendamento.Controllers
                 ? "mensal"
                 : empresa.TipoPlanoEscolhido;
 
-            return RedirectToAction(nameof(Index), new { tipoPlano });
+            var nomePlano = string.IsNullOrEmpty(empresa?.NomePlanoEscolhido)
+                ? "Start"
+                : empresa.NomePlanoEscolhido;
+
+            var planos = await _stripeService.GarantirPlanosAsync();
+            var planoId = (planos.FirstOrDefault(p => p.Nome == nomePlano) ?? planos.First()).Id;
+
+            return RedirectToAction(nameof(Index), new { tipoPlano, planoId });
         }
 
         // O Stripe redireciona o navegador pra cá quando o Checkout embutido

@@ -87,6 +87,9 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<string>("TelefoneClienteAvulso")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("VisitaFidelidadeContabilizada")
+                        .HasColumnType("bit");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssinaturaPlanoServicoId");
@@ -101,7 +104,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId", "DataHora");
 
-                    b.ToTable("Agendamentos");
+                    b.ToTable("Agendamentos", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.AgendamentoFuncionario", b =>
@@ -135,7 +138,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("FuncionarioId");
 
-                    b.ToTable("AgendamentosFuncionarios");
+                    b.ToTable("AgendamentosFuncionarios", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.ApplicationUser", b =>
@@ -261,7 +264,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("PlanoServicoId");
 
-                    b.ToTable("AssinaturasPlanoServico");
+                    b.ToTable("AssinaturasPlanoServico", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Atendimento", b =>
@@ -315,7 +318,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("UsuarioId", "DataCriacao");
 
-                    b.ToTable("Atendimentos");
+                    b.ToTable("Atendimentos", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Avaliacao", b =>
@@ -352,7 +355,7 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.HasIndex("EmpresaId", "ClienteId")
                         .IsUnique();
 
-                    b.ToTable("Avaliacoes");
+                    b.ToTable("Avaliacoes", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.CategoriaFinanceira", b =>
@@ -389,7 +392,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId");
 
-                    b.ToTable("CategoriasFinanceiras");
+                    b.ToTable("CategoriasFinanceiras", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Cliente", b =>
@@ -433,7 +436,7 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsUnique()
                         .HasFilter("[UserId] IS NOT NULL");
 
-                    b.ToTable("Clientes");
+                    b.ToTable("Clientes", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.ContaPagar", b =>
@@ -505,7 +508,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId", "DataVencimento");
 
-                    b.ToTable("ContasPagar");
+                    b.ToTable("ContasPagar", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.ContaReceber", b =>
@@ -592,7 +595,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId", "DataVencimento");
 
-                    b.ToTable("ContasReceber");
+                    b.ToTable("ContasReceber", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Empresa", b =>
@@ -709,6 +712,10 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("nvarchar(150)");
 
+                    b.Property<string>("NomePlanoEscolhido")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<double?>("NotaMedia")
                         .HasColumnType("float");
 
@@ -788,7 +795,7 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsUnique()
                         .HasFilter("[Slug] IS NOT NULL");
 
-                    b.ToTable("Empresas");
+                    b.ToTable("Empresas", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.EmpresaCliente", b =>
@@ -803,7 +810,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("ClienteId");
 
-                    b.ToTable("EmpresaClientes");
+                    b.ToTable("EmpresaClientes", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.EmpresaFoto", b =>
@@ -828,7 +835,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId");
 
-                    b.ToTable("EmpresaFotos");
+                    b.ToTable("EmpresaFotos", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.EmpresaHorario", b =>
@@ -864,7 +871,43 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId");
 
-                    b.ToTable("EmpresasHorarios");
+                    b.ToTable("EmpresasHorarios", (string)null);
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.FidelidadeCliente", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ClienteId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("DataUltimaAtualizacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DescontosDisponiveis")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DescontosUsados")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProgramaFidelidadeId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("VisitasContadas")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClienteId");
+
+                    b.HasIndex("ProgramaFidelidadeId", "ClienteId")
+                        .IsUnique();
+
+                    b.ToTable("FidelidadeClientes", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Funcionario", b =>
@@ -898,6 +941,11 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<string>("FotoUrl")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("NivelAcesso")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -930,7 +978,7 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsUnique()
                         .HasFilter("[UserId] IS NOT NULL");
 
-                    b.ToTable("Funcionarios");
+                    b.ToTable("Funcionarios", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.FuncionarioHorario", b =>
@@ -966,7 +1014,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("FuncionarioId");
 
-                    b.ToTable("FuncionariosHorarios");
+                    b.ToTable("FuncionariosHorarios", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.FuncionarioServico", b =>
@@ -981,7 +1029,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("ServicoId");
 
-                    b.ToTable("FuncionariosServicos");
+                    b.ToTable("FuncionariosServicos", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.MovimentacaoFinanceira", b =>
@@ -1067,7 +1115,7 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsUnique()
                         .HasFilter("[ReferenciaExterna] IS NOT NULL");
 
-                    b.ToTable("MovimentacoesFinanceiras");
+                    b.ToTable("MovimentacoesFinanceiras", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Notificacao", b =>
@@ -1118,7 +1166,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId", "Lida", "DataCriacao");
 
-                    b.ToTable("Notificacoes");
+                    b.ToTable("Notificacoes", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Plano", b =>
@@ -1173,6 +1221,10 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasMaxLength(60)
                         .HasColumnType("nvarchar(60)");
 
+                    b.Property<string>("StripePriceIdSemestral")
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
                     b.Property<decimal?>("ValorAnual")
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
@@ -1181,9 +1233,13 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasPrecision(10, 2)
                         .HasColumnType("decimal(10,2)");
 
+                    b.Property<decimal?>("ValorSemestral")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
                     b.HasKey("Id");
 
-                    b.ToTable("Planos");
+                    b.ToTable("Planos", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.PlanoServico", b =>
@@ -1226,7 +1282,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId");
 
-                    b.ToTable("PlanosServico");
+                    b.ToTable("PlanosServico", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.PlanoServicoItem", b =>
@@ -1241,7 +1297,50 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("ServicoId");
 
-                    b.ToTable("PlanosServicoItens");
+                    b.ToTable("PlanosServicoItens", (string)null);
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.ProgramaFidelidade", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EmpresaId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ServicoId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TipoDesconto")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<decimal>("ValorDesconto")
+                        .HasPrecision(10, 2)
+                        .HasColumnType("decimal(10,2)");
+
+                    b.Property<int>("VisitasNecessarias")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ServicoId");
+
+                    b.HasIndex("EmpresaId", "ServicoId")
+                        .IsUnique()
+                        .HasFilter("[ServicoId] IS NOT NULL");
+
+                    b.ToTable("ProgramasFidelidade", (string)null);
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Servico", b =>
@@ -1288,7 +1387,7 @@ namespace EmpresaAgendamento.Data.Migrations
 
                     b.HasIndex("EmpresaId");
 
-                    b.ToTable("Servicos");
+                    b.ToTable("Servicos", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -1680,6 +1779,25 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("Empresa");
                 });
 
+            modelBuilder.Entity("EmpresaAgendamento.Models.FidelidadeCliente", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Cliente", "Cliente")
+                        .WithMany()
+                        .HasForeignKey("ClienteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EmpresaAgendamento.Models.ProgramaFidelidade", "Programa")
+                        .WithMany()
+                        .HasForeignKey("ProgramaFidelidadeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cliente");
+
+                    b.Navigation("Programa");
+                });
+
             modelBuilder.Entity("EmpresaAgendamento.Models.Funcionario", b =>
                 {
                     b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
@@ -1818,6 +1936,24 @@ namespace EmpresaAgendamento.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("PlanoServico");
+
+                    b.Navigation("Servico");
+                });
+
+            modelBuilder.Entity("EmpresaAgendamento.Models.ProgramaFidelidade", b =>
+                {
+                    b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
+                        .WithMany()
+                        .HasForeignKey("EmpresaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("EmpresaAgendamento.Models.Servico", "Servico")
+                        .WithMany()
+                        .HasForeignKey("ServicoId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Empresa");
 
                     b.Navigation("Servico");
                 });

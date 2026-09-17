@@ -76,7 +76,8 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         [EnableRateLimiting("auth")]
         public async Task<IActionResult> Register(
-            EmpresaRegisterViewModel model, bool aceitaTermos = false, string? tipoPlanoEscolhido = null)
+            EmpresaRegisterViewModel model, bool aceitaTermos = false,
+            string? tipoPlanoEscolhido = null, string? nomePlanoEscolhido = null)
         {
             if (!ModelState.IsValid)
             {
@@ -96,7 +97,7 @@ namespace EmpresaAgendamento.Controllers
                 });
             }
 
-            var result = await _empresaService.RegisterAsync(model, tipoPlanoEscolhido);
+            var result = await _empresaService.RegisterAsync(model, tipoPlanoEscolhido, nomePlanoEscolhido);
 
             if (!result.Success)
             {

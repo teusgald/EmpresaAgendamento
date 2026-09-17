@@ -1,13 +1,22 @@
 @model EmpresaAgendamento.Models.Empresa
+@using EmpresaAgendamento.Models
 
 @{
     ViewData["Title"] = "Assinatura";
 
-    var plano = ViewBag.Plano as EmpresaAgendamento.Models.Plano;
+    var planos = (ViewBag.Planos as List<Plano>) ?? new List<Plano>();
     var temAssinaturaAtiva = Model.AssinaturaStatus == "active" || Model.AssinaturaStatus == "trialing";
     var clientSecret = ViewBag.ClientSecret as string;
     var tipoPlanoSelecionado = ViewBag.TipoPlanoSelecionado as string;
+    var planoSelecionado = ViewBag.PlanoSelecionado as Plano;
     var publishableKey = ViewBag.StripePublishableKey as string;
+
+    string NomePeriodo(string? tipo) => tipo switch
+    {
+        "anual" => "Anual",
+        "semestral" => "Semestral",
+        _ => "Mensal"
+    };
 }
 
 <div class="container-fluid mt-4">
@@ -23,6 +32,10 @@
             {
                 <p class="mb-1">
                     <span class="badge bg-success">Ativa</span>
+                    @if (Model.Plano != null)
+                    {
+                        <span class="badge bg-dark">@Model.Plano.Nome</span>
+                    }
                 </p>
 
                 @if (Model.AssinaturaValidaAte.HasValue)
@@ -51,7 +64,7 @@
         </div>
     </div>
 
-    @if (!temAssinaturaAtiva && plano != null)
+    @if (!temAssinaturaAtiva && planos.Any())
     {
         if (!string.IsNullOrEmpty(clientSecret))
         {
@@ -60,7 +73,7 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">
-                            Pagamento — Plano @(tipoPlanoSelecionado == "anual" ? "Anual" : "Mensal")
+                            Pagamento — Plano @(planoSelecionado?.Nome) (@NomePeriodo(tipoPlanoSelecionado))
                         </h5>
                         <a asp-action="Index" class="small text-muted">
                             <i class="bi bi-arrow-left"></i> Trocar plano
@@ -88,53 +101,95 @@
         }
         else
         {
+            <div class="d-flex justify-content-center mb-4">
+                <div class="btn-group" role="group" aria-label="Periodicidade">
+                    <button type="button" class="btn btn-outline-dark periodo-btn active" data-periodo="mensal" onclick="selecionarPeriodoAssinatura('mensal')">Mensal</button>
+                    <button type="button" class="btn btn-outline-dark periodo-btn" data-periodo="semestral" onclick="selecionarPeriodoAssinatura('semestral')">Semestral</button>
+                    <button type="button" class="btn btn-outline-dark periodo-btn" data-periodo="anual" onclick="selecionarPeriodoAssinatura('anual')">Anual</button>
+                </div>
+            </div>
+
             <div class="row g-3">
 
-                <div class="col-md-6">
-                    <div class="card shadow-sm h-100">
-                        <div class="card-body">
-                            <h5 class="fw-bold">Plano Mensal</h5>
+                @foreach (var plano in planos)
+                {
+                    var destaque = plano.Nome == "Pro";
+                    var limiteTexto = plano.LimiteFuncionarios > 0 ? $"Até {plano.LimiteFuncionarios} profissionais" : "Profissionais ilimitados";
 
-                            <p class="mb-1">
-                                <span class="text-decoration-line-through text-muted">R$ 19,99/mês</span>
-                            </p>
+                    <div class="col-md-4">
+                        <div class="card shadow-sm h-100 @(destaque ? "border-primary border-2" : "")">
+                            <div class="card-body d-flex flex-column">
 
-                            <p class="fs-3 fw-bold text-success mb-1">
-                                R$ 9,90<span class="fs-6 fw-normal">/mês</span>
-                            </p>
+                                @if (destaque)
+                                {
+                                    <span class="badge bg-primary mb-2 align-self-start">Mais escolhido</span>
+                                }
 
-                            <p class="text-muted small mb-3">
-                                Nos 3 primeiros meses. Depois, R$ 19,99/mês.
-                            </p>
+                                <h5 class="fw-bold">@plano.Nome</h5>
+                                <p class="text-muted small mb-3">@limiteTexto</p>
 
-                            <a asp-action="Index" asp-route-tipoPlano="mensal" class="btn btn-success w-100">
-                                Assinar mensal
-                            </a>
+                                <p class="fs-3 fw-bold mb-1 preco-plano"
+                                   data-mensal="@plano.ValorMensal.ToString("C")"
+                                   data-mensal-promo="@(plano.StripeCouponIdPromocional != null ? "R$ 9,99" : "")"
+                                   data-semestral="@plano.ValorSemestral?.ToString("C")"
+                                   data-anual="@plano.ValorAnual?.ToString("C")">
+                                    @plano.ValorMensal.ToString("C")<span class="fs-6 fw-normal">/mês</span>
+                                </p>
+
+                                @if (plano.StripeCouponIdPromocional != null)
+                                {
+                                    <p class="text-success small mb-3 aviso-promo">
+                                        Nos 3 primeiros meses. Depois, @plano.ValorMensal.ToString("C")/mês.
+                                    </p>
+                                }
+                                else
+                                {
+                                    <p class="text-muted small mb-3">&nbsp;</p>
+                                }
+
+                                <a asp-action="Index" asp-route-tipoPlano="mensal" asp-route-planoId="@plano.Id"
+                                   class="btn @(destaque ? "btn-primary" : "btn-outline-dark") w-100 mt-auto btn-assinar"
+                                   data-plano-id="@plano.Id">
+                                    Assinar @plano.Nome
+                                </a>
+
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <div class="col-md-6">
-                    <div class="card shadow-sm h-100 border-primary">
-                        <div class="card-body">
-                            <h5 class="fw-bold">Plano Anual</h5>
-
-                            <p class="fs-3 fw-bold mb-1">
-                                R$ 199,90<span class="fs-6 fw-normal">/ano</span>
-                            </p>
-
-                            <p class="text-muted small mb-3">
-                                Equivale a R$ 16,66/mês — cerca de 2 meses grátis em relação ao mensal.
-                            </p>
-
-                            <a asp-action="Index" asp-route-tipoPlano="anual" class="btn btn-primary w-100">
-                                Assinar anual
-                            </a>
-                        </div>
-                    </div>
-                </div>
+                }
 
             </div>
+
+            <script>
+                function selecionarPeriodoAssinatura(periodo) {
+
+                    document.querySelectorAll(".periodo-btn").forEach(function (btn) {
+                        btn.classList.toggle("active", btn.dataset.periodo === periodo);
+                    });
+
+                    document.querySelectorAll(".preco-plano").forEach(function (el) {
+                        var promo = el.parentElement.querySelector(".aviso-promo");
+                        var mostraPromo = periodo === "mensal" && el.dataset.mensalPromo;
+
+                        if (promo) {
+                            promo.style.display = mostraPromo ? "block" : "none";
+                        }
+
+                        var valor = mostraPromo ? el.dataset.mensalPromo
+                            : periodo === "semestral" ? el.dataset.semestral
+                            : periodo === "anual" ? el.dataset.anual
+                            : el.dataset.mensal;
+
+                        var sufixo = periodo === "semestral" ? "/semestre" : periodo === "anual" ? "/ano" : "/mês";
+
+                        el.innerHTML = valor + "<span class=\"fs-6 fw-normal\">" + sufixo + "</span>";
+                    });
+
+                    document.querySelectorAll(".btn-assinar").forEach(function (btn) {
+                        btn.href = "@Url.Action("Index")?tipoPlano=" + periodo + "&planoId=" + btn.dataset.planoId;
+                    });
+                }
+            </script>
         }
     }
 

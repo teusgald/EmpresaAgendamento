@@ -1,0 +1,113 @@
+@model EmpresaAgendamento.Models.ViewModels.ClienteInicioViewModel
+
+@{
+    ViewData["Title"] = "Início";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Onde você quer agendar?</h3>
+            <p class="page-subtitle">Sugestões das empresas mais bem avaliadas do sistema.</p>
+        </div>
+    </div>
+
+    <!-- FILTRO -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-6">
+                    <label class="form-label">Categoria</label>
+                    <select name="categoria" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todas as categorias</option>
+                        @foreach (var cat in Model.Categorias)
+                        {
+                            <option value="@cat" selected="@(Model.CategoriaSelecionada == cat)">@cat</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.Empresas.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-search"></i>
+                <p>
+                    @if (!string.IsNullOrWhiteSpace(Model.CategoriaSelecionada))
+                    {
+                        @:Nenhuma empresa encontrada em "@Model.CategoriaSelecionada" ainda.
+                    }
+                    else
+                    {
+                        @:Nenhuma empresa disponível no momento.
+                    }
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var empresa in Model.Empresas)
+            {
+                <div class="col-6 col-md-4 col-lg-3">
+                    <a href="/@empresa.Slug" class="text-decoration-none">
+                        <div class="card shadow-sm h-100 empresa-sugestao-card">
+                            <div class="card-body text-center">
+
+                                @if (!string.IsNullOrWhiteSpace(empresa.LogoUrl))
+                                {
+                                    <img src="@empresa.LogoUrl" alt="@empresa.Nome" class="empresa-sugestao-logo" />
+                                }
+                                else
+                                {
+                                    <div class="empresa-sugestao-logo empresa-sugestao-logo-vazia">
+                                        <i class="bi bi-shop"></i>
+                                    </div>
+                                }
+
+                                <h6 class="fw-bold mb-1 mt-2">@empresa.Nome</h6>
+
+                                <span class="badge bg-light text-dark border mb-2">
+                                    @(!string.IsNullOrWhiteSpace(empresa.Categoria) ? empresa.Categoria : "Sem categoria")
+                                </span>
+
+                                <div class="small">
+                                    @if (empresa.NotaMedia.HasValue)
+                                    {
+                                        <span class="text-warning">
+                                            <i class="bi bi-star-fill"></i>
+                                        </span>
+                                        <span class="fw-semibold">@empresa.NotaMedia.Value.ToString("0.0")</span>
+                                        <span class="text-muted">(@empresa.TotalAvaliacoes)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Sem avaliações ainda</span>
+                                    }
+                                </div>
+
+                                @if (empresa.DescontosFidelidadeDisponiveis > 0)
+                                {
+                                    <span class="badge bg-warning text-dark mt-2">
+                                        <i class="bi bi-award-fill"></i>
+                                        Desconto de fidelidade disponível
+                                    </span>
+                                }
+
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            }
+        </div>
+    }
+
+</div>

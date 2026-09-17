@@ -1,4 +1,5 @@
 ﻿@model EmpresaAgendamento.ViewModels.FuncionarioViewModel
+@using EmpresaAgendamento.Models.Enums
 
 <div class="container-fluid mt-4">
 
@@ -58,6 +59,16 @@
                             <div class="col-12">
                                 <label class="form-label">Foto (URL)</label>
                                 <input asp-for="FotoUrl" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Nível de acesso</label>
+                                <select asp-for="NivelAcesso" class="form-select"
+                                        asp-items="Html.GetEnumSelectList<NivelAcessoFuncionario>()">
+                                </select>
+                                <small class="text-muted">
+                                    Gerente também acessa Serviços, Fidelidade e o módulo Financeiro.
+                                </small>
                             </div>
 
                         </div>

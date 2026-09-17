@@ -10,27 +10,75 @@ namespace EmpresaAgendamento.Services
     {
         private readonly ApplicationDbContext _context;
 
-        // Preços definidos com o dono do produto: mensal R$19,99, promoção de
-        // R$9,90 nos 3 primeiros meses (cupom), anual R$199,90.
-        private const decimal ValorMensal = 19.99m;
-        private const decimal ValorMensalPromocional = 9.90m;
-        private const decimal ValorAnual = 199.90m;
-        private const string NomePlanoPadrao = "Plano Padrão";
         private const string Moeda = "brl";
+        private const string NomePlanoLegado = "Plano Padrão";
+
+        // Preços de mercado definidos com o dono do produto — 3 tiers por
+        // número de profissionais. A promoção de R$9,99 nos 3 primeiros
+        // meses (cupom) só existe no Start, que é o plano de entrada.
+        private static readonly PlanoSeed[] PlanosSeed =
+        {
+            new("Start", LimiteFuncionarios: 2, ValorMensal: 39.90m, ValorSemestral: 269.00m, ValorAnual: 499.00m, ValorMensalPromocional: 9.99m),
+            new("Pro", LimiteFuncionarios: 5, ValorMensal: 79.90m, ValorSemestral: 429.00m, ValorAnual: 799.00m, ValorMensalPromocional: null),
+            new("Business", LimiteFuncionarios: 0, ValorMensal: 119.90m, ValorSemestral: 649.00m, ValorAnual: 1199.00m, ValorMensalPromocional: null)
+        };
+
+        private record PlanoSeed(
+            string Nome, int LimiteFuncionarios, decimal ValorMensal,
+            decimal ValorSemestral, decimal ValorAnual, decimal? ValorMensalPromocional);
 
         public StripeService(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        public async Task<Plano> GarantirPlanoPadraoAsync()
+        public async Task<List<Plano>> GarantirPlanosAsync()
         {
-            var plano = await _context.Planos
-                .FirstOrDefaultAsync(p => p.Nome == NomePlanoPadrao);
+            await MigrarPlanoLegadoAsync();
+
+            var planos = new List<Plano>();
+
+            foreach (var seed in PlanosSeed)
+            {
+                planos.Add(await GarantirPlanoAsync(seed));
+            }
+
+            return planos.OrderBy(p => p.ValorMensal).ToList();
+        }
+
+        // O sistema começou com um único "Plano Padrão" pra qualquer empresa.
+        // Com os 3 tiers, quem já estava nesse plano legado é migrado pro Pro
+        // (mais próximo do que ele tinha: todos os módulos liberados) — assim
+        // ninguém perde acesso quando os planos novos entram no ar.
+        private async Task MigrarPlanoLegadoAsync()
+        {
+            var planoLegado = await _context.Planos
+                .Include(p => p.Empresas)
+                .FirstOrDefaultAsync(p => p.Nome == NomePlanoLegado);
+
+            if (planoLegado == null || !planoLegado.Empresas.Any())
+                return;
+
+            var planoPro = await GarantirPlanoAsync(PlanosSeed.First(s => s.Nome == "Pro"));
+
+            foreach (var empresa in planoLegado.Empresas.ToList())
+            {
+                empresa.PlanoId = planoPro.Id;
+            }
+
+            planoLegado.Ativo = false;
+            await _context.SaveChangesAsync();
+        }
+
+        private async Task<Plano> GarantirPlanoAsync(PlanoSeed seed)
+        {
+            var plano = await _context.Planos.FirstOrDefaultAsync(p => p.Nome == seed.Nome);
 
             if (plano != null &&
                 !string.IsNullOrEmpty(plano.StripePriceIdMensal) &&
-                !string.IsNullOrEmpty(plano.StripePriceIdAnual))
+                !string.IsNullOrEmpty(plano.StripePriceIdSemestral) &&
+                !string.IsNullOrEmpty(plano.StripePriceIdAnual) &&
+                (seed.ValorMensalPromocional == null || !string.IsNullOrEmpty(plano.StripeCouponIdPromocional)))
             {
                 return plano;
             }
@@ -38,8 +86,8 @@ namespace EmpresaAgendamento.Services
             var productService = new ProductService();
             var product = await productService.CreateAsync(new ProductCreateOptions
             {
-                Name = "Simpli Time — " + NomePlanoPadrao,
-                Description = "Assinatura do sistema de agendamentos Simpli Time."
+                Name = $"Simpli Time — {seed.Nome}",
+                Description = $"Assinatura do sistema de agendamentos Simpli Time — plano {seed.Nome}."
             });
 
             var priceService = new PriceService();
@@ -48,37 +96,53 @@ namespace EmpresaAgendamento.Services
             {
                 Product = product.Id,
                 Currency = Moeda,
-                UnitAmount = (long)(ValorMensal * 100),
+                UnitAmount = (long)(seed.ValorMensal * 100),
                 Recurring = new PriceRecurringOptions { Interval = "month" }
+            });
+
+            var priceSemestral = await priceService.CreateAsync(new PriceCreateOptions
+            {
+                Product = product.Id,
+                Currency = Moeda,
+                UnitAmount = (long)(seed.ValorSemestral * 100),
+                Recurring = new PriceRecurringOptions { Interval = "month", IntervalCount = 6 }
             });
 
             var priceAnual = await priceService.CreateAsync(new PriceCreateOptions
             {
                 Product = product.Id,
                 Currency = Moeda,
-                UnitAmount = (long)(ValorAnual * 100),
+                UnitAmount = (long)(seed.ValorAnual * 100),
                 Recurring = new PriceRecurringOptions { Interval = "year" }
             });
 
-            var couponService = new CouponService();
+            string? cupomId = null;
 
-            var cupomPromocional = await couponService.CreateAsync(new CouponCreateOptions
+            if (seed.ValorMensalPromocional.HasValue)
             {
-                Name = "Promoção 3 primeiros meses",
-                Currency = Moeda,
-                AmountOff = (long)((ValorMensal - ValorMensalPromocional) * 100),
-                Duration = "repeating",
-                DurationInMonths = 3
-            });
+                var couponService = new CouponService();
+
+                var cupom = await couponService.CreateAsync(new CouponCreateOptions
+                {
+                    Name = $"Promoção 3 primeiros meses — {seed.Nome}",
+                    Currency = Moeda,
+                    AmountOff = (long)((seed.ValorMensal - seed.ValorMensalPromocional.Value) * 100),
+                    Duration = "repeating",
+                    DurationInMonths = 3
+                });
+
+                cupomId = cupom.Id;
+            }
 
             if (plano == null)
             {
                 plano = new Plano
                 {
-                    Nome = NomePlanoPadrao,
-                    ValorMensal = ValorMensal,
-                    ValorAnual = ValorAnual,
-                    LimiteFuncionarios = 0,
+                    Nome = seed.Nome,
+                    ValorMensal = seed.ValorMensal,
+                    ValorSemestral = seed.ValorSemestral,
+                    ValorAnual = seed.ValorAnual,
+                    LimiteFuncionarios = seed.LimiteFuncionarios,
                     LimiteAgendamentosMes = 0,
                     PermiteFinanceiro = true,
                     PermiteWhatsapp = true,
@@ -93,8 +157,13 @@ namespace EmpresaAgendamento.Services
             }
 
             plano.StripePriceIdMensal = priceMensal.Id;
+            plano.StripePriceIdSemestral = priceSemestral.Id;
             plano.StripePriceIdAnual = priceAnual.Id;
-            plano.StripeCouponIdPromocional = cupomPromocional.Id;
+
+            if (cupomId != null)
+            {
+                plano.StripeCouponIdPromocional = cupomId;
+            }
 
             await _context.SaveChangesAsync();
 
@@ -166,10 +235,9 @@ namespace EmpresaAgendamento.Services
         }
 
         public async Task<string> CriarCheckoutClientSecretAsync(
-            int empresaId, string tipoPlano, string urlRetorno)
+            int empresaId, int planoId, string tipoPlano, string urlRetorno)
         {
             var empresa = await _context.Empresas
-                .Include(e => e.Plano)
                 .FirstOrDefaultAsync(e => e.Id == empresaId);
 
             if (empresa == null)
@@ -177,17 +245,28 @@ namespace EmpresaAgendamento.Services
                 throw new InvalidOperationException("Empresa não encontrada.");
             }
 
-            var plano = empresa.Plano ?? await GarantirPlanoPadraoAsync();
+            var plano = await _context.Planos.FirstOrDefaultAsync(p => p.Id == planoId);
 
-            if (empresa.PlanoId == null)
+            if (plano == null)
+            {
+                throw new InvalidOperationException("Plano não encontrado.");
+            }
+
+            // Guarda o plano escolhido mesmo se a empresa estiver trocando de
+            // tier (upgrade/downgrade) — o Stripe é quem manda no valor
+            // cobrado de fato a partir do priceId abaixo.
+            if (empresa.PlanoId != plano.Id)
             {
                 empresa.PlanoId = plano.Id;
                 await _context.SaveChangesAsync();
             }
 
-            var priceId = tipoPlano == "anual"
-                ? plano.StripePriceIdAnual
-                : plano.StripePriceIdMensal;
+            var priceId = tipoPlano switch
+            {
+                "anual" => plano.StripePriceIdAnual,
+                "semestral" => plano.StripePriceIdSemestral,
+                _ => plano.StripePriceIdMensal
+            };
 
             if (string.IsNullOrEmpty(priceId))
             {
@@ -212,8 +291,9 @@ namespace EmpresaAgendamento.Services
                 AllowPromotionCodes = false
             };
 
-            // Promoção dos 3 primeiros meses só faz sentido no plano mensal.
-            if (tipoPlano != "anual" && !string.IsNullOrEmpty(plano.StripeCouponIdPromocional))
+            // Promoção dos 3 primeiros meses só faz sentido na cobrança
+            // mensal (e só existe no plano Start).
+            if (tipoPlano == "mensal" && !string.IsNullOrEmpty(plano.StripeCouponIdPromocional))
             {
                 options.Discounts = new List<SessionDiscountOptions>
                 {

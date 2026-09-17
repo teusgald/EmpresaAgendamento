@@ -705,7 +705,7 @@
                     </p>
 
                     <div class="hero-actions">
-                        <a href="#" onclick="abrirCadastroComPlano('mensal'); return false;" class="btn btn-dark btn-lg px-4">
+                        <a href="#" onclick="abrirCadastroComPlano('Start'); return false;" class="btn btn-dark btn-lg px-4">
                             Começar Agora
                         </a>
 
@@ -872,29 +872,36 @@
     <section id="planos" class="section" style="background:#111111; color:#fff;">
         <div class="container">
 
-            <div class="text-center mb-5">
+            <div class="text-center mb-4">
                 <h2 class="fw-bold">Preços simples e transparentes</h2>
-                <p class="text-secondary">Escolha o plano ideal para escalar seus atendimentos</p>
+                <p class="text-secondary">Escolha o plano ideal para o tamanho da sua equipe</p>
+            </div>
+
+            <div class="d-flex justify-content-center mb-5">
+                <div class="btn-group" role="group" aria-label="Periodicidade">
+                    <button type="button" class="btn btn-outline-light periodo-btn active" data-periodo="mensal" onclick="selecionarPeriodo('mensal')">Mensal</button>
+                    <button type="button" class="btn btn-outline-light periodo-btn" data-periodo="semestral" onclick="selecionarPeriodo('semestral')">Semestral</button>
+                    <button type="button" class="btn btn-outline-light periodo-btn" data-periodo="anual" onclick="selecionarPeriodo('anual')">Anual</button>
+                </div>
             </div>
 
             <div class="row justify-content-center g-4">
 
-                <!-- PLANO MENSAL -->
-                <div class="col-md-5">
+                <!-- START -->
+                <div class="col-md-4">
                     <div class="plan-card">
 
-                        <h5 class="text-light">Mensal</h5>
-                        <p class="text-secondary mb-4">Ideal para começar</p>
+                        <h5 class="text-light">Start</h5>
+                        <p class="text-secondary mb-4">Até 2 profissionais</p>
 
-                        <div class="price mb-1">
-                            <span class="text-decoration-line-through text-secondary" style="font-size:1.1rem;">R$ 19,99</span>
+                        <div class="price-promo text-success small mb-1" style="display:none;">
+                            Nos 3 primeiros meses. Depois, R$ 39,90/mês.
                         </div>
-                        <div class="price mb-4">
-                            R$ 9,90 <span>/mês</span>
+                        <div class="price mb-4" data-plano="Start"
+                             data-mensal="R$ 39,90 /mês" data-mensal-promo="R$ 9,99 /mês"
+                             data-semestral="R$ 269,00 /semestre" data-anual="R$ 499,00 /ano">
+                            R$ 39,90 <span>/mês</span>
                         </div>
-                        <p class="text-secondary small mb-4" style="margin-top:-1rem;">
-                            Nos 3 primeiros meses. Depois, R$ 19,99/mês.
-                        </p>
 
                         <ul class="plan-list">
                             <li><i class="bi bi-check2"></i> Agendamentos ilimitados</li>
@@ -902,35 +909,63 @@
                             <li><i class="bi bi-check2"></i> Controle financeiro</li>
                         </ul>
 
-                        <a href="#" onclick="abrirCadastroComPlano('mensal'); return false;" class="btn btn-plan mt-auto">
-                            Assinar Mensal
+                        <a href="#" onclick="abrirCadastroComPlano('Start'); return false;" class="btn btn-plan mt-auto">
+                            Assinar Start
                         </a>
 
                     </div>
                 </div>
 
-                <!-- PLANO ANUAL (DESTAQUE) -->
-                <div class="col-md-5">
+                <!-- PRO (DESTAQUE) -->
+                <div class="col-md-4">
                     <div class="plan-card highlight">
 
-                        <div class="badge-plan">Economize ~2 meses</div>
+                        <div class="badge-plan">Mais escolhido</div>
 
-                        <h5>Anual</h5>
-                        <p class="text-light-50 mb-4">Melhor custo-benefício</p>
+                        <h5>Pro</h5>
+                        <p class="text-light-50 mb-4">Até 5 profissionais</p>
 
-                        <div class="price mb-4">
-                            R$ 199,90 <span>/ano</span>
+                        <div class="price mb-4" data-plano="Pro"
+                             data-mensal="R$ 79,90 /mês"
+                             data-semestral="R$ 429,00 /semestre" data-anual="R$ 799,00 /ano">
+                            R$ 79,90 <span>/mês</span>
                         </div>
 
                         <ul class="plan-list">
-                            <li><i class="bi bi-check2"></i> Tudo do mensal</li>
+                            <li><i class="bi bi-check2"></i> Tudo do Start</li>
                             <li><i class="bi bi-check2"></i> WhatsApp automático</li>
                             <li><i class="bi bi-check2"></i> Link personalizado</li>
                             <li><i class="bi bi-check2"></i> Suporte prioritário</li>
                         </ul>
 
-                        <a href="#" onclick="abrirCadastroComPlano('anual'); return false;" class="btn btn-plan-primary mt-auto">
-                            Assinar Anual
+                        <a href="#" onclick="abrirCadastroComPlano('Pro'); return false;" class="btn btn-plan-primary mt-auto">
+                            Assinar Pro
+                        </a>
+
+                    </div>
+                </div>
+
+                <!-- BUSINESS -->
+                <div class="col-md-4">
+                    <div class="plan-card">
+
+                        <h5 class="text-light">Business</h5>
+                        <p class="text-secondary mb-4">10+ profissionais</p>
+
+                        <div class="price mb-4" data-plano="Business"
+                             data-mensal="R$ 119,90 /mês"
+                             data-semestral="R$ 649,00 /semestre" data-anual="R$ 1.199,00 /ano">
+                            R$ 119,90 <span>/mês</span>
+                        </div>
+
+                        <ul class="plan-list">
+                            <li><i class="bi bi-check2"></i> Tudo do Pro</li>
+                            <li><i class="bi bi-check2"></i> Profissionais ilimitados</li>
+                            <li><i class="bi bi-check2"></i> Relatórios avançados</li>
+                        </ul>
+
+                        <a href="#" onclick="abrirCadastroComPlano('Business'); return false;" class="btn btn-plan mt-auto">
+                            Assinar Business
                         </a>
 
                     </div>
@@ -949,7 +984,7 @@
                 Junte-se a profissionais que já automatizaram seus atendimentos.
             </p>
 
-            <a href="#" onclick="abrirCadastroComPlano('mensal'); return false;" class="btn btn-primary btn-lg">
+            <a href="#" onclick="abrirCadastroComPlano('Start'); return false;" class="btn btn-primary btn-lg">
                 Começar Agora
             </a>
         </div>
@@ -1027,14 +1062,44 @@
                 let resetEmail = "";
                 let resetToken = "";
                 let resetType = "";
-                let planoEscolhido = "mensal";
+                let nomePlanoEscolhido = "Start";
+                let periodoEscolhido = "mensal";
+
+        // Alterna o preço mostrado nos 3 cards (Start/Pro/Business) sem
+        // recarregar a página — o período escolhido aqui é o mesmo que vai
+        // pro cadastro quando a pessoa clicar em "Assinar".
+        function selecionarPeriodo(periodo) {
+
+            periodoEscolhido = periodo;
+
+            document.querySelectorAll(".periodo-btn").forEach(function (btn) {
+                btn.classList.toggle("active", btn.dataset.periodo === periodo);
+            });
+
+            document.querySelectorAll(".price[data-plano]").forEach(function (el) {
+                var promo = el.parentElement.querySelector(".price-promo");
+                var mostraPromo = periodo === "mensal" && el.dataset.mensalPromo;
+
+                if (promo) {
+                    promo.style.display = mostraPromo ? "block" : "none";
+                }
+
+                var texto = mostraPromo ? el.dataset.mensalPromo
+                    : periodo === "semestral" ? el.dataset.semestral
+                    : periodo === "anual" ? el.dataset.anual
+                    : el.dataset.mensal;
+
+                var partes = texto.split(" ");
+                el.innerHTML = partes[0] + " " + partes[1] + " <span>/" + partes[2] + "</span>";
+            });
+        }
 
         // Usado pelos cards de preço/CTAs — abre o cadastro de empresa já
-        // "lembrando" qual plano a pessoa escolheu, pra mandar direto pro
-        // checkout certo depois que ela confirmar o e-mail e logar.
-        function abrirCadastroComPlano(tipoPlano) {
+        // "lembrando" qual plano/período a pessoa escolheu, pra mandar
+        // direto pro checkout certo depois que ela confirmar o e-mail e logar.
+        function abrirCadastroComPlano(nomePlano) {
 
-            planoEscolhido = tipoPlano;
+            nomePlanoEscolhido = nomePlano;
             mode = "register";
 
             const modal = document.getElementById("loginModal");
@@ -1101,6 +1166,10 @@
         // 🚀 INIT
         // ===============================
         document.addEventListener("DOMContentLoaded", function () {
+
+            if (document.querySelector(".price[data-plano]")) {
+                selecionarPeriodo("mensal");
+            }
 
             const modal = document.getElementById("loginModal");
 
@@ -1248,7 +1317,8 @@
             const formData = new FormData(form);
 
             if (type === "empresa-register") {
-                formData.append("tipoPlanoEscolhido", planoEscolhido);
+                formData.append("tipoPlanoEscolhido", periodoEscolhido);
+                formData.append("nomePlanoEscolhido", nomePlanoEscolhido);
             }
 
             let url = "";

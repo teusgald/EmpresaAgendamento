@@ -106,6 +106,7 @@ builder.Services.AddScoped<INotificacaoAgendamentoService, NotificacaoAgendament
 builder.Services.AddScoped<IPlanoCreditoService, PlanoCreditoService>();
 builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
 builder.Services.AddScoped<INotificacaoService, NotificacaoService>();
+builder.Services.AddScoped<IFidelidadeService, FidelidadeService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddSingleton<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<LembreteAgendamentoBackgroundService>();

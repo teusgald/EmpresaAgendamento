@@ -21,6 +21,20 @@
 	var notificacoesNaoLidas = empresaInfo?.EmpresaId != null
 		? await _context.Notificacoes.CountAsync(n => n.EmpresaId == empresaInfo.EmpresaId && !n.Lida)
 		: 0;
+
+	// Funcionário "Gerente" também vê Serviços, Fidelidade e o módulo
+	// Financeiro — Funcionário "Padrão" continua só com Calendário,
+	// Agendamentos e Clientes.
+	var ehFuncionario = User.IsInRole("Funcionario");
+
+	var nivelAcessoFuncionario = ehFuncionario
+		? await _context.Funcionarios
+			.Where(f => f.UserId == userId)
+			.Select(f => (EmpresaAgendamento.Models.Enums.NivelAcessoFuncionario?)f.NivelAcesso)
+			.FirstOrDefaultAsync()
+		: null;
+
+	var ehGerente = nivelAcessoFuncionario == EmpresaAgendamento.Models.Enums.NivelAcessoFuncionario.Gerente;
 }
 
 <!DOCTYPE html>
@@ -142,11 +156,6 @@
 		<ul class="nav flex-column">
 
 			@{
-				// Funcionário só enxerga Calendário, Agendamentos e Clientes —
-				// o resto (Dashboard, Serviços, Funcionários, Financeiro,
-				// Empresas, Assinatura) é exclusivo do dono da empresa.
-				var ehFuncionario = User.IsInRole("Funcionario");
-
 				// Dono da empresa sem assinatura ativa só pode ver Dashboard e
 				// Assinatura — o resto do menu fica travado até ele pagar.
 				var menuBloqueado = !ehFuncionario && !assinaturaAtiva;
@@ -188,6 +197,25 @@
 						<span class="link-text">Clientes</span>
 					</a>
 				</li>
+
+				@if (ehGerente)
+				{
+					<!-- SERVIÇOS -->
+					<li class="nav-item">
+						<a class="nav-link" asp-controller="Servicos" asp-action="Index">
+							<i class="bi bi-scissors"></i>
+							<span class="link-text">Serviços</span>
+						</a>
+					</li>
+
+					<!-- FIDELIDADE -->
+					<li class="nav-item">
+						<a class="nav-link" asp-controller="Fidelidade" asp-action="Index">
+							<i class="bi bi-award"></i>
+							<span class="link-text">Fidelidade</span>
+						</a>
+					</li>
+				}
 			}
 			else
 			{
@@ -249,14 +277,24 @@
 								</a>
 							</li>
 
+							<li>
+								<a class="nav-link" asp-controller="Fidelidade" asp-action="Index">
+									<i class="bi bi-award"></i>
+									<span class="link-text">Fidelidade</span>
+								</a>
+							</li>
+
 						</ul>
 
 					</div>
 
 				</li>
+			}
 
+			@if (!ehFuncionario || ehGerente)
+			{
 				<!-- ========================= -->
-				<!-- FINANCEIRO -->
+				<!-- FINANCEIRO (dono sempre; funcionário só se for Gerente) -->
 				<!-- ========================= -->
 				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 
@@ -346,7 +384,10 @@
 					</div>
 
 				</li>
+			}
 
+			@if (!ehFuncionario)
+			{
 				<!-- EMPRESAS -->
 				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
 					<a class="nav-link" asp-controller="Empresas" asp-action="Index">
@@ -398,6 +439,17 @@
 		<div class="topbar">
 			<span class="hamburger" id="hamburger"><i class="bi bi-list"></i></span>
 			<span class="topbar-brand">Portal</span>
+
+			@if (empresaInfo?.EmpresaId != null)
+			{
+				<a asp-controller="Notificacoes" asp-action="Index" class="topbar-sino" title="Notificações">
+					<i class="bi bi-bell"></i>
+					@if (notificacoesNaoLidas > 0)
+					{
+						<span class="badge-contador">@(notificacoesNaoLidas > 9 ? "9+" : notificacoesNaoLidas.ToString())</span>
+					}
+				</a>
+			}
 		</div>
 
 		<!-- CORPO -->

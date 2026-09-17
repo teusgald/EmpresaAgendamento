@@ -18,17 +18,20 @@ namespace EmpresaAgendamento.Controllers
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IFinanceiroService _financeiroService;
         private readonly IPlanoCreditoService _planoCreditoService;
+        private readonly IFidelidadeService _fidelidadeService;
 
         public AgendamentosController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IFinanceiroService financeiroService,
-            IPlanoCreditoService planoCreditoService)
+            IPlanoCreditoService planoCreditoService,
+            IFidelidadeService fidelidadeService)
         {
             _context = context;
             _userManager = userManager;
             _financeiroService = financeiroService;
             _planoCreditoService = planoCreditoService;
+            _fidelidadeService = fidelidadeService;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -247,6 +250,7 @@ namespace EmpresaAgendamento.Controllers
                 {
                     await _financeiroService.GerarContaReceberDeAgendamentoAsync(agendamento.Id);
                     await _financeiroService.ApurarComissaoDoAgendamentoAsync(agendamento.Id);
+                    await _fidelidadeService.RegistrarVisitaSeAplicavelAsync(agendamento.Id);
                 }
                 else if (status == StatusAgendamento.Cancelado)
                 {

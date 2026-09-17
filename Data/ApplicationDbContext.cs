@@ -48,6 +48,9 @@ namespace EmpresaAgendamento.Data
 
         public DbSet<Notificacao> Notificacoes { get; set; }
 
+        public DbSet<ProgramaFidelidade> ProgramasFidelidade { get; set; }
+        public DbSet<FidelidadeCliente> FidelidadeClientes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -290,6 +293,10 @@ namespace EmpresaAgendamento.Data
 
             builder.Entity<Plano>()
                 .Property(x => x.ValorMensal)
+                .HasPrecision(10, 2);
+
+            builder.Entity<Plano>()
+                .Property(x => x.ValorSemestral)
                 .HasPrecision(10, 2);
 
             builder.Entity<Plano>()
@@ -663,6 +670,66 @@ namespace EmpresaAgendamento.Data
 
             builder.Entity<Notificacao>()
                 .HasIndex(x => new { x.ClienteId, x.Lida, x.DataCriacao });
+
+            #endregion
+
+            #region Funcionario
+
+            builder.Entity<Funcionario>()
+                .Property(x => x.NivelAcesso)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            #endregion
+
+            #region Fidelidade
+
+            builder.Entity<ProgramaFidelidade>()
+                .Property(x => x.TipoDesconto)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .IsRequired();
+
+            builder.Entity<ProgramaFidelidade>()
+                .Property(x => x.ValorDesconto)
+                .HasPrecision(10, 2);
+
+            builder.Entity<ProgramaFidelidade>()
+                .HasOne(x => x.Empresa)
+                .WithMany()
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // SetNull (não Cascade): apagar o serviço não deve apagar o
+            // programa de fidelidade, só volta a valer pra qualquer serviço.
+            builder.Entity<ProgramaFidelidade>()
+                .HasOne(x => x.Servico)
+                .WithMany()
+                .HasForeignKey(x => x.ServicoId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // No máximo 1 programa geral (ServicoId null) e 1 por serviço
+            // específico, por empresa.
+            builder.Entity<ProgramaFidelidade>()
+                .HasIndex(x => new { x.EmpresaId, x.ServicoId })
+                .IsUnique();
+
+            builder.Entity<FidelidadeCliente>()
+                .HasOne(x => x.Programa)
+                .WithMany()
+                .HasForeignKey(x => x.ProgramaFidelidadeId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<FidelidadeCliente>()
+                .HasOne(x => x.Cliente)
+                .WithMany()
+                .HasForeignKey(x => x.ClienteId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<FidelidadeCliente>()
+                .HasIndex(x => new { x.ProgramaFidelidadeId, x.ClienteId })
+                .IsUnique();
 
             #endregion
         }

@@ -1,4 +1,5 @@
 ﻿using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Filters;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -8,7 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EmpresaAgendamento.Controllers
 {
-    [Authorize(Roles = "Empresa")]
+    [Authorize(Roles = "Empresa,Funcionario")]
+    [TypeFilter(typeof(RequerGerenteFilter))]
     public class ServicosController : Controller
     {
         private readonly ApplicationDbContext _context;

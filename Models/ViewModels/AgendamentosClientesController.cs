@@ -1,4 +1,5 @@
 ﻿using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Services;
@@ -183,6 +184,10 @@ public class AgendamentosClientesController : Controller
                 "Id", "Nome");
             return View(agendamento);
         }
+
+        // Cliente agendando por conta própria passa a "pertencer" a essa
+        // empresa (aparece na lista de Clientes dela).
+        await EmpresaClienteHelper.GarantirVinculoAsync(_context, agendamento.EmpresaId, user.ClienteId.Value);
 
         // =========================
         // FUNCIONÁRIO (o formulário não coleta esse campo — sorteia entre os

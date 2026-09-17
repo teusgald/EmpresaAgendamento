@@ -22,8 +22,10 @@ namespace EmpresaAgendamento.Services
             _signInManager = signInManager;
         }
 
+        private static readonly string[] NomesPlanoValidos = { "Start", "Pro", "Business" };
+
         public async Task<(bool Success, string Error, ApplicationUser? User)> RegisterAsync(
-            EmpresaRegisterViewModel model, string? tipoPlanoEscolhido = null)
+            EmpresaRegisterViewModel model, string? tipoPlanoEscolhido = null, string? nomePlanoEscolhido = null)
         {
             var empresaExistente = _userManager.Users
                 .Any(x =>
@@ -64,7 +66,8 @@ namespace EmpresaAgendamento.Services
                 Telefone = model.Telefone,
                 WhatsApp = model.Telefone,
                 SegmentoAtuacao = model.SegmentoAtuacao,
-                TipoPlanoEscolhido = tipoPlanoEscolhido == "anual" ? "anual" : "mensal"
+                TipoPlanoEscolhido = tipoPlanoEscolhido is "anual" or "semestral" ? tipoPlanoEscolhido : "mensal",
+                NomePlanoEscolhido = NomesPlanoValidos.Contains(nomePlanoEscolhido) ? nomePlanoEscolhido : "Start"
             };
 
             _context.Empresas.Add(empresa);

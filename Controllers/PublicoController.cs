@@ -1,4 +1,5 @@
 ﻿using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Models.ViewModels;
@@ -370,7 +371,7 @@ namespace EmpresaAgendamento.Controllers
             return Json(new
             {
                 success = true,
-                redirect = "/Cliente/Agendamentos"
+                redirect = "/Cliente"
             });
         }
 
@@ -509,6 +510,14 @@ namespace EmpresaAgendamento.Controllers
                 {
                     clienteId = user.ClienteId;
                 }
+            }
+
+            // Cliente que agenda direto pelo público passa a "pertencer" a
+            // essa empresa (aparece na lista de Clientes dela) — antes, só
+            // quem a empresa cadastrava manualmente ficava vinculado.
+            if (clienteId.HasValue)
+            {
+                await EmpresaClienteHelper.GarantirVinculoAsync(_context, model.EmpresaId, clienteId.Value);
             }
 
             // ======================================
@@ -741,14 +750,28 @@ namespace EmpresaAgendamento.Controllers
                 return Json(new { sucesso = false, mensagem = "Você já solicitou ou já assina este plano." });
             }
 
-            _context.AssinaturasPlanoServico.Add(new AssinaturaPlanoServico
+            var assinatura = new AssinaturaPlanoServico
             {
                 PlanoServicoId = model.PlanoServicoId,
                 ClienteId = clienteId.Value,
                 Status = StatusAssinaturaPlano.Pendente
-            });
+            };
+
+            _context.AssinaturasPlanoServico.Add(assinatura);
 
             await _context.SaveChangesAsync();
+
+            var nomeCliente = await _context.Clientes
+                .Where(c => c.Id == clienteId)
+                .Select(c => c.Nome)
+                .FirstOrDefaultAsync();
+
+            await _notificacaoService.NotificarEmpresaAsync(
+                plano.EmpresaId,
+                TipoNotificacao.Plano,
+                "Novo pedido de plano",
+                $"{nomeCliente ?? "Um cliente"} solicitou o plano \"{plano.Nome}\".",
+                $"/PlanosServico/Assinantes/{plano.Id}");
 
             return Json(new
             {

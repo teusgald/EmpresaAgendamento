@@ -13,7 +13,8 @@ using Microsoft.EntityFrameworkCore;
 namespace EmpresaAgendamento.Controllers
 {
     [Route("financeiro/contas-a-receber")]
-    [Authorize(Roles = "Empresa")]
+    [Authorize(Roles = "Empresa,Funcionario")]
+    [TypeFilter(typeof(RequerGerenteFilter))]
     [TypeFilter(typeof(RequerPlanoFinanceiroFilter))]
     public class ContasReceberController : Controller
     {

@@ -704,7 +704,8 @@ body {
     text-decoration: none;
 }
 
-.sino-notificacoes .badge-contador {
+.sino-notificacoes .badge-contador,
+.topbar-sino .badge-contador {
     position: absolute;
     top: -4px;
     right: -4px;
@@ -720,6 +721,27 @@ body {
     align-items: center;
     justify-content: center;
     line-height: 1;
+}
+
+/* No mobile o sino mora dentro da própria topbar (.topbar-sino), não mais
+   flutuando por cima dela — evita disputa de z-index entre os dois. */
+@media (max-width: 768px) {
+    .sino-notificacoes {
+        display: none;
+    }
+}
+
+.topbar-sino {
+    position: relative;
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: var(--st-white);
+    font-size: 1.25rem;
+    text-decoration: none;
 }
 
 /* ===========================================================================
@@ -999,4 +1021,36 @@ body {
 
 .auth-card a:hover {
     color: var(--st-black, #111111);
+}
+
+/* ===========================================================================
+   CARDS DE SUGESTÃO DE EMPRESA (tela inicial do portal do cliente)
+   =========================================================================== */
+
+.empresa-sugestao-card {
+    transition: transform .2s ease, box-shadow .2s ease;
+}
+
+    .empresa-sugestao-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--st-shadow-lg);
+    }
+
+.empresa-sugestao-logo {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin: 0 auto;
+    display: block;
+    border: 1px solid var(--st-gray-300);
+}
+
+.empresa-sugestao-logo-vazia {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--st-bg);
+    color: var(--st-gray-600);
+    font-size: 1.75rem;
 }

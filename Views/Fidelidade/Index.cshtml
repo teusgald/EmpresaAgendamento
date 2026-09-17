@@ -1,0 +1,196 @@
+@model EmpresaAgendamento.Models.ViewModels.FidelidadeIndexViewModel
+@using EmpresaAgendamento.Models.Enums
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Fidelidade</h3>
+            <p class="page-subtitle">
+                A cada X visitas finalizadas, o cliente ganha automaticamente um desconto pra usar na próxima.
+                Você aplica o desconto manualmente na hora do pagamento — igual já funciona com os Planos.
+            </p>
+        </div>
+
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Novo Programa
+        </a>
+    </div>
+
+    @if (!Model.Programas.Any())
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="empty-state">
+                <i class="bi bi-award"></i>
+                <p>Nenhum programa de fidelidade cadastrado ainda.</p>
+                <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Criar o primeiro programa</a>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm mb-4">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Aplica a</th>
+                                <th>Visitas necessárias</th>
+                                <th>Desconto</th>
+                                <th>Status</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var programa in Model.Programas)
+                            {
+                                <tr>
+                                    <td>@(programa.ServicoNome ?? "Geral (qualquer serviço)")</td>
+                                    <td>@programa.VisitasNecessarias</td>
+                                    <td>
+                                        @(programa.TipoDesconto == TipoDescontoFidelidade.Percentual
+                                            ? $"{programa.ValorDesconto:0.##}%"
+                                            : programa.ValorDesconto.ToString("C"))
+                                    </td>
+                                    <td>
+                                        @if (programa.Ativo)
+                                        {
+                                            <span class="badge bg-success">Ativo</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">Inativo</span>
+                                        }
+                                    </td>
+                                    <td class="text-end">
+                                        <a asp-action="Edit" asp-route-id="@programa.Id" class="btn btn-sm btn-outline-primary">
+                                            Editar
+                                        </a>
+                                        <form asp-action="Delete" asp-route-id="@programa.Id" method="post" class="d-inline"
+                                              onsubmit="return confirm('Excluir esse programa de fidelidade? O progresso dos clientes nele será perdido.');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Excluir</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+
+    <h5 class="fw-bold mb-3">Progresso dos clientes</h5>
+
+    @if (!Model.Clientes.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-people"></i>
+                <p>Nenhum cliente com visitas registradas na fidelidade ainda.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- DESKTOP -->
+        <div class="card shadow-sm d-none d-lg-block">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Cliente</th>
+                                <th>Programa</th>
+                                <th>Visitas na meta atual</th>
+                                <th>Descontos disponíveis</th>
+                                <th>Descontos usados</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Clientes)
+                            {
+                                <tr>
+                                    <td>@item.Nome</td>
+                                    <td>@item.ProgramaNome</td>
+                                    <td>@item.VisitasContadas / @item.VisitasNecessarias</td>
+                                    <td>
+                                        @if (item.DescontosDisponiveis > 0)
+                                        {
+                                            <span class="badge bg-success">@item.DescontosDisponiveis disponível(is)</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                    <td>@item.DescontosUsados</td>
+                                    <td class="text-end">
+                                        @if (item.DescontosDisponiveis > 0)
+                                        {
+                                            <form asp-action="MarcarDescontoUsado" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="programaFidelidadeId" value="@item.ProgramaFidelidadeId" />
+                                                <input type="hidden" name="clienteId" value="@item.ClienteId" />
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">Marcar desconto usado</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- MOBILE -->
+        <div class="d-lg-none">
+            @foreach (var item in Model.Clientes)
+            {
+                <div class="card mobile-card mb-3">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0">@item.Nome</h6>
+                            @if (item.DescontosDisponiveis > 0)
+                            {
+                                <span class="badge bg-success">@item.DescontosDisponiveis desconto(s)</span>
+                            }
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>Programa</label>
+                            <span>@item.ProgramaNome</span>
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>Visitas na meta atual</label>
+                            <span>@item.VisitasContadas / @item.VisitasNecessarias</span>
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>Descontos usados</label>
+                            <span>@item.DescontosUsados</span>
+                        </div>
+
+                        @if (item.DescontosDisponiveis > 0)
+                        {
+                            <div class="mobile-actions">
+                                <form asp-action="MarcarDescontoUsado" method="post" class="d-inline w-100">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="programaFidelidadeId" value="@item.ProgramaFidelidadeId" />
+                                    <input type="hidden" name="clienteId" value="@item.ClienteId" />
+                                    <button type="submit" class="btn btn-outline-primary w-100">Marcar desconto usado</button>
+                                </form>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+</div>

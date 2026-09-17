@@ -34,10 +34,15 @@ namespace EmpresaAgendamento.Models
         // 💳 STRIPE (mapeamento do plano local para o Stripe)
         // ─────────────────────────────────────────────
 
+        public decimal? ValorSemestral { get; set; }
+
         public decimal? ValorAnual { get; set; }
 
         [StringLength(60)]
         public string? StripePriceIdMensal { get; set; }
+
+        [StringLength(60)]
+        public string? StripePriceIdSemestral { get; set; }
 
         [StringLength(60)]
         public string? StripePriceIdAnual { get; set; }

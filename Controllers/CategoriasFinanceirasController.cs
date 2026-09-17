@@ -11,7 +11,8 @@ using Microsoft.EntityFrameworkCore;
 namespace EmpresaAgendamento.Controllers
 {
     [Route("financeiro/categorias")]
-    [Authorize(Roles = "Empresa")]
+    [Authorize(Roles = "Empresa,Funcionario")]
+    [TypeFilter(typeof(RequerGerenteFilter))]
     [TypeFilter(typeof(RequerPlanoFinanceiroFilter))]
     public class CategoriasFinanceirasController : Controller
     {

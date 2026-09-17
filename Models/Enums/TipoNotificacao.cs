@@ -5,6 +5,8 @@ namespace EmpresaAgendamento.Models.Enums
         Agendamento = 1,
         Pagamento = 2,
         Cadastro = 3,
-        Sistema = 4
+        Sistema = 4,
+        Plano = 5,
+        Fidelidade = 6
     }
 }

@@ -131,11 +131,12 @@ public class ClientesAuthController : Controller
             });
         }
 
-        // LOGIN NORMAL (home ou qualquer outro lugar) — manda pro portal do cliente.
+        // LOGIN NORMAL (home ou qualquer outro lugar) — manda pra tela
+        // inicial do portal do cliente (sugestão de empresas).
         return Json(new
         {
             success = true,
-            redirect = "/Cliente/Agendamentos"
+            redirect = "/Cliente"
         });
     }
 

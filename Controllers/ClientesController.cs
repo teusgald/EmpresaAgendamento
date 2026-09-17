@@ -2,6 +2,7 @@
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
+using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -47,6 +48,11 @@ public class ClientesController : Controller
                 return RedirectToAction("Login", "Account");
             }
 
+            // Cobre agendamentos feitos antes do vínculo passar a ser criado
+            // automaticamente — sem isso, cliente que só agendou (nunca foi
+            // cadastrado manualmente) continuaria de fora da lista.
+            await GarantirVinculosRetroativosAsync(empresaId.Value);
+
             int pageSize = 10;
 
             var query = _context.Clientes
@@ -55,10 +61,57 @@ public class ClientesController : Controller
 
             var totalItems = await query.CountAsync();
 
-            var lista = await query
+            var clientesDaPagina = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
+
+            var idsDaPagina = clientesDaPagina.Select(c => c.Id).ToList();
+
+            // Histórico de agendamentos (só os desta empresa) — total e
+            // última visita finalizada. Duas consultas simples em vez de uma
+            // só com dois agregados filtrados diferentes — combinar os dois
+            // num único GroupBy já deu problema de tradução pro SQL antes.
+            var totalAgendamentos = await _context.Agendamentos
+                .Where(a => a.EmpresaId == empresaId && a.Ativo && a.ClienteId != null && idsDaPagina.Contains(a.ClienteId.Value))
+                .GroupBy(a => a.ClienteId!.Value)
+                .Select(g => new { ClienteId = g.Key, Total = g.Count() })
+                .ToDictionaryAsync(x => x.ClienteId, x => x.Total);
+
+            var ultimasVisitas = await _context.Agendamentos
+                .Where(a => a.EmpresaId == empresaId && a.Status == StatusAgendamento.Finalizado && a.ClienteId != null && idsDaPagina.Contains(a.ClienteId.Value))
+                .GroupBy(a => a.ClienteId!.Value)
+                .Select(g => new { ClienteId = g.Key, Ultima = g.Max(a => a.DataHora) })
+                .ToDictionaryAsync(x => x.ClienteId, x => x.Ultima);
+
+            // Plano ativo (dessa empresa, se houver).
+            var planosAtivos = await _context.AssinaturasPlanoServico
+                .Where(a =>
+                    idsDaPagina.Contains(a.ClienteId) &&
+                    a.Status == StatusAssinaturaPlano.Ativa &&
+                    a.PlanoServico.EmpresaId == empresaId)
+                .Select(a => new { a.ClienteId, a.PlanoServico.Nome })
+                .ToDictionaryAsync(x => x.ClienteId, x => x.Nome);
+
+            // Gasto total já recebido (contas a receber quitadas/parciais).
+            var gastos = await _context.ContasReceber
+                .Where(c => c.EmpresaId == empresaId && c.ClienteId != null && idsDaPagina.Contains(c.ClienteId.Value))
+                .GroupBy(c => c.ClienteId!.Value)
+                .Select(g => new { ClienteId = g.Key, Total = g.Sum(c => c.ValorRecebido) })
+                .ToDictionaryAsync(x => x.ClienteId, x => x.Total);
+
+            var lista = clientesDaPagina.Select(c => new ClienteListaItemViewModel
+            {
+                Id = c.Id,
+                Nome = c.Nome,
+                Email = c.Email,
+                Telefone = c.Telefone,
+                Ativo = c.Ativo,
+                TotalAgendamentos = totalAgendamentos.TryGetValue(c.Id, out var total) ? total : 0,
+                UltimaVisita = ultimasVisitas.TryGetValue(c.Id, out var ultima) ? ultima : null,
+                PlanoAtivo = planosAtivos.TryGetValue(c.Id, out var plano) ? plano : null,
+                GastoTotal = gastos.TryGetValue(c.Id, out var gasto) ? gasto : 0
+            }).ToList();
 
             ViewBag.CurrentPage = page;
             ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
@@ -71,6 +124,35 @@ public class ClientesController : Controller
             // opcional: log ex.Message
             return RedirectToAction("Index", "Home");
         }
+    }
+
+    private async Task GarantirVinculosRetroativosAsync(int empresaId)
+    {
+        var clienteIdsComAgendamento = await _context.Agendamentos
+            .Where(a => a.EmpresaId == empresaId && a.ClienteId != null)
+            .Select(a => a.ClienteId!.Value)
+            .Distinct()
+            .ToListAsync();
+
+        if (clienteIdsComAgendamento.Count == 0)
+            return;
+
+        var clienteIdsJaVinculados = await _context.EmpresaClientes
+            .Where(ec => ec.EmpresaId == empresaId)
+            .Select(ec => ec.ClienteId)
+            .ToListAsync();
+
+        var faltantes = clienteIdsComAgendamento.Except(clienteIdsJaVinculados).ToList();
+
+        if (faltantes.Count == 0)
+            return;
+
+        foreach (var clienteId in faltantes)
+        {
+            _context.EmpresaClientes.Add(new EmpresaCliente { EmpresaId = empresaId, ClienteId = clienteId });
+        }
+
+        await _context.SaveChangesAsync();
     }
 
     // =========================

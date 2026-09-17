@@ -156,10 +156,18 @@ namespace EmpresaAgendamento.Models
 
         public DateTime? AssinaturaValidaAte { get; set; }
 
-        // "mensal" ou "anual" — escolhido na página de vendas antes do
-        // cadastro; usado para já abrir o checkout certo no primeiro login.
+        // "mensal", "semestral" ou "anual" — escolhido na página de vendas
+        // antes do cadastro; usado para já abrir o checkout certo no
+        // primeiro login.
         [StringLength(20)]
         public string? TipoPlanoEscolhido { get; set; }
+
+        // "Start", "Pro" ou "Business" — qual tier a pessoa escolheu na
+        // página de vendas, antes de existir o Plano.Id (empresa ainda nem
+        // tinha sido criada). Usado junto com TipoPlanoEscolhido pra saber
+        // qual Plano/preço abrir no primeiro checkout.
+        [StringLength(30)]
+        public string? NomePlanoEscolhido { get; set; }
 
         // ─────────────────────────────────────────────
         // 🔗 RELACIONAMENTOS

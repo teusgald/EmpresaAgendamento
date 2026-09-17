@@ -1,4 +1,5 @@
 ﻿using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace EmpresaAgendamento.Models
@@ -6,6 +7,8 @@ namespace EmpresaAgendamento.Models
     public class Funcionario
     {
         public int Id { get; set; }
+
+        public NivelAcessoFuncionario NivelAcesso { get; set; } = NivelAcessoFuncionario.Padrao;
 
         [Required]
         [StringLength(150)]

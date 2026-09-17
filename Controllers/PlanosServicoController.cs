@@ -19,17 +19,20 @@ namespace EmpresaAgendamento.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IEmailService _emailService;
+        private readonly INotificacaoService _notificacaoService;
         private readonly ILogger<PlanosServicoController> _logger;
 
         public PlanosServicoController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IEmailService emailService,
+            INotificacaoService notificacaoService,
             ILogger<PlanosServicoController> logger)
         {
             _context = context;
             _userManager = userManager;
             _emailService = emailService;
+            _notificacaoService = notificacaoService;
             _logger = logger;
         }
 
@@ -400,12 +403,21 @@ namespace EmpresaAgendamento.Controllers
 
             await EnviarEmailPlanoAtivadoSeAplicavelAsync(assinatura.Id);
 
+            await _notificacaoService.NotificarClienteAsync(
+                assinatura.ClienteId,
+                assinatura.PlanoServico.EmpresaId,
+                TipoNotificacao.Plano,
+                "Plano aprovado",
+                $"Seu plano \"{assinatura.PlanoServico.Nome}\" foi aprovado — créditos já liberados.",
+                "/Cliente/Planos");
+
             ToastHelper.Success(TempData, "Assinatura aprovada — créditos liberados pro cliente.");
             return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
         }
 
         // =========================
-        // CANCELAR ASSINATURA
+        // CANCELAR ASSINATURA (também usado pra recusar uma solicitação
+        // ainda pendente — a mensagem pro cliente muda conforme o caso)
         // =========================
         [HttpPost("CancelarAssinatura")]
         [ValidateAntiForgeryToken]
@@ -423,10 +435,22 @@ namespace EmpresaAgendamento.Controllers
                 return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
             }
 
+            var eraPendente = assinatura.Status == StatusAssinaturaPlano.Pendente;
+
             assinatura.Status = StatusAssinaturaPlano.Cancelada;
             assinatura.DataCancelamento = DateTime.UtcNow;
 
             await _context.SaveChangesAsync();
+
+            await _notificacaoService.NotificarClienteAsync(
+                assinatura.ClienteId,
+                assinatura.PlanoServico.EmpresaId,
+                TipoNotificacao.Plano,
+                eraPendente ? "Pedido de plano recusado" : "Plano cancelado",
+                eraPendente
+                    ? $"Sua solicitação do plano \"{assinatura.PlanoServico.Nome}\" foi recusada."
+                    : $"Seu plano \"{assinatura.PlanoServico.Nome}\" foi cancelado.",
+                "/Cliente/Planos");
 
             ToastHelper.Success(TempData, "Assinatura cancelada.");
             return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });

@@ -1,4 +1,5 @@
 ﻿@model IEnumerable<EmpresaAgendamento.Models.Funcionario>
+@using EmpresaAgendamento.Models.Enums
 
 <div class="container-fluid mt-4">
 
@@ -71,6 +72,10 @@
                                     <div>
                                         <div class="fw-semibold">
                                             @item.Nome
+                                            @if (item.NivelAcesso == NivelAcessoFuncionario.Gerente)
+                                            {
+                                                <span class="badge bg-primary">Gerente</span>
+                                            }
                                         </div>
 
                                         @if (!string.IsNullOrWhiteSpace(item.Email))
@@ -236,6 +241,10 @@
 
                             <h6 class="fw-bold mb-1">
                                 @item.Nome
+                                @if (item.NivelAcesso == NivelAcessoFuncionario.Gerente)
+                                {
+                                    <span class="badge bg-primary">Gerente</span>
+                                }
                             </h6>
 
                             <small class="text-muted">
