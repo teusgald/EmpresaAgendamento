@@ -311,7 +311,7 @@ public class ClientesAuthController : Controller
     public async Task<IActionResult> Logout([FromServices] SignInManager<ApplicationUser> signInManager)
     {
         await signInManager.SignOutAsync();
-        return RedirectToAction("Index", "Home");
+        return Redirect("/?login=true&type=cliente");
     }
 
     [HttpGet("forgot")]

@@ -32,7 +32,15 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("login")]
-        public IActionResult Login() => View(new FuncionarioLoginViewModel());
+        public IActionResult Login(bool sessaoExpirada = false)
+        {
+            if (sessaoExpirada)
+            {
+                ToastHelper.Warning(TempData, "Sua sessão expirou. Faça login novamente para continuar.");
+            }
+
+            return View(new FuncionarioLoginViewModel());
+        }
 
         [HttpPost("login")]
         [ValidateAntiForgeryToken]

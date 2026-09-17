@@ -14,8 +14,8 @@
 
     <style>
         body {
-            background: #f9fafb;
-            color: #111827;
+            background: #F8F9FA;
+            color: #111111;
             padding-top: 80px;
         }
 
@@ -59,7 +59,7 @@
             }
 
         .navbar-brand {
-            color: #111827 !important;
+            color: #111111 !important;
             font-weight: 700;
         }
         
@@ -133,7 +133,7 @@
             align-items: center;
             justify-content: center;
             font-size: 22px;
-            color: #111827;
+            color: #111111;
             transition: 0.3s;
         }
 
@@ -144,21 +144,21 @@
         }
 
             .card-business:hover .icon-box {
-                background: #111827;
+                background: #111111;
                 color: #fff;
                 transform: scale(1.1);
             }
 
         .hero {
             padding: 120px 0;
-            background: #f8fafc;
+            background: #F8F9FA;
         }
 
         /* TEXTO */
         .hero-badge {
             display: inline-block;
             background: #f1f5f9;
-            color: #0f172a;
+            color: #111111;
             padding: 6px 14px;
             border-radius: 999px;
             font-size: 13px;
@@ -169,7 +169,7 @@
             font-size: 42px;
             font-weight: 800;
             line-height: 1.2;
-            color: #020617;
+            color: #111111;
             margin-bottom: 20px;
         }
 
@@ -258,7 +258,7 @@
             align-items: center;
             justify-content: center;
             font-size: 18px;
-            color: #111827;
+            color: #111111;
             transition: 0.3s;
         }
 
@@ -280,12 +280,12 @@
             }
 
                 .benefit-card:hover .benefit-icon {
-                    background: #111827;
+                    background: #111111;
                     color: #fff;
                 }
 
         .btn-primary {
-            background: #111827;
+            background: #111111;
             border: none;
             border-radius: 12px;
         }
@@ -295,16 +295,17 @@
             border-radius: 12px;
         }
 
-        /* CARD BASE */
+        /* CARD BASE — mesmo tamanho pros dois planos; o destaque vem de
+           borda/sombra/selo, nunca de deixar o card fisicamente maior. */
         .plan-card {
-            background: #0f172a;
-            border: 1px solid #1e293b;
+            background: #1a1a1a;
+            border: 1px solid #2B2B2B;
             border-radius: 18px;
             padding: 30px;
             display: flex;
             flex-direction: column;
             height: 100%;
-            transition: all 0.3s ease;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
             /* HOVER */
@@ -357,20 +358,25 @@
                 background: #1e293b;
             }
 
-        /* PLANO DESTAQUE */
+        /* PLANO DESTAQUE — mesmo tamanho do card ao lado; chama atenção com
+           borda clara + sombra mais forte, não deixando ele fisicamente maior. */
         .plan-card.highlight {
-            background: #111827;
-            border: 1px solid #374151;
-            transform: scale(1.05);
+            background: #1a1a1a;
+            border: 2px solid #ffffff;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.45);
         }
+
+            .plan-card.highlight:hover {
+                box-shadow: 0 24px 56px rgba(0,0,0,0.55);
+            }
 
         /* BADGE */
         .badge-plan {
             background: #22c55e;
             color: #022c22;
             font-size: 12px;
-            font-weight: 600;
-            padding: 5px 10px;
+            font-weight: 700;
+            padding: 5px 12px;
             border-radius: 20px;
             display: inline-block;
             margin-bottom: 10px;
@@ -391,14 +397,14 @@
             }
 
         .footer-premium {
-            background: #020617;
+            background: #111111;
             color: #cbd5f5;
             padding: 70px 0 30px;
         }
 
         /* LOGO */
         .logo-icon {
-            background: #111827;
+            background: #111111;
             padding: 8px 10px;
             border-radius: 10px;
             color: #fff;
@@ -494,13 +500,13 @@
                 /* HOVER */
                 #loginTabs .nav-link:hover {
                     background: #e5e7eb;
-                    color: #111827;
+                    color: #111111;
                 }
 
                 /* ATIVO (SELECIONADO) */
                 #loginTabs .nav-link.active {
                     background: #ffffff;
-                    color: #111827;
+                    color: #111111;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
                 }
 
@@ -513,6 +519,71 @@
                 opacity: 1;
                 transform: scale(0.85);
             }
+
+        .modal-content {
+            border-radius: 18px;
+            border: none;
+        }
+
+        /* AUTH CARD — conteúdo carregado dentro das abas "Sou Empresa"/"Sou
+           Cliente" do modal (Views/EmpresaAuth e Views/ClientesAuth). Um único
+           padrão visual pros dois, pra não ficar um diferente do outro. */
+        .auth-card {
+            padding: .25rem;
+        }
+
+            .auth-card .auth-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                width: 56px;
+                height: 56px;
+                border-radius: 50%;
+                background: #F8F9FA;
+                color: #111111;
+                font-size: 1.5rem;
+                margin-bottom: .75rem;
+            }
+
+            .auth-card .auth-title {
+                font-size: 1.15rem;
+                font-weight: 700;
+                color: #111111;
+                margin-bottom: .25rem;
+            }
+
+            .auth-card .form-control,
+            .auth-card .form-select {
+                border-radius: 8px;
+                border: 1px solid #E5E7EB;
+                padding: .65rem .9rem;
+            }
+
+                .auth-card .form-control:focus,
+                .auth-card .form-select:focus {
+                    border-color: #2B2B2B;
+                    box-shadow: 0 0 0 3px rgba(17, 17, 17, .08);
+                }
+
+            .auth-card .btn-dark {
+                border-radius: 8px;
+                padding: .7rem;
+                font-weight: 600;
+                background: #111111;
+                border: none;
+            }
+
+                .auth-card .btn-dark:hover {
+                    background: #2B2B2B;
+                }
+
+            .auth-card a {
+                color: #6B7280;
+            }
+
+                .auth-card a:hover {
+                    color: #111111;
+                }
     </style>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 </head>
@@ -798,7 +869,7 @@
     </section>
 
     <!-- PLANOS PREMIUM -->
-    <section id="planos" class="section" style="background:#020617; color:#fff;">
+    <section id="planos" class="section" style="background:#111111; color:#fff;">
         <div class="container">
 
             <div class="text-center mb-5">
@@ -946,19 +1017,6 @@
 
         </div>
     </footer>
-    <!-- MODAL ESCOLHA -->
-    <div class="modal fade" id="loginTypeModal" tabindex="-1">
-        ...
-    </div>
-
-    <!-- MODAL LOGIN -->
-    <div class="modal fade" id="loginModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content p-4">
-                <div id="loginContent"></div>
-            </div>
-        </div>
-    </div>
 
     <!-- SCRIPTS -->
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
@@ -1395,6 +1453,12 @@
                     alert("E-mail confirmado com sucesso! Você já pode entrar.");
                 } else if (confirmado === "false") {
                     alert("Não foi possível confirmar seu e-mail. O link pode ter expirado.");
+                }
+
+                const sessaoExpirada = params.get("sessaoExpirada");
+
+                if (sessaoExpirada === "true") {
+                    alert("Sua sessão expirou. Faça login novamente para continuar.");
                 }
                 }
 

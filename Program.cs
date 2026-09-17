@@ -61,6 +61,11 @@ builder.Services.ConfigureApplicationCookie(options =>
 {
     options.AccessDeniedPath = "/acesso-negado";
 
+    // Sem isso, o padrão é /Account/Login — que não existe nesse projeto
+    // (o login de verdade é via modal da Home ou a tela própria do
+    // funcionário) — sessão expirada/deslogado batia em 404 cru.
+    options.LoginPath = "/sessao-expirada";
+
     // 🔐 Sem isso, o padrão é SameAsRequest — o cookie de sessão pode ser
     // mandado numa conexão HTTP se algum endpoint acabar respondendo assim.
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;

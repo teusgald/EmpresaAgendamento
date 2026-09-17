@@ -895,3 +895,66 @@ body {
             width: 100%;
         }
 }
+
+/* ===========================================================================
+   AUTH CARD — conteúdo dos modais de login/registro/recuperação (Home e
+   página pública da empresa). Um único padrão visual pra Empresa e Cliente,
+   já que os dois carregam esse mesmo fragmento dentro do modal.
+   =========================================================================== */
+
+.auth-card {
+    padding: .25rem;
+}
+
+.auth-card .auth-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--st-bg, #F8F9FA);
+    color: var(--st-black, #111111);
+    font-size: 1.5rem;
+    margin-bottom: .75rem;
+}
+
+.auth-card .auth-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--st-black, #111111);
+    margin-bottom: .25rem;
+}
+
+.auth-card .form-control,
+.auth-card .form-select {
+    border-radius: var(--st-radius-sm, 8px);
+    border: 1px solid var(--st-gray-300, #E5E7EB);
+    padding: .65rem .9rem;
+}
+
+.auth-card .form-control:focus,
+.auth-card .form-select:focus {
+    border-color: var(--st-gray-900, #2B2B2B);
+    box-shadow: 0 0 0 3px rgba(17, 17, 17, .08);
+}
+
+.auth-card .btn-dark {
+    border-radius: var(--st-radius-sm, 8px);
+    padding: .7rem;
+    font-weight: 600;
+    background: var(--st-black, #111111);
+    border: none;
+}
+
+.auth-card .btn-dark:hover {
+    background: var(--st-gray-900, #2B2B2B);
+}
+
+.auth-card a {
+    color: var(--st-gray-600, #6B7280);
+}
+
+.auth-card a:hover {
+    color: var(--st-black, #111111);
+}
