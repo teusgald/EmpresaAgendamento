@@ -210,5 +210,8 @@ namespace EmpresaAgendamento.Models
 
         public ICollection<PlanoServico> PlanosServico { get; set; }
             = new List<PlanoServico>();
+
+        public ICollection<EmpresaHorario> Horarios { get; set; }
+            = new List<EmpresaHorario>();
     }
 }

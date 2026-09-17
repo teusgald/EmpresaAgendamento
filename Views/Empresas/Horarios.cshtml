@@ -1,14 +1,7 @@
-@model List<EmpresaAgendamento.Models.ViewModels.FuncionarioHorarioItemViewModel>
-@using EmpresaAgendamento.Helpers
-@using EmpresaAgendamento.Models
+@model List<EmpresaAgendamento.Models.ViewModels.EmpresaHorarioItemViewModel>
 
 @{
-    ViewData["Title"] = "Horários de Trabalho";
-
-    var horariosEmpresa = ViewBag.HorariosEmpresa as Dictionary<DayOfWeek, EmpresaHorario>;
-    var linhasEmpresa = horariosEmpresa != null && horariosEmpresa.Count > 0
-        ? HorarioFormatHelper.FormatarLinhas(horariosEmpresa.Values)
-        : new List<string>();
+    ViewData["Title"] = "Horário de Funcionamento";
 
     string NomeDia(DayOfWeek dia) => dia switch
     {
@@ -26,45 +19,24 @@
 <div class="container-fluid mt-4">
 
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
-        <h3 class="fw-bold mb-0">Horários de @ViewBag.FuncionarioNome</h3>
+        <h3 class="fw-bold mb-0">Horário de Funcionamento</h3>
         <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
     </div>
 
     @if (!(bool)ViewBag.JaConfigurado)
     {
         <div class="alert alert-info">
-            Este funcionário ainda não tem expediente configurado — por padrão, o sistema
-            considera disponibilidade das 08:00 às 18:00 de segunda a sábado até que você
-            salve os horários reais aqui.
-        </div>
-    }
-
-    @if (linhasEmpresa.Any())
-    {
-        <div class="alert alert-secondary">
-            <strong>Funcionamento da empresa</strong> — o expediente do funcionário não pode
-            passar desses horários:
-            <ul class="mb-0">
-                @foreach (var linha in linhasEmpresa)
-                {
-                    <li>@linha</li>
-                }
-            </ul>
-        </div>
-    }
-    else
-    {
-        <div class="alert alert-warning">
-            Sua empresa ainda não configurou o horário de funcionamento —
-            <a asp-controller="Empresas" asp-action="Horarios">configure aqui</a> pra
-            limitar corretamente o expediente dos funcionários.
+            Sua empresa ainda não tem horário de funcionamento configurado — por padrão, o
+            sistema considera disponibilidade das 08:00 às 18:00 de segunda a sábado até que
+            você salve o horário real aqui. Esse horário aparece na sua página pública e
+            também limita o expediente que você pode configurar para cada funcionário.
         </div>
     }
 
     <div class="card shadow-sm">
         <div class="card-body">
 
-            <form asp-action="Horarios" asp-route-id="@ViewBag.FuncionarioId" method="post">
+            <form asp-action="Horarios" method="post">
                 @Html.AntiForgeryToken()
 
                 <div class="table-responsive">
@@ -72,7 +44,7 @@
                         <thead class="table-light">
                             <tr>
                                 <th>Dia</th>
-                                <th>Trabalha</th>
+                                <th>Aberto</th>
                                 <th>Início</th>
                                 <th>Fim</th>
                                 <th>Início do intervalo</th>
@@ -90,7 +62,7 @@
                                         @NomeDia(item.DiaSemana)
                                         <input type="hidden" name="@(prefixo).DiaSemana" value="@item.DiaSemana" />
                                     </td>
-                                    <td data-label="Trabalha">
+                                    <td data-label="Aberto">
                                         <input type="checkbox"
                                                name="@(prefixo).TrabalhaNoDia"
                                                value="true"
@@ -128,10 +100,11 @@
                 </div>
 
                 <p class="text-muted small">
-                    Intervalo é opcional — deixe em branco se o funcionário não tem pausa fixa.
+                    Intervalo é opcional — deixe em branco se não houver pausa fixa. O
+                    expediente de cada funcionário não pode passar desse horário.
                 </p>
 
-                <button type="submit" class="btn btn-success">Salvar Horários</button>
+                <button type="submit" class="btn btn-success">Salvar Horário</button>
             </form>
 
         </div>

@@ -559,11 +559,56 @@ public class FuncionariosController : Controller
             });
         }
 
+        var horariosEmpresa = await _context.EmpresasHorarios
+            .Where(h => h.EmpresaId == empresaId)
+            .ToDictionaryAsync(h => h.DiaSemana);
+
         ViewBag.FuncionarioId = funcionario.Id;
         ViewBag.FuncionarioNome = funcionario.Nome;
         ViewBag.JaConfigurado = funcionario.Horarios.Any();
+        ViewBag.HorariosEmpresa = horariosEmpresa;
 
         return View(lista);
+    }
+
+    // Confere se o expediente do funcionário cabe dentro do horário de
+    // funcionamento da empresa nesse dia. Empresa sem horário configurado
+    // ainda (dicionário vazio) não bloqueia nada — comportamento antigo.
+    private static string? ValidarDentroDoExpedienteEmpresa(
+        FuncionarioHorarioItemViewModel item,
+        Dictionary<DayOfWeek, EmpresaHorario> horariosEmpresa)
+    {
+        if (!item.TrabalhaNoDia || horariosEmpresa.Count == 0)
+            return null;
+
+        if (!horariosEmpresa.TryGetValue(item.DiaSemana, out var horarioEmpresa))
+            return null;
+
+        var nomeDia = item.DiaSemana switch
+        {
+            DayOfWeek.Sunday => "domingo",
+            DayOfWeek.Monday => "segunda-feira",
+            DayOfWeek.Tuesday => "terça-feira",
+            DayOfWeek.Wednesday => "quarta-feira",
+            DayOfWeek.Thursday => "quinta-feira",
+            DayOfWeek.Friday => "sexta-feira",
+            DayOfWeek.Saturday => "sábado",
+            _ => item.DiaSemana.ToString()
+        };
+
+        if (!horarioEmpresa.TrabalhaNoDia)
+            return $"A empresa não abre {nomeDia}, então o funcionário não pode trabalhar nesse dia.";
+
+        if (item.HoraInicio is null || item.HoraFim is null)
+            return null;
+
+        if (item.HoraInicio < horarioEmpresa.HoraInicio || item.HoraFim > horarioEmpresa.HoraFim)
+        {
+            return $"O horário de {nomeDia} precisa estar dentro do funcionamento da empresa " +
+                   $"({horarioEmpresa.HoraInicio:hh\\:mm} – {horarioEmpresa.HoraFim:hh\\:mm}).";
+        }
+
+        return null;
     }
 
     // =========================
@@ -590,13 +635,36 @@ public class FuncionariosController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        horarios ??= new List<FuncionarioHorarioItemViewModel>();
+
+        var horariosEmpresa = await _context.EmpresasHorarios
+            .Where(h => h.EmpresaId == empresaId)
+            .ToDictionaryAsync(h => h.DiaSemana);
+
+        foreach (var item in horarios)
+        {
+            var erro = ValidarDentroDoExpedienteEmpresa(item, horariosEmpresa);
+
+            if (erro != null)
+            {
+                ToastHelper.Error(TempData, erro);
+
+                ViewBag.FuncionarioId = funcionario.Id;
+                ViewBag.FuncionarioNome = funcionario.Nome;
+                ViewBag.JaConfigurado = true;
+                ViewBag.HorariosEmpresa = horariosEmpresa;
+
+                return View(horarios);
+            }
+        }
+
         var existentes = await _context.FuncionariosHorarios
             .Where(h => h.FuncionarioId == id)
             .ToListAsync();
 
         _context.FuncionariosHorarios.RemoveRange(existentes);
 
-        foreach (var item in horarios ?? new List<FuncionarioHorarioItemViewModel>())
+        foreach (var item in horarios)
         {
             _context.FuncionariosHorarios.Add(new FuncionarioHorario
             {

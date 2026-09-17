@@ -333,6 +333,14 @@
 					</a>
 				</li>
 
+				<!-- HORÁRIO DE FUNCIONAMENTO -->
+				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
+					<a class="nav-link" asp-controller="Empresas" asp-action="Horarios">
+						<i class="bi bi-clock"></i>
+						<span class="link-text">Horário de Funcionamento</span>
+					</a>
+				</li>
+
 				<!-- ASSINATURA (sempre liberada — é por aqui que o dono ativa a conta) -->
 				<li class="nav-item">
 					<a class="nav-link" asp-controller="Assinatura" asp-action="Index">

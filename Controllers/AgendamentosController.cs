@@ -396,6 +396,8 @@ namespace EmpresaAgendamento.Controllers
                 }
                 else if (funcionarioAleatorio || !model.FuncionarioId.HasValue)
                 {
+                    // Sem funcionário cadastrado na empresa: agenda direto
+                    // nela mesma, sem vincular a um profissional (FuncionarioId nulo).
                     var funcionarioDisponivel =
                         await _context.Funcionarios
                         .Where(f =>
@@ -404,17 +406,7 @@ namespace EmpresaAgendamento.Controllers
                         .OrderBy(x => Guid.NewGuid())
                         .FirstOrDefaultAsync();
 
-                    if (funcionarioDisponivel == null)
-                    {
-                        ToastHelper.Error(
-                            TempData,
-                            "Nenhum funcionário disponível.");
-
-                        await CarregarCombos(empresaId.Value);
-                        return View(model);
-                    }
-
-                    model.FuncionarioId = funcionarioDisponivel.Id;
+                    model.FuncionarioId = funcionarioDisponivel?.Id;
                 }
 
                 // =========================
@@ -683,30 +675,18 @@ namespace EmpresaAgendamento.Controllers
 
                 if (funcionarioAleatorio)
                 {
+                    // Sem funcionário cadastrado na empresa: agenda direto
+                    // nela mesma, sem vincular a um profissional (FuncionarioId nulo).
                     var funcionarios = await _context.Funcionarios
                         .Where(f =>
                             f.EmpresaId == empresaId &&
                             f.Ativo)
                         .ToListAsync();
 
-                    var funcionarioAleatorioId = funcionarios
+                    agendamento.FuncionarioId = funcionarios
                         .OrderBy(x => Guid.NewGuid())
                         .Select(x => (int?)x.Id)
                         .FirstOrDefault();
-
-                    if (!funcionarioAleatorioId.HasValue)
-                    {
-                        ToastHelper.Error(
-                            TempData,
-                            "Nenhum funcionário disponível."
-                        );
-
-                        await CarregarCombos(empresaId.Value);
-                        return View(model);
-                    }
-
-                    agendamento.FuncionarioId =
-                        funcionarioAleatorioId.Value;
                 }
                 else
                 {

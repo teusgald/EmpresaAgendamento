@@ -23,6 +23,8 @@ namespace EmpresaAgendamento.Data
 
         public DbSet<FuncionarioHorario> FuncionariosHorarios { get; set; }
 
+        public DbSet<EmpresaHorario> EmpresasHorarios { get; set; }
+
         public DbSet<FuncionarioServico> FuncionariosServicos { get; set; }
 
         public DbSet<AgendamentoFuncionario> AgendamentosFuncionarios { get; set; }

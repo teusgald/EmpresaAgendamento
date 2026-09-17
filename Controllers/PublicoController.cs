@@ -50,6 +50,7 @@ namespace EmpresaAgendamento.Controllers
                     .AsNoTracking()
                     .Include(e => e.Servicos)
                     .Include(e => e.Fotos)
+                    .Include(e => e.Horarios)
                     .Include(e => e.Avaliacoes).ThenInclude(a => a.Cliente)
                     .Include(e => e.PlanosServico).ThenInclude(p => p.Servicos).ThenInclude(x => x.Servico)
                     .FirstOrDefaultAsync(e =>
@@ -136,16 +137,8 @@ namespace EmpresaAgendamento.Controllers
 
             var diaSemana = data.DayOfWeek;
 
-            var funcionariosQuery = _context.Funcionarios
-                .Include(f => f.Horarios)
-                .Where(f => f.EmpresaId == empresaId && f.Ativo);
-
-            if (funcionarioId.HasValue)
-            {
-                funcionariosQuery = funcionariosQuery.Where(f => f.Id == funcionarioId.Value);
-            }
-
-            var funcionarios = await funcionariosQuery.ToListAsync();
+            var horarioEmpresa = await _context.EmpresasHorarios
+                .FirstOrDefaultAsync(h => h.EmpresaId == empresaId && h.DiaSemana == diaSemana);
 
             var agendamentosDia = await _context.Agendamentos
                 .Include(a => a.Servico)
@@ -157,76 +150,123 @@ namespace EmpresaAgendamento.Controllers
                     (excluirAgendamentoId == null || a.Id != excluirAgendamentoId))
                 .ToListAsync();
 
+            var funcionariosQuery = _context.Funcionarios
+                .Include(f => f.Horarios)
+                .Where(f => f.EmpresaId == empresaId && f.Ativo);
+
+            if (funcionarioId.HasValue)
+            {
+                funcionariosQuery = funcionariosQuery.Where(f => f.Id == funcionarioId.Value);
+            }
+
+            var funcionarios = await funcionariosQuery.ToListAsync();
+
             var slotsDisponiveis = new SortedSet<string>();
+
+            if (funcionarios.Count == 0)
+            {
+                // Empresa sem funcionário cadastrado (ou nenhum bate o filtro
+                // pedido) — agenda direto na empresa, sem vincular a um
+                // profissional específico.
+                var expedienteEmpresa = ResolverExpediente(horarioEmpresa, diaSemana);
+
+                if (expedienteEmpresa != null)
+                {
+                    var agendamentosSemFuncionario = agendamentosDia
+                        .Where(a => a.FuncionarioId == null)
+                        .ToList();
+
+                    AdicionarSlots(slotsDisponiveis, expedienteEmpresa.Value, data, duracaoMinutos, agendamentosSemFuncionario);
+                }
+
+                return Json(slotsDisponiveis.ToList());
+            }
 
             foreach (var funcionario in funcionarios)
             {
-                TimeSpan inicioExpediente;
-                TimeSpan fimExpediente;
-                TimeSpan? inicioIntervalo = null;
-                TimeSpan? fimIntervalo = null;
+                var horarioDia = funcionario.Horarios.FirstOrDefault(h => h.DiaSemana == diaSemana);
 
-                if (funcionario.Horarios.Any())
-                {
-                    // Já configurou expediente real — respeita à risca,
-                    // inclusive dia de folga.
-                    var horarioDia = funcionario.Horarios
-                        .FirstOrDefault(h => h.DiaSemana == diaSemana);
+                // Funcionário já com expediente próprio configurado pra esse
+                // dia — respeita à risca (inclusive dia de folga). Sem
+                // configuração própria, cai pro horário de funcionamento da
+                // empresa (ou o padrão antigo, se a empresa também não tiver).
+                var expediente = horarioDia != null
+                    ? (horarioDia.TrabalhaNoDia
+                        ? new Expediente(horarioDia.HoraInicio, horarioDia.HoraFim, horarioDia.InicioIntervalo, horarioDia.FimIntervalo)
+                        : (Expediente?)null)
+                    : ResolverExpediente(horarioEmpresa, diaSemana);
 
-                    if (horarioDia == null || !horarioDia.TrabalhaNoDia)
-                        continue;
-
-                    inicioExpediente = horarioDia.HoraInicio;
-                    fimExpediente = horarioDia.HoraFim;
-                    inicioIntervalo = horarioDia.InicioIntervalo;
-                    fimIntervalo = horarioDia.FimIntervalo;
-                }
-                else
-                {
-                    // Nunca configurou expediente: janela padrão (compatibilidade),
-                    // segunda a sábado, 08h-18h.
-                    if (diaSemana == DayOfWeek.Sunday)
-                        continue;
-
-                    inicioExpediente = new TimeSpan(8, 0, 0);
-                    fimExpediente = new TimeSpan(18, 0, 0);
-                }
+                if (expediente == null)
+                    continue;
 
                 var agendamentosFuncionario = agendamentosDia
                     .Where(a => a.FuncionarioId == funcionario.Id)
                     .ToList();
 
-                for (var horaSlot = inicioExpediente;
-                     horaSlot + TimeSpan.FromMinutes(duracaoMinutos) <= fimExpediente;
-                     horaSlot += TimeSpan.FromMinutes(30))
-                {
-                    var inicioSlot = data.Date + horaSlot;
-                    var fimSlot = inicioSlot.AddMinutes(duracaoMinutos);
-
-                    if (inicioSlot < DateTime.Now)
-                        continue;
-
-                    if (inicioIntervalo.HasValue && fimIntervalo.HasValue)
-                    {
-                        var inicioPausa = data.Date + inicioIntervalo.Value;
-                        var fimPausa = data.Date + fimIntervalo.Value;
-
-                        if (inicioSlot < fimPausa && fimSlot > inicioPausa)
-                            continue;
-                    }
-
-                    var conflito = agendamentosFuncionario.Any(a =>
-                        inicioSlot < a.DataHora.AddMinutes(a.Servico.DuracaoMinutos) &&
-                        fimSlot > a.DataHora);
-
-                    if (!conflito)
-                    {
-                        slotsDisponiveis.Add(horaSlot.ToString(@"hh\:mm"));
-                    }
-                }
+                AdicionarSlots(slotsDisponiveis, expediente.Value, data, duracaoMinutos, agendamentosFuncionario);
             }
 
             return Json(slotsDisponiveis.ToList());
+        }
+
+        private readonly record struct Expediente(
+            TimeSpan Inicio,
+            TimeSpan Fim,
+            TimeSpan? InicioIntervalo,
+            TimeSpan? FimIntervalo);
+
+        private static Expediente? ResolverExpediente(EmpresaHorario? horarioEmpresa, DayOfWeek diaSemana)
+        {
+            if (horarioEmpresa != null)
+            {
+                return horarioEmpresa.TrabalhaNoDia
+                    ? new Expediente(horarioEmpresa.HoraInicio, horarioEmpresa.HoraFim, horarioEmpresa.InicioIntervalo, horarioEmpresa.FimIntervalo)
+                    : null;
+            }
+
+            // Empresa nunca configurou horário de funcionamento: janela
+            // padrão (compatibilidade), segunda a sábado, 08h-18h.
+            if (diaSemana == DayOfWeek.Sunday)
+                return null;
+
+            return new Expediente(new TimeSpan(8, 0, 0), new TimeSpan(18, 0, 0), null, null);
+        }
+
+        private static void AdicionarSlots(
+            SortedSet<string> slotsDisponiveis,
+            Expediente expediente,
+            DateTime data,
+            int duracaoMinutos,
+            List<Agendamento> agendamentosExistentes)
+        {
+            for (var horaSlot = expediente.Inicio;
+                 horaSlot + TimeSpan.FromMinutes(duracaoMinutos) <= expediente.Fim;
+                 horaSlot += TimeSpan.FromMinutes(30))
+            {
+                var inicioSlot = data.Date + horaSlot;
+                var fimSlot = inicioSlot.AddMinutes(duracaoMinutos);
+
+                if (inicioSlot < DateTime.Now)
+                    continue;
+
+                if (expediente.InicioIntervalo.HasValue && expediente.FimIntervalo.HasValue)
+                {
+                    var inicioPausa = data.Date + expediente.InicioIntervalo.Value;
+                    var fimPausa = data.Date + expediente.FimIntervalo.Value;
+
+                    if (inicioSlot < fimPausa && fimSlot > inicioPausa)
+                        continue;
+                }
+
+                var conflito = agendamentosExistentes.Any(a =>
+                    inicioSlot < a.DataHora.AddMinutes(a.Servico.DuracaoMinutos) &&
+                    fimSlot > a.DataHora);
+
+                if (!conflito)
+                {
+                    slotsDisponiveis.Add(horaSlot.ToString(@"hh\:mm"));
+                }
+            }
         }
         [HttpGet("login")]
         public IActionResult Login(int? empresaId)
@@ -341,7 +381,8 @@ namespace EmpresaAgendamento.Controllers
             }
 
             // ======================================
-            // QUALQUER PROFISSIONAL
+            // QUALQUER PROFISSIONAL (empresa sem funcionário cadastrado
+            // agenda direto nela mesma — FuncionarioId fica nulo)
             // ======================================
             if (!model.FuncionarioId.HasValue)
             {
@@ -352,15 +393,6 @@ namespace EmpresaAgendamento.Controllers
                     .OrderBy(x => Guid.NewGuid())
                     .Select(x => (int?)x.Id)
                     .FirstOrDefaultAsync();
-
-                if (!model.FuncionarioId.HasValue)
-                {
-                    return BadRequest(new
-                    {
-                        sucesso = false,
-                        mensagem = "Nenhum profissional disponível."
-                    });
-                }
             }
             else
             {

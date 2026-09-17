@@ -182,25 +182,14 @@ public class AgendamentosClientesController : Controller
         }
 
         // =========================
-        // FUNCIONÁRIO (o formulário não coleta esse campo — sorteia entre os disponíveis)
+        // FUNCIONÁRIO (o formulário não coleta esse campo — sorteia entre os
+        // disponíveis; sem nenhum cadastrado, agenda direto na empresa)
         // =========================
         var funcionarioId = await _context.Funcionarios
             .Where(f => f.EmpresaId == agendamento.EmpresaId && f.Ativo)
             .OrderBy(x => Guid.NewGuid())
             .Select(x => (int?)x.Id)
             .FirstOrDefaultAsync();
-
-        if (!funcionarioId.HasValue)
-        {
-            ModelState.AddModelError(
-                "",
-                "Nenhum profissional disponível para essa empresa.");
-
-            ViewBag.Empresas = new SelectList(
-                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
-                "Id", "Nome");
-            return View(agendamento);
-        }
 
         agendamento.FuncionarioId = funcionarioId;
 

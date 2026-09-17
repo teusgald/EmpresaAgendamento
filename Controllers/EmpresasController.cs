@@ -219,8 +219,8 @@ namespace EmpresaAgendamento.Controllers
             var temFuncionario = await _context.Funcionarios
                 .AnyAsync(f => f.EmpresaId == empresaId && f.Ativo);
 
-            var temHorarioConfigurado = await _context.FuncionariosHorarios
-                .AnyAsync(h => h.Funcionario.EmpresaId == empresaId);
+            var temHorarioConfigurado = await _context.EmpresasHorarios
+                .AnyAsync(h => h.EmpresaId == empresaId);
 
             return new List<OnboardingPassoDto>
             {
@@ -253,12 +253,12 @@ namespace EmpresaAgendamento.Controllers
                 },
                 new()
                 {
-                    Titulo = "Configure o horário de trabalho",
+                    Titulo = "Configure o horário de funcionamento",
                     Descricao = "Define os horários que aparecem disponíveis pros clientes.",
                     Concluido = temHorarioConfigurado,
                     Icone = "bi-clock",
-                    ControllerName = "Funcionarios",
-                    ActionName = "Index"
+                    ControllerName = "Empresas",
+                    ActionName = "Horarios"
                 }
             };
         }
@@ -385,6 +385,87 @@ namespace EmpresaAgendamento.Controllers
                 ToastHelper.Error(TempData, "Erro ao salvar empresa.");
                 return RedirectToAction(nameof(Index));
             }
+        }
+
+        // =========================
+        // HORÁRIO DE FUNCIONAMENTO (GET)
+        // =========================
+        [HttpGet("empresa/horarios")]
+        public async Task<IActionResult> Horarios()
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user?.EmpresaId == null)
+            {
+                ToastHelper.Error(TempData, "Acesso negado.");
+                return RedirectToAction("Login", "Account");
+            }
+
+            var horarios = await _context.EmpresasHorarios
+                .Where(h => h.EmpresaId == user.EmpresaId)
+                .ToListAsync();
+
+            var lista = new List<EmpresaHorarioItemViewModel>();
+
+            foreach (DayOfWeek dia in Enum.GetValues<DayOfWeek>())
+            {
+                var existente = horarios.FirstOrDefault(h => h.DiaSemana == dia);
+
+                lista.Add(new EmpresaHorarioItemViewModel
+                {
+                    DiaSemana = dia,
+                    TrabalhaNoDia = existente?.TrabalhaNoDia ?? (dia != DayOfWeek.Sunday),
+                    HoraInicio = existente?.HoraInicio ?? new TimeSpan(8, 0, 0),
+                    HoraFim = existente?.HoraFim ?? new TimeSpan(18, 0, 0),
+                    InicioIntervalo = existente?.InicioIntervalo,
+                    FimIntervalo = existente?.FimIntervalo
+                });
+            }
+
+            ViewBag.JaConfigurado = horarios.Any();
+
+            return View(lista);
+        }
+
+        // =========================
+        // HORÁRIO DE FUNCIONAMENTO (POST)
+        // =========================
+        [HttpPost("empresa/horarios")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Horarios(List<EmpresaHorarioItemViewModel> horarios)
+        {
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user?.EmpresaId == null)
+            {
+                ToastHelper.Error(TempData, "Acesso negado.");
+                return RedirectToAction("Login", "Account");
+            }
+
+            var existentes = await _context.EmpresasHorarios
+                .Where(h => h.EmpresaId == user.EmpresaId)
+                .ToListAsync();
+
+            _context.EmpresasHorarios.RemoveRange(existentes);
+
+            foreach (var item in horarios ?? new List<EmpresaHorarioItemViewModel>())
+            {
+                _context.EmpresasHorarios.Add(new EmpresaHorario
+                {
+                    EmpresaId = user.EmpresaId.Value,
+                    DiaSemana = item.DiaSemana,
+                    TrabalhaNoDia = item.TrabalhaNoDia,
+                    HoraInicio = item.HoraInicio ?? TimeSpan.Zero,
+                    HoraFim = item.HoraFim ?? TimeSpan.Zero,
+                    InicioIntervalo = item.TrabalhaNoDia ? item.InicioIntervalo : null,
+                    FimIntervalo = item.TrabalhaNoDia ? item.FimIntervalo : null
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            ToastHelper.Success(TempData, "Horário de funcionamento atualizado com sucesso!");
+            return RedirectToAction(nameof(Horarios));
         }
 
         // =========================

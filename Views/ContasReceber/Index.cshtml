@@ -1,5 +1,6 @@
 @model IEnumerable<EmpresaAgendamento.Models.ContaReceber>
 @using EmpresaAgendamento.Models.Enums
+@using Microsoft.AspNetCore.WebUtilities
 
 @{
     ViewData["Title"] = ViewBag.Titulo;
@@ -8,7 +9,19 @@
     StatusConta? statusFiltro = ViewBag.Status;
     DateTime? dataInicial = ViewBag.DataInicial;
     DateTime? dataFinal = ViewBag.DataFinal;
-    string acaoPaginacao = somenteAbertas ? "Index" : "Receitas";
+
+    // Monta o link de paginação a partir do path atual da requisição (em vez de
+    // asp-action), pra não depender de qual action gerou a página (Index/Receitas)
+    // nem de resolução de rota — o caminho já é o correto, sempre.
+    string PaginaUrl(int pagina)
+    {
+        var q = new Dictionary<string, string?>();
+        if (statusFiltro.HasValue) q["status"] = statusFiltro.Value.ToString();
+        if (dataInicial.HasValue) q["dataInicial"] = dataInicial.Value.ToString("yyyy-MM-dd");
+        if (dataFinal.HasValue) q["dataFinal"] = dataFinal.Value.ToString("yyyy-MM-dd");
+        q["page"] = pagina.ToString();
+        return QueryHelpers.AddQueryString(Context.Request.Path, q);
+    }
 }
 
 <div class="container-fluid mt-4">
@@ -197,16 +210,16 @@
             <nav>
                 <ul class="pagination">
                     <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
-                        <a class="page-link" asp-action="@acaoPaginacao" asp-route-page="@(ViewBag.CurrentPage - 1)">Anterior</a>
+                        <a class="page-link" href="@PaginaUrl(ViewBag.CurrentPage - 1)">Anterior</a>
                     </li>
                     @for (int i = 1; i <= ViewBag.TotalPages; i++)
                     {
                         <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
-                            <a class="page-link" asp-action="@acaoPaginacao" asp-route-page="@i">@i</a>
+                            <a class="page-link" href="@PaginaUrl(i)">@i</a>
                         </li>
                     }
                     <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
-                        <a class="page-link" asp-action="@acaoPaginacao" asp-route-page="@(ViewBag.CurrentPage + 1)">Próximo</a>
+                        <a class="page-link" href="@PaginaUrl(ViewBag.CurrentPage + 1)">Próximo</a>
                     </li>
                 </ul>
             </nav>

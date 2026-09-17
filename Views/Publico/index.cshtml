@@ -1,4 +1,5 @@
 ﻿@model EmpresaAgendamento.ViewModels.EmpresaPublicaViewModel
+@using EmpresaAgendamento.Helpers
 
 @{
 
@@ -6,6 +7,39 @@
     string nome = empresa.NomeFantasia ?? empresa.Nome;
 
     ViewData["Title"] = nome;
+
+    // Só entra na linha quem realmente tem valor — sem isso, endereço
+    // incompleto sobrava vírgula/traço solto ("Rua X, , Bairro").
+    var linhaRua = string.Join(", ", new[] { empresa.Endereco, empresa.Numero, empresa.Complemento }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    var linhaBairroCidade = string.Join(" - ", new[]
+        {
+            empresa.Bairro,
+            string.Join("/", new[] { empresa.Cidade, empresa.UF }.Where(p => !string.IsNullOrWhiteSpace(p)))
+        }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    // CEP entra na mesma linha do bairro/cidade, sem cor diferenciada —
+    // igual ao layout original — e só aparece se realmente tiver valor.
+    var linhaEndereco = linhaBairroCidade;
+
+    if (!string.IsNullOrWhiteSpace(empresa.CEP))
+    {
+        linhaEndereco = string.IsNullOrWhiteSpace(linhaEndereco)
+            ? $"CEP {empresa.CEP}"
+            : $"{linhaEndereco} — CEP {empresa.CEP}";
+    }
+
+    var temLocalizacao = !string.IsNullOrWhiteSpace(linhaRua) || !string.IsNullOrWhiteSpace(linhaEndereco);
+
+    var queryMaps = Uri.EscapeDataString(
+        string.Join(", ", new[] { empresa.Endereco, empresa.Numero, empresa.Bairro, empresa.Cidade, empresa.UF, empresa.CEP }
+            .Where(p => !string.IsNullOrWhiteSpace(p))));
+
+    var mapsUrl = $"https://www.google.com/maps/search/?api=1&query={queryMaps}";
+
+    var linhasHorario = HorarioFormatHelper.FormatarPorDia(empresa.Horarios);
 }
 
 @section Styles {
@@ -445,43 +479,42 @@
 
     <aside class="sidebar">
 
-        <!-- Localização -->
-        <div class="sidebar-section" id="contato">
-            <h3>📍 Localização</h3>
+        @if (temLocalizacao)
+        {
+            <!-- Localização -->
+            <div class="sidebar-section" id="contato">
+                <h3>📍 Localização</h3>
 
-            @{
-                var enderecoCompleto =
-                $"{empresa.Endereco}, {empresa.Numero}" +
-                (!string.IsNullOrEmpty(empresa.Complemento) ? $" - {empresa.Complemento}" : "") +
-                (!string.IsNullOrEmpty(empresa.Bairro) ? $" - {empresa.Bairro}" : "") +
-                $"<br>{empresa.Cidade} / {empresa.UF}" +
-                (!string.IsNullOrEmpty(empresa.CEP) ? $" — CEP {empresa.CEP}" : "");
+                <div class="location-row">
+                    <p>
+                        @if (!string.IsNullOrWhiteSpace(linhaRua))
+                        {
+                            @linhaRua
+                            <br />
+                        }
+                        @linhaEndereco
+                    </p>
 
-                var queryMaps = Uri.EscapeDataString(
-                $"{empresa.Endereco}, {empresa.Numero}, {empresa.Bairro}, {empresa.Cidade}, {empresa.UF}, {empresa.CEP}"
-                );
-
-                var mapsUrl = $"https://www.google.com/maps/search/?api=1&query={queryMaps}";
-            }
-
-            <div class="location-row">
-                <p>
-                    @Html.Raw(enderecoCompleto)
-                </p>
-
-                <a href="@mapsUrl"
-                   target="_blank"
-                   class="map-btn"
-                   title="Ver no mapa">
-                    🗺️
-                </a>
+                    <a href="@mapsUrl"
+                       target="_blank"
+                       class="map-btn"
+                       title="Ver no mapa">
+                        🗺️
+                    </a>
+                </div>
             </div>
-        </div>
+        }
 
-        <div class="sidebar-section">
-            <h3>🕐 Horário</h3>
-            <p>@empresa.HorarioFuncionamento</p>
-        </div>
+        @if (linhasHorario.Any())
+        {
+            <div class="sidebar-section">
+                <h3>🕐 Horário</h3>
+                @foreach (var linha in linhasHorario)
+                {
+                    <p class="mb-1">@linha</p>
+                }
+            </div>
+        }
 
         <!-- Formas de Pagamento -->
         <div class="sidebar-section">
