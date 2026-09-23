@@ -48,22 +48,30 @@ namespace EmpresaAgendamento.Controllers
         [HttpGet("")]
         public async Task<IActionResult> Index()
         {
-            var empresaId = await GetEmpresaId();
-
-            if (empresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Sessão expirada.");
-                return RedirectToAction("Login", "Account");
+                var empresaId = await GetEmpresaId();
+
+                if (empresaId == null)
+                {
+                    ToastHelper.Error(TempData, "Sessão expirada.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var planos = await _context.PlanosServico
+                    .Include(p => p.Servicos).ThenInclude(x => x.Servico)
+                    .Include(p => p.Assinaturas)
+                    .Where(p => p.EmpresaId == empresaId)
+                    .OrderBy(p => p.Nome)
+                    .ToListAsync();
+
+                return View(planos);
             }
-
-            var planos = await _context.PlanosServico
-                .Include(p => p.Servicos).ThenInclude(x => x.Servico)
-                .Include(p => p.Assinaturas)
-                .Where(p => p.EmpresaId == empresaId)
-                .OrderBy(p => p.Nome)
-                .ToListAsync();
-
-            return View(planos);
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao carregar planos.");
+                return View(new List<PlanoServico>());
+            }
         }
 
         // =========================
@@ -72,20 +80,28 @@ namespace EmpresaAgendamento.Controllers
         [HttpGet("Create")]
         public async Task<IActionResult> Create()
         {
-            var empresaId = await GetEmpresaId();
-
-            if (empresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Sessão expirada.");
-                return RedirectToAction("Login", "Account");
+                var empresaId = await GetEmpresaId();
+
+                if (empresaId == null)
+                {
+                    ToastHelper.Error(TempData, "Sessão expirada.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var vm = new PlanoServicoViewModel
+                {
+                    ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId.Value)
+                };
+
+                return View(vm);
             }
-
-            var vm = new PlanoServicoViewModel
+            catch
             {
-                ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId.Value)
-            };
-
-            return View(vm);
+                ToastHelper.Error(TempData, "Erro ao abrir formulário.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -95,52 +111,65 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(PlanoServicoViewModel vm)
         {
-            var empresaId = await GetEmpresaId();
-
-            if (empresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Sessão expirada.");
-                return RedirectToAction("Login", "Account");
-            }
+                var empresaId = await GetEmpresaId();
 
-            if (!vm.ServicosSelecionados.Any())
-            {
-                ModelState.AddModelError("", "Selecione ao menos um serviço incluído no plano.");
-            }
-
-            if (!ModelState.IsValid)
-            {
-                vm.ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId.Value);
-                return View(vm);
-            }
-
-            var plano = new PlanoServico
-            {
-                EmpresaId = empresaId.Value,
-                Nome = vm.Nome,
-                Periodicidade = vm.Periodicidade,
-                QuantidadeUsos = vm.QuantidadeUsos,
-                ValorReferencia = vm.ValorReferencia,
-                PercentualJurosAtraso = vm.PercentualJurosAtraso,
-                Ativo = true
-            };
-
-            _context.PlanosServico.Add(plano);
-            await _context.SaveChangesAsync();
-
-            foreach (var servicoId in vm.ServicosSelecionados)
-            {
-                _context.PlanosServicoItens.Add(new PlanoServicoItem
+                if (empresaId == null)
                 {
-                    PlanoServicoId = plano.Id,
-                    ServicoId = servicoId
-                });
+                    ToastHelper.Error(TempData, "Sessão expirada.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                if (!vm.ServicosSelecionados.Any())
+                {
+                    ModelState.AddModelError("", "Selecione ao menos um serviço incluído no plano.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    vm.ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId.Value);
+                    return View(vm);
+                }
+
+                var plano = new PlanoServico
+                {
+                    EmpresaId = empresaId.Value,
+                    Nome = vm.Nome,
+                    Periodicidade = vm.Periodicidade,
+                    QuantidadeUsos = vm.QuantidadeUsos,
+                    ValorReferencia = vm.ValorReferencia,
+                    PercentualJurosAtraso = vm.PercentualJurosAtraso,
+                    Ativo = true
+                };
+
+                _context.PlanosServico.Add(plano);
+                await _context.SaveChangesAsync();
+
+                var idsServicosValidos = await _context.Servicos
+                    .Where(s => s.EmpresaId == empresaId && vm.ServicosSelecionados.Contains(s.Id))
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                foreach (var servicoId in idsServicosValidos)
+                {
+                    _context.PlanosServicoItens.Add(new PlanoServicoItem
+                    {
+                        PlanoServicoId = plano.Id,
+                        ServicoId = servicoId
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                ToastHelper.Success(TempData, "Plano criado com sucesso!");
+                return RedirectToAction(nameof(Index));
             }
-
-            await _context.SaveChangesAsync();
-
-            ToastHelper.Success(TempData, "Plano criado com sucesso!");
-            return RedirectToAction(nameof(Index));
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao criar plano.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -149,32 +178,40 @@ namespace EmpresaAgendamento.Controllers
         [HttpGet("Edit/{id}")]
         public async Task<IActionResult> Edit(int id)
         {
-            var empresaId = await GetEmpresaId();
-
-            var plano = await _context.PlanosServico
-                .Include(p => p.Servicos)
-                .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
-
-            if (plano == null)
+            try
             {
-                ToastHelper.Error(TempData, "Plano não encontrado.");
+                var empresaId = await GetEmpresaId();
+
+                var plano = await _context.PlanosServico
+                    .Include(p => p.Servicos)
+                    .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
+
+                if (plano == null)
+                {
+                    ToastHelper.Error(TempData, "Plano não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var vm = new PlanoServicoViewModel
+                {
+                    Id = plano.Id,
+                    Nome = plano.Nome,
+                    Periodicidade = plano.Periodicidade,
+                    QuantidadeUsos = plano.QuantidadeUsos,
+                    ValorReferencia = plano.ValorReferencia,
+                    PercentualJurosAtraso = plano.PercentualJurosAtraso,
+                    Ativo = plano.Ativo,
+                    ServicosSelecionados = plano.Servicos.Select(x => x.ServicoId).ToList(),
+                    ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId!.Value)
+                };
+
+                return View(vm);
+            }
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao carregar plano.");
                 return RedirectToAction(nameof(Index));
             }
-
-            var vm = new PlanoServicoViewModel
-            {
-                Id = plano.Id,
-                Nome = plano.Nome,
-                Periodicidade = plano.Periodicidade,
-                QuantidadeUsos = plano.QuantidadeUsos,
-                ValorReferencia = plano.ValorReferencia,
-                PercentualJurosAtraso = plano.PercentualJurosAtraso,
-                Ativo = plano.Ativo,
-                ServicosSelecionados = plano.Servicos.Select(x => x.ServicoId).ToList(),
-                ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId!.Value)
-            };
-
-            return View(vm);
         }
 
         // =========================
@@ -184,57 +221,70 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, PlanoServicoViewModel vm)
         {
-            var empresaId = await GetEmpresaId();
-
-            if (empresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Sessão expirada.");
-                return RedirectToAction("Login", "Account");
-            }
+                var empresaId = await GetEmpresaId();
 
-            var plano = await _context.PlanosServico
-                .Include(p => p.Servicos)
-                .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
+                if (empresaId == null)
+                {
+                    ToastHelper.Error(TempData, "Sessão expirada.");
+                    return RedirectToAction("Login", "Account");
+                }
 
-            if (plano == null)
-            {
-                ToastHelper.Error(TempData, "Plano não encontrado.");
+                var plano = await _context.PlanosServico
+                    .Include(p => p.Servicos)
+                    .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
+
+                if (plano == null)
+                {
+                    ToastHelper.Error(TempData, "Plano não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (!vm.ServicosSelecionados.Any())
+                {
+                    ModelState.AddModelError("", "Selecione ao menos um serviço incluído no plano.");
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    vm.ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId.Value);
+                    return View(vm);
+                }
+
+                plano.Nome = vm.Nome;
+                plano.Periodicidade = vm.Periodicidade;
+                plano.QuantidadeUsos = vm.QuantidadeUsos;
+                plano.ValorReferencia = vm.ValorReferencia;
+                plano.PercentualJurosAtraso = vm.PercentualJurosAtraso;
+                plano.Ativo = vm.Ativo;
+
+                _context.PlanosServicoItens.RemoveRange(plano.Servicos);
+
+                var idsServicosValidos = await _context.Servicos
+                    .Where(s => s.EmpresaId == empresaId && vm.ServicosSelecionados.Contains(s.Id))
+                    .Select(s => s.Id)
+                    .ToListAsync();
+
+                foreach (var servicoId in idsServicosValidos)
+                {
+                    _context.PlanosServicoItens.Add(new PlanoServicoItem
+                    {
+                        PlanoServicoId = plano.Id,
+                        ServicoId = servicoId
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                ToastHelper.Success(TempData, "Plano atualizado com sucesso.");
                 return RedirectToAction(nameof(Index));
             }
-
-            if (!vm.ServicosSelecionados.Any())
+            catch
             {
-                ModelState.AddModelError("", "Selecione ao menos um serviço incluído no plano.");
+                ToastHelper.Error(TempData, "Erro ao atualizar plano.");
+                return RedirectToAction(nameof(Index));
             }
-
-            if (!ModelState.IsValid)
-            {
-                vm.ServicosDisponiveis = await CarregarServicosDisponiveisAsync(empresaId.Value);
-                return View(vm);
-            }
-
-            plano.Nome = vm.Nome;
-            plano.Periodicidade = vm.Periodicidade;
-            plano.QuantidadeUsos = vm.QuantidadeUsos;
-            plano.ValorReferencia = vm.ValorReferencia;
-            plano.PercentualJurosAtraso = vm.PercentualJurosAtraso;
-            plano.Ativo = vm.Ativo;
-
-            _context.PlanosServicoItens.RemoveRange(plano.Servicos);
-
-            foreach (var servicoId in vm.ServicosSelecionados)
-            {
-                _context.PlanosServicoItens.Add(new PlanoServicoItem
-                {
-                    PlanoServicoId = plano.Id,
-                    ServicoId = servicoId
-                });
-            }
-
-            await _context.SaveChangesAsync();
-
-            ToastHelper.Success(TempData, "Plano atualizado com sucesso.");
-            return RedirectToAction(nameof(Index));
         }
 
         // =========================
@@ -244,22 +294,30 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ToggleAtivo(int id)
         {
-            var empresaId = await GetEmpresaId();
-
-            var plano = await _context.PlanosServico
-                .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
-
-            if (plano == null)
+            try
             {
-                ToastHelper.Error(TempData, "Plano não encontrado.");
+                var empresaId = await GetEmpresaId();
+
+                var plano = await _context.PlanosServico
+                    .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
+
+                if (plano == null)
+                {
+                    ToastHelper.Error(TempData, "Plano não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                plano.Ativo = !plano.Ativo;
+                await _context.SaveChangesAsync();
+
+                ToastHelper.Success(TempData, plano.Ativo ? "Plano ativado." : "Plano inativado.");
                 return RedirectToAction(nameof(Index));
             }
-
-            plano.Ativo = !plano.Ativo;
-            await _context.SaveChangesAsync();
-
-            ToastHelper.Success(TempData, plano.Ativo ? "Plano ativado." : "Plano inativado.");
-            return RedirectToAction(nameof(Index));
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao alterar status do plano.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -268,46 +326,54 @@ namespace EmpresaAgendamento.Controllers
         [HttpGet("Assinantes/{id}")]
         public async Task<IActionResult> Assinantes(int id)
         {
-            var empresaId = await GetEmpresaId();
-
-            var plano = await _context.PlanosServico
-                .Include(p => p.Assinaturas).ThenInclude(a => a.Cliente)
-                .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
-
-            if (plano == null)
+            try
             {
-                ToastHelper.Error(TempData, "Plano não encontrado.");
+                var empresaId = await GetEmpresaId();
+
+                var plano = await _context.PlanosServico
+                    .Include(p => p.Assinaturas).ThenInclude(a => a.Cliente)
+                    .FirstOrDefaultAsync(p => p.Id == id && p.EmpresaId == empresaId);
+
+                if (plano == null)
+                {
+                    ToastHelper.Error(TempData, "Plano não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                foreach (var assinatura in plano.Assinaturas)
+                {
+                    assinatura.PlanoServico = plano;
+                    assinatura.AtualizarPeriodoSeNecessario();
+                }
+
+                await _context.SaveChangesAsync();
+
+                // EF Core não traduz uma coleção já carregada em memória
+                // (plano.Assinaturas) dentro de uma query que vira SQL — por
+                // isso extrai os Ids bloqueados antes, num HashSet, e usa
+                // Contains (isso sim é traduzido). Era isso que quebrava a
+                // página com exceção ao carregar.
+                var idsBloqueados = plano.Assinaturas
+                    .Where(a => a.Status == StatusAssinaturaPlano.Ativa || a.Status == StatusAssinaturaPlano.Pendente)
+                    .Select(a => a.ClienteId)
+                    .ToHashSet();
+
+                ViewBag.Clientes = new SelectList(
+                    await _context.Clientes
+                        .Where(c => c.Ativo &&
+                            c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId) &&
+                            !idsBloqueados.Contains(c.Id))
+                        .OrderBy(c => c.Nome)
+                        .ToListAsync(),
+                    "Id", "Nome");
+
+                return View(plano);
+            }
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao carregar assinantes.");
                 return RedirectToAction(nameof(Index));
             }
-
-            foreach (var assinatura in plano.Assinaturas)
-            {
-                assinatura.PlanoServico = plano;
-                assinatura.AtualizarPeriodoSeNecessario();
-            }
-
-            await _context.SaveChangesAsync();
-
-            // EF Core não traduz uma coleção já carregada em memória
-            // (plano.Assinaturas) dentro de uma query que vira SQL — por
-            // isso extrai os Ids bloqueados antes, num HashSet, e usa
-            // Contains (isso sim é traduzido). Era isso que quebrava a
-            // página com exceção ao carregar.
-            var idsBloqueados = plano.Assinaturas
-                .Where(a => a.Status == StatusAssinaturaPlano.Ativa || a.Status == StatusAssinaturaPlano.Pendente)
-                .Select(a => a.ClienteId)
-                .ToHashSet();
-
-            ViewBag.Clientes = new SelectList(
-                await _context.Clientes
-                    .Where(c => c.Ativo &&
-                        c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId) &&
-                        !idsBloqueados.Contains(c.Id))
-                    .OrderBy(c => c.Nome)
-                    .ToListAsync(),
-                "Id", "Nome");
-
-            return View(plano);
         }
 
         // =========================
@@ -317,57 +383,65 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AdicionarAssinante(int planoServicoId, int clienteId)
         {
-            var empresaId = await GetEmpresaId();
-
-            var plano = await _context.PlanosServico
-                .FirstOrDefaultAsync(p => p.Id == planoServicoId && p.EmpresaId == empresaId);
-
-            if (plano == null)
+            try
             {
-                ToastHelper.Error(TempData, "Plano não encontrado.");
+                var empresaId = await GetEmpresaId();
+
+                var plano = await _context.PlanosServico
+                    .FirstOrDefaultAsync(p => p.Id == planoServicoId && p.EmpresaId == empresaId);
+
+                if (plano == null)
+                {
+                    ToastHelper.Error(TempData, "Plano não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var clienteValido = await _context.Clientes
+                    .AnyAsync(c => c.Id == clienteId && c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId));
+
+                if (!clienteValido)
+                {
+                    ToastHelper.Error(TempData, "Cliente não encontrado.");
+                    return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+                }
+
+                var jaAssinante = await _context.AssinaturasPlanoServico
+                    .AnyAsync(a =>
+                        a.PlanoServicoId == planoServicoId &&
+                        a.ClienteId == clienteId &&
+                        (a.Status == StatusAssinaturaPlano.Ativa || a.Status == StatusAssinaturaPlano.Pendente));
+
+                if (jaAssinante)
+                {
+                    ToastHelper.Warning(TempData, "Esse cliente já é assinante deste plano.");
+                    return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+                }
+
+                var agora = DateTime.UtcNow;
+
+                var assinatura = new AssinaturaPlanoServico
+                {
+                    PlanoServicoId = planoServicoId,
+                    ClienteId = clienteId,
+                    Status = StatusAssinaturaPlano.Ativa,
+                    DataInicio = agora,
+                    DataInicioPeriodoAtual = agora,
+                    DataAprovacao = agora
+                };
+
+                _context.AssinaturasPlanoServico.Add(assinatura);
+                await _context.SaveChangesAsync();
+
+                await EnviarEmailPlanoAtivadoSeAplicavelAsync(assinatura.Id);
+
+                ToastHelper.Success(TempData, "Cliente adicionado ao plano.");
+                return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+            }
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao adicionar assinante.");
                 return RedirectToAction(nameof(Index));
             }
-
-            var clienteValido = await _context.Clientes
-                .AnyAsync(c => c.Id == clienteId && c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId));
-
-            if (!clienteValido)
-            {
-                ToastHelper.Error(TempData, "Cliente não encontrado.");
-                return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
-            }
-
-            var jaAssinante = await _context.AssinaturasPlanoServico
-                .AnyAsync(a =>
-                    a.PlanoServicoId == planoServicoId &&
-                    a.ClienteId == clienteId &&
-                    (a.Status == StatusAssinaturaPlano.Ativa || a.Status == StatusAssinaturaPlano.Pendente));
-
-            if (jaAssinante)
-            {
-                ToastHelper.Warning(TempData, "Esse cliente já é assinante deste plano.");
-                return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
-            }
-
-            var agora = DateTime.UtcNow;
-
-            var assinatura = new AssinaturaPlanoServico
-            {
-                PlanoServicoId = planoServicoId,
-                ClienteId = clienteId,
-                Status = StatusAssinaturaPlano.Ativa,
-                DataInicio = agora,
-                DataInicioPeriodoAtual = agora,
-                DataAprovacao = agora
-            };
-
-            _context.AssinaturasPlanoServico.Add(assinatura);
-            await _context.SaveChangesAsync();
-
-            await EnviarEmailPlanoAtivadoSeAplicavelAsync(assinatura.Id);
-
-            ToastHelper.Success(TempData, "Cliente adicionado ao plano.");
-            return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
         }
 
         // =========================
@@ -377,42 +451,50 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AprovarAssinatura(int id, int planoServicoId)
         {
-            var empresaId = await GetEmpresaId();
-
-            var assinatura = await _context.AssinaturasPlanoServico
-                .Include(a => a.PlanoServico)
-                .FirstOrDefaultAsync(a =>
-                    a.Id == id &&
-                    a.PlanoServico.EmpresaId == empresaId &&
-                    a.Status == StatusAssinaturaPlano.Pendente);
-
-            if (assinatura == null)
+            try
             {
-                ToastHelper.Error(TempData, "Solicitação não encontrada.");
+                var empresaId = await GetEmpresaId();
+
+                var assinatura = await _context.AssinaturasPlanoServico
+                    .Include(a => a.PlanoServico)
+                    .FirstOrDefaultAsync(a =>
+                        a.Id == id &&
+                        a.PlanoServico.EmpresaId == empresaId &&
+                        a.Status == StatusAssinaturaPlano.Pendente);
+
+                if (assinatura == null)
+                {
+                    ToastHelper.Error(TempData, "Solicitação não encontrada.");
+                    return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+                }
+
+                var agora = DateTime.UtcNow;
+
+                assinatura.Status = StatusAssinaturaPlano.Ativa;
+                assinatura.DataAprovacao = agora;
+                assinatura.DataInicioPeriodoAtual = agora;
+                assinatura.CreditosUsados = 0;
+
+                await _context.SaveChangesAsync();
+
+                await EnviarEmailPlanoAtivadoSeAplicavelAsync(assinatura.Id);
+
+                await _notificacaoService.NotificarClienteAsync(
+                    assinatura.ClienteId,
+                    assinatura.PlanoServico.EmpresaId,
+                    TipoNotificacao.Plano,
+                    "Plano aprovado",
+                    $"Seu plano \"{assinatura.PlanoServico.Nome}\" foi aprovado — créditos já liberados.",
+                    "/Cliente/Planos");
+
+                ToastHelper.Success(TempData, "Assinatura aprovada — créditos liberados pro cliente.");
                 return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
             }
-
-            var agora = DateTime.UtcNow;
-
-            assinatura.Status = StatusAssinaturaPlano.Ativa;
-            assinatura.DataAprovacao = agora;
-            assinatura.DataInicioPeriodoAtual = agora;
-            assinatura.CreditosUsados = 0;
-
-            await _context.SaveChangesAsync();
-
-            await EnviarEmailPlanoAtivadoSeAplicavelAsync(assinatura.Id);
-
-            await _notificacaoService.NotificarClienteAsync(
-                assinatura.ClienteId,
-                assinatura.PlanoServico.EmpresaId,
-                TipoNotificacao.Plano,
-                "Plano aprovado",
-                $"Seu plano \"{assinatura.PlanoServico.Nome}\" foi aprovado — créditos já liberados.",
-                "/Cliente/Planos");
-
-            ToastHelper.Success(TempData, "Assinatura aprovada — créditos liberados pro cliente.");
-            return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao aprovar assinatura.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -423,37 +505,45 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> CancelarAssinatura(int id, int planoServicoId)
         {
-            var empresaId = await GetEmpresaId();
-
-            var assinatura = await _context.AssinaturasPlanoServico
-                .Include(a => a.PlanoServico)
-                .FirstOrDefaultAsync(a => a.Id == id && a.PlanoServico.EmpresaId == empresaId);
-
-            if (assinatura == null)
+            try
             {
-                ToastHelper.Error(TempData, "Assinatura não encontrada.");
+                var empresaId = await GetEmpresaId();
+
+                var assinatura = await _context.AssinaturasPlanoServico
+                    .Include(a => a.PlanoServico)
+                    .FirstOrDefaultAsync(a => a.Id == id && a.PlanoServico.EmpresaId == empresaId);
+
+                if (assinatura == null)
+                {
+                    ToastHelper.Error(TempData, "Assinatura não encontrada.");
+                    return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+                }
+
+                var eraPendente = assinatura.Status == StatusAssinaturaPlano.Pendente;
+
+                assinatura.Status = StatusAssinaturaPlano.Cancelada;
+                assinatura.DataCancelamento = DateTime.UtcNow;
+
+                await _context.SaveChangesAsync();
+
+                await _notificacaoService.NotificarClienteAsync(
+                    assinatura.ClienteId,
+                    assinatura.PlanoServico.EmpresaId,
+                    TipoNotificacao.Plano,
+                    eraPendente ? "Pedido de plano recusado" : "Plano cancelado",
+                    eraPendente
+                        ? $"Sua solicitação do plano \"{assinatura.PlanoServico.Nome}\" foi recusada."
+                        : $"Seu plano \"{assinatura.PlanoServico.Nome}\" foi cancelado.",
+                    "/Cliente/Planos");
+
+                ToastHelper.Success(TempData, "Assinatura cancelada.");
                 return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
             }
-
-            var eraPendente = assinatura.Status == StatusAssinaturaPlano.Pendente;
-
-            assinatura.Status = StatusAssinaturaPlano.Cancelada;
-            assinatura.DataCancelamento = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-
-            await _notificacaoService.NotificarClienteAsync(
-                assinatura.ClienteId,
-                assinatura.PlanoServico.EmpresaId,
-                TipoNotificacao.Plano,
-                eraPendente ? "Pedido de plano recusado" : "Plano cancelado",
-                eraPendente
-                    ? $"Sua solicitação do plano \"{assinatura.PlanoServico.Nome}\" foi recusada."
-                    : $"Seu plano \"{assinatura.PlanoServico.Nome}\" foi cancelado.",
-                "/Cliente/Planos");
-
-            ToastHelper.Success(TempData, "Assinatura cancelada.");
-            return RedirectToAction(nameof(Assinantes), new { id = planoServicoId });
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao cancelar assinatura.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // E-mail de "plano ativado" (funciona como recibo/comprovante) — com

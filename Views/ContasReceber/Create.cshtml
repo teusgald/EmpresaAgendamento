@@ -36,7 +36,7 @@
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Valor previsto</label>
-                        <input asp-for="ValorPrevisto" type="number" step="0.01" min="0.01" class="form-control" />
+                        <input asp-for="ValorPrevisto" class="form-control" data-mask="dinheiro" placeholder="R$ 0,00" />
                         <span asp-validation-for="ValorPrevisto" class="text-danger"></span>
                     </div>
 

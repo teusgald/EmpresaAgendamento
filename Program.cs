@@ -100,6 +100,7 @@ builder.Services.AddRateLimiter(options =>
 // =========================
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IEmpresaService, EmpresaService>();
+builder.Services.AddScoped<IEmpresaDescobertaService, EmpresaDescobertaService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificacaoAgendamentoService, NotificacaoAgendamentoService>();
@@ -107,8 +108,9 @@ builder.Services.AddScoped<IPlanoCreditoService, PlanoCreditoService>();
 builder.Services.AddScoped<IFinanceiroService, FinanceiroService>();
 builder.Services.AddScoped<INotificacaoService, NotificacaoService>();
 builder.Services.AddScoped<IFidelidadeService, FidelidadeService>();
+builder.Services.AddScoped<IComandaService, ComandaService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
-builder.Services.AddSingleton<IWhatsAppService, WhatsAppService>();
+builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<LembreteAgendamentoBackgroundService>();
 
 // =========================
@@ -149,13 +151,47 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
 
-    string[] roles = { "Cliente", "Empresa", "Funcionario" };
+    string[] roles = { "Cliente", "Empresa", "Funcionario", "SuperAdmin" };
 
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))
         {
             await roleManager.CreateAsync(new IdentityRole(role));
+        }
+    }
+
+    // =========================
+    // 🔥 SEED DO DONO DO SISTEMA (SuperAdmin)
+    // =========================
+    // Cria o único usuário com acesso ao painel de dono do sistema, se ainda
+    // não existir nenhum na role. E-mail/senha vêm de User Secrets
+    // (SuperAdminSeed:Email / SuperAdminSeed:Password) — nunca hardcoded,
+    // pra não vazar no SVN/Git.
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var jaExisteSuperAdmin = (await userManager.GetUsersInRoleAsync("SuperAdmin")).Any();
+
+    if (!jaExisteSuperAdmin)
+    {
+        var superAdminEmail = app.Configuration["SuperAdminSeed:Email"];
+        var superAdminSenha = app.Configuration["SuperAdminSeed:Password"];
+
+        if (!string.IsNullOrWhiteSpace(superAdminEmail) && !string.IsNullOrWhiteSpace(superAdminSenha))
+        {
+            var superAdminUser = new ApplicationUser
+            {
+                UserName = superAdminEmail,
+                Email = superAdminEmail,
+                NomeCompleto = "Administrador do Sistema",
+                EmailConfirmed = true
+            };
+
+            var criarResult = await userManager.CreateAsync(superAdminUser, superAdminSenha);
+
+            if (criarResult.Succeeded)
+            {
+                await userManager.AddToRoleAsync(superAdminUser, "SuperAdmin");
+            }
         }
     }
 }
@@ -168,6 +204,11 @@ if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/Home/Error");
     app.UseHsts();
 }
+
+// 404/403/etc. sem corpo próprio (ex.: return NotFound(), rota que não bate
+// com nenhum endpoint) caem aqui em vez de mostrar a página crua do
+// servidor — em dev também, pra já testar com a tela de verdade.
+app.UseStatusCodePagesWithReExecute("/erro/{0}");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();

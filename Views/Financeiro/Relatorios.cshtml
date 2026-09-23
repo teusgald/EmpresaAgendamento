@@ -6,9 +6,15 @@
 
 <div class="container-fluid mt-4">
 
-    <h3 class="fw-bold mb-3">Relatórios</h3>
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
+        <h3 class="fw-bold mb-0">Relatórios</h3>
 
-    <!-- FILTRO DE PERÍODO -->
+        <a asp-action="RelatorioDetalhado" class="btn btn-outline-primary">
+            <i class="bi bi-file-earmark-text me-1"></i>Relatório detalhado
+        </a>
+    </div>
+
+    <!-- FILTRO DE PERÍODO (resumo por categoria/funcionário abaixo) -->
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <form method="get" class="row g-2 align-items-end">

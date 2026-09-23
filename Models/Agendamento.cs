@@ -67,6 +67,11 @@ namespace EmpresaAgendamento.Models
         // se o status for alterado para Finalizado mais de uma vez.
         public bool VisitaFidelidadeContabilizada { get; set; }
 
+        // Produtos consumidos durante o atendimento (comanda) — somados ao
+        // valor do serviço na mesma Conta a Receber.
+        public ICollection<ItemComanda> ItensComanda { get; set; }
+            = new List<ItemComanda>();
+
         // =========================
         // 🔁 NAVIGATION
         // =========================

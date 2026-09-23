@@ -11,6 +11,9 @@ namespace EmpresaAgendamento.ViewModels
         // 💇 Serviços da empresa
         public List<Servico> Servicos { get; set; } = new();
 
+        // 🧴 Produtos consumidos no atendimento (só vitrine — não vende online)
+        public List<Produto> Produtos { get; set; } = new();
+
         // 📅 (futuro) Agendamentos do dia / destaque
         public List<Agendamento> Agendamentos { get; set; } = new();
 
@@ -27,6 +30,8 @@ namespace EmpresaAgendamento.ViewModels
 
         // 🧠 flags auxiliares (evita lógica na View)
         public bool TemServicos => Servicos != null && Servicos.Count > 0;
+
+        public bool TemProdutos => Produtos != null && Produtos.Count > 0;
 
         public bool TemEndereco =>
             !string.IsNullOrEmpty(Empresa?.Endereco);

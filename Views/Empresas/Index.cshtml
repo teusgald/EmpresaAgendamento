@@ -83,6 +83,94 @@
                     </div>
                 </div>
 
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Cor primária</label>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="checkbox"
+                                   id="corPrimariaPadrao"
+                                   class="form-check-input mt-0"
+                                   checked="@(string.IsNullOrWhiteSpace(Model.CorPrimaria))"
+                                   onchange="toggleCorPadrao('Primaria')" />
+
+                            <label class="form-check-label small" for="corPrimariaPadrao">
+                                Usar cor padrão do sistema
+                            </label>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <input type="color"
+                                   asp-for="CorPrimaria"
+                                   id="corPrimariaInput"
+                                   value="@(string.IsNullOrWhiteSpace(Model.CorPrimaria) ? "#000000" : Model.CorPrimaria)"
+                                   disabled="@(string.IsNullOrWhiteSpace(Model.CorPrimaria))"
+                                   class="form-control form-control-color"
+                                   title="Escolha a cor primária"
+                                   oninput="corSincronizarDoPicker('Primaria')" />
+
+                            <span id="corPrimariaPreview"
+                                  class="border rounded"
+                                  style="width:32px;height:32px;background:@(string.IsNullOrWhiteSpace(Model.CorPrimaria) ? "#000000" : Model.CorPrimaria);"></span>
+
+                            <input type="text"
+                                   id="corPrimariaHex"
+                                   class="form-control form-control-sm"
+                                   style="max-width:110px;"
+                                   placeholder="#RRGGBB"
+                                   maxlength="7"
+                                   disabled="@(string.IsNullOrWhiteSpace(Model.CorPrimaria))"
+                                   value="@Model.CorPrimaria"
+                                   oninput="corSincronizarDoTexto('Primaria')" />
+                        </div>
+
+                        <small class="text-muted">Usada nos botões e destaques da sua página pública. Já tem o código da cor (ex.: #FF5733)? Digite direto no campo ao lado.</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Cor secundária</label>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <input type="checkbox"
+                                   id="corSecundariaPadrao"
+                                   class="form-check-input mt-0"
+                                   checked="@(string.IsNullOrWhiteSpace(Model.CorSecundaria))"
+                                   onchange="toggleCorPadrao('Secundaria')" />
+
+                            <label class="form-check-label small" for="corSecundariaPadrao">
+                                Usar cor padrão do sistema
+                            </label>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <input type="color"
+                                   asp-for="CorSecundaria"
+                                   id="corSecundariaInput"
+                                   value="@(string.IsNullOrWhiteSpace(Model.CorSecundaria) ? "#000000" : Model.CorSecundaria)"
+                                   disabled="@(string.IsNullOrWhiteSpace(Model.CorSecundaria))"
+                                   class="form-control form-control-color"
+                                   title="Escolha a cor secundária"
+                                   oninput="corSincronizarDoPicker('Secundaria')" />
+
+                            <span id="corSecundariaPreview"
+                                  class="border rounded"
+                                  style="width:32px;height:32px;background:@(string.IsNullOrWhiteSpace(Model.CorSecundaria) ? "#000000" : Model.CorSecundaria);"></span>
+
+                            <input type="text"
+                                   id="corSecundariaHex"
+                                   class="form-control form-control-sm"
+                                   style="max-width:110px;"
+                                   placeholder="#RRGGBB"
+                                   maxlength="7"
+                                   disabled="@(string.IsNullOrWhiteSpace(Model.CorSecundaria))"
+                                   value="@Model.CorSecundaria"
+                                   oninput="corSincronizarDoTexto('Secundaria')" />
+                        </div>
+
+                        <small class="text-muted">Usada em detalhes e elementos de apoio da sua página pública. Já tem o código da cor (ex.: #FF5733)? Digite direto no campo ao lado.</small>
+                    </div>
+                </div>
+
                 <!-- ===================== DIGITAL ===================== -->
                 <h5 class="mt-4">Presença Digital</h5>
 
@@ -266,6 +354,35 @@
         </div>
     </div>
 
+    <!-- ===================== TESTAR WHATSAPP ===================== -->
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+
+            <h5 class="mb-1">Testar integração com o WhatsApp</h5>
+            <p class="text-muted small">
+                Manda uma mensagem de teste pelo WhatsApp Cloud API — use um dos números verificados no seu
+                painel de testes da Meta. Se a integração ainda não estiver configurada, a mensagem só é
+                gravada no log do servidor (nada é enviado de verdade).
+            </p>
+
+            <form asp-action="TestarWhatsApp" method="post" class="row g-2 align-items-end">
+                @Html.AntiForgeryToken()
+
+                <div class="col-auto">
+                    <label class="form-label small mb-1">Telefone (com DDD)</label>
+                    <input type="text" name="telefone" class="form-control" placeholder="(11) 98765-4321" style="width:200px" />
+                </div>
+
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-outline-success">
+                        <i class="bi bi-whatsapp me-1"></i>Enviar teste
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+
     <!-- ===================== GALERIA DE FOTOS ===================== -->
     <div class="card shadow-sm mt-4">
         <div class="card-body">
@@ -354,5 +471,46 @@
         setTimeout(() => {
             btn.innerHTML = "📋";
         }, 1200);
+    }
+
+        // Enquanto o checkbox "usar cor padrão" está marcado, o input
+        // type="color" fica desabilitado — um input desabilitado não é
+        // enviado no POST, então CorPrimaria/CorSecundaria chegam nulos no
+        // servidor (não força nenhum valor default no banco).
+        function toggleCorPadrao(campo) {
+        const checkbox = document.getElementById("cor" + campo + "Padrao");
+        const input = document.getElementById("cor" + campo + "Input");
+        const hex = document.getElementById("cor" + campo + "Hex");
+        input.disabled = checkbox.checked;
+        hex.disabled = checkbox.checked;
+    }
+
+        // Muita gente já tem o código da cor da marca (ex.: de uma logo ou
+        // manual de identidade visual) — digitar é mais rápido que escolher
+        // no seletor visual. Os dois campos ficam sincronizados; quem é
+        // realmente enviado no POST é o input type="color" (asp-for).
+        function corSincronizarDoTexto(campo) {
+        const hex = document.getElementById("cor" + campo + "Hex");
+        const input = document.getElementById("cor" + campo + "Input");
+        const preview = document.getElementById("cor" + campo + "Preview");
+
+        let valor = hex.value.trim();
+        if (valor && !valor.startsWith("#")) {
+            valor = "#" + valor;
+        }
+
+        if (/^#[0-9A-Fa-f]{6}$/.test(valor)) {
+            input.value = valor;
+            preview.style.background = valor;
+        }
+    }
+
+        function corSincronizarDoPicker(campo) {
+        const input = document.getElementById("cor" + campo + "Input");
+        const hex = document.getElementById("cor" + campo + "Hex");
+        const preview = document.getElementById("cor" + campo + "Preview");
+
+        hex.value = input.value;
+        preview.style.background = input.value;
     }
 </script>

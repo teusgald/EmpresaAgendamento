@@ -53,91 +53,108 @@ public class ClientesAuthController : Controller
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login(ClienteLoginViewModel model)
     {
-        var origem = Request.Form["Origem"].ToString();
-
-        if (!ModelState.IsValid)
+        try
         {
-            return Json(new
+            var origem = Request.Form["Origem"].ToString();
+
+            if (!ModelState.IsValid)
             {
-                success = false,
-                error = "Dados inválidos."
-            });
-        }
-
-        // Mesmo e-mail pode estar cadastrado tanto como Empresa quanto como
-        // Cliente (são contas separadas) — por isso filtra pela role certa
-        // em vez de assumir que o primeiro resultado é o certo.
-        var users = await _userManager.Users
-            .Where(u => u.Email == model.Email)
-            .ToListAsync();
-
-        ApplicationUser? user = null;
-
-        foreach (var u in users)
-        {
-            if (await _userManager.IsInRoleAsync(u, "Cliente"))
-            {
-                user = u;
-                break;
+                return Json(new
+                {
+                    success = false,
+                    error = "Dados inválidos."
+                });
             }
-        }
 
-        if (user == null)
-        {
-            // Mesma mensagem de senha errada — não dá pra revelar se o
-            // e-mail tem conta de cliente só pelo texto do erro de login.
-            _logger.LogWarning("Login de cliente falhou (e-mail não encontrado): {Email}.", model.Email);
+            // Mesmo e-mail pode estar cadastrado tanto como Empresa quanto como
+            // Cliente (são contas separadas) — por isso filtra pela role certa
+            // em vez de assumir que o primeiro resultado é o certo.
+            var users = await _userManager.Users
+                .Where(u => u.Email == model.Email)
+                .ToListAsync();
 
-            return Json(new
+            ApplicationUser? user = null;
+
+            foreach (var u in users)
             {
-                success = false,
-                error = "Email ou senha inválidos."
-            });
-        }
+                if (await _userManager.IsInRoleAsync(u, "Cliente"))
+                {
+                    user = u;
+                    break;
+                }
+            }
 
-        var result = await _signInManager.PasswordSignInAsync(
-            user,
-            model.Password,
-            false,
-            true);
-
-        if (!result.Succeeded)
-        {
-            var mensagemErro = result.IsLockedOut
-                ? "Muitas tentativas de login. Tente novamente em alguns minutos."
-                : result.IsNotAllowed
-                    ? "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada."
-                    : "Email ou senha inválidos.";
-
-            _logger.LogWarning("Login de cliente falhou para o e-mail {Email}: {Motivo}.", model.Email, mensagemErro);
-
-            return Json(new
+            if (user == null)
             {
-                success = false,
-                error = mensagemErro
-            });
-        }
+                // Mesma mensagem de senha errada — não dá pra revelar se o
+                // e-mail tem conta de cliente só pelo texto do erro de login.
+                _logger.LogWarning("Login de cliente falhou (e-mail não encontrado): {Email}.", model.Email);
 
-        // LOGIN VIA MODAL PÚBLICO — fica na própria página (só recarrega),
-        // não manda pro portal do cliente. Quem abriu o login pode estar no
-        // meio de um agendamento ou de uma avaliação; sair da página perdia
-        // esse contexto.
-        if (origem == "publico")
-        {
+                return Json(new
+                {
+                    success = false,
+                    error = "Email ou senha inválidos."
+                });
+            }
+
+            // isPersistent: true — sem isso o cookie de login é "de sessão" e
+            // não respeita o ExpireTimeSpan/SlidingExpiration configurado em
+            // Program.cs; no PWA instalado do cliente (iOS), isso fazia a
+            // sessão "expirar" toda vez que a pessoa reabria o app.
+            var result = await _signInManager.PasswordSignInAsync(
+                user,
+                model.Password,
+                true,
+                true);
+
+            if (!result.Succeeded)
+            {
+                var mensagemErro = result.IsLockedOut
+                    ? "Muitas tentativas de login. Tente novamente em alguns minutos."
+                    : result.IsNotAllowed
+                        ? "Confirme seu e-mail antes de entrar. Verifique sua caixa de entrada."
+                        : "Email ou senha inválidos.";
+
+                _logger.LogWarning("Login de cliente falhou para o e-mail {Email}: {Motivo}.", model.Email, mensagemErro);
+
+                return Json(new
+                {
+                    success = false,
+                    error = mensagemErro
+                });
+            }
+
+            // LOGIN VIA MODAL PÚBLICO — fica na própria página (só recarrega),
+            // não manda pro portal do cliente. Quem abriu o login pode estar no
+            // meio de um agendamento ou de uma avaliação; sair da página perdia
+            // esse contexto.
+            if (origem == "publico")
+            {
+                return Json(new
+                {
+                    success = true,
+                    reload = true
+                });
+            }
+
+            // LOGIN NORMAL (home ou qualquer outro lugar) — manda pra tela
+            // inicial do portal do cliente (sugestão de empresas).
             return Json(new
             {
                 success = true,
-                reload = true
+                redirect = "/Cliente"
             });
         }
-
-        // LOGIN NORMAL (home ou qualquer outro lugar) — manda pra tela
-        // inicial do portal do cliente (sugestão de empresas).
-        return Json(new
+        catch (Exception ex)
         {
-            success = true,
-            redirect = "/Cliente"
-        });
+            _logger.LogError(ex, "Falha ao processar login de cliente para o e-mail {Email}.", model.Email);
+
+            return Json(new
+            {
+                success = false,
+                error = "Não foi possível entrar agora. Tente novamente em alguns instantes."
+            });
+        }
     }
 
     // =========================
@@ -151,135 +168,148 @@ public class ClientesAuthController : Controller
     [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register(ClienteRegisterViewModel model, bool aceitaTermos = false)
     {
-        if (!ModelState.IsValid)
-        {
-            return Json(new
-            {
-                success = false,
-                error = "Preencha todos os campos corretamente."
-            });
-        }
-
-        if (!aceitaTermos)
-        {
-            return Json(new
-            {
-                success = false,
-                error = "É necessário aceitar os Termos de Uso e a Política de Privacidade."
-            });
-        }
-
-        // =====================================
-        // VALIDAR EMAIL DUPLICADO
-        // =====================================
-
-        var emailExistente = _userManager.Users
-            .FirstOrDefault(x => x.Email == model.Email &&
-                    x.Cliente != null);
-
-        if (emailExistente != null)
-        {
-            return Json(new
-            {
-                success = false,
-                error = "Já existe uma conta cadastrada com este e-mail."
-            });
-        }
-
-        // =====================================
-        // CRIAR USUÁRIO
-        // =====================================
-
-        var user = new ApplicationUser
-        {
-            UserName = $"cliente-{Guid.NewGuid()}",
-            Email = model.Email
-        };
-
-        var result = await _userManager.CreateAsync(
-            user,
-            model.Password);
-
-        if (!result.Succeeded)
-        {
-            return Json(new
-            {
-                success = false,
-                error = string.Join("<br>",
-                    result.Errors.Select(x => x.Description))
-            });
-        }
-
-        // =====================================
-        // ROLE
-        // =====================================
-
-        await _userManager.AddToRoleAsync(user, "Cliente");
-
-        // =====================================
-        // CLIENTE
-        // =====================================
-
-        var cliente = new Cliente
-        {
-            Nome = model.Nome,
-            Email = model.Email,
-            Telefone = model.Telefone,
-            UserId = user.Id
-        };
-
-        _context.Clientes.Add(cliente);
-        await _context.SaveChangesAsync();
-
-        user.ClienteId = cliente.Id;
-
-        await _userManager.UpdateAsync(user);
-
-        // =====================================
-        // EMAIL DE CONFIRMAÇÃO
-        // =====================================
-        // Sem login automático mais — precisa confirmar o e-mail antes de entrar.
-
-        bool emailEnviado = false;
-        string erroEmail = "";
-
         try
         {
-            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            if (!ModelState.IsValid)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Preencha todos os campos corretamente."
+                });
+            }
 
-            var link =
-                $"{LinkBaseHelper.ObterBase(Request, _configuration)}/cliente/confirmar-email" +
-                $"?userId={Uri.EscapeDataString(user.Id)}" +
-                $"&token={Uri.EscapeDataString(token)}";
+            if (!aceitaTermos)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "É necessário aceitar os Termos de Uso e a Política de Privacidade."
+                });
+            }
 
-            await _emailService.SendEmailAsync(
-                user.Email,
-                "Confirme seu e-mail",
-                $@"
-            <h2>Olá {cliente.Nome}</h2>
+            // =====================================
+            // VALIDAR EMAIL DUPLICADO
+            // =====================================
 
-            <p>Sua conta foi criada com sucesso. Falta só confirmar seu e-mail:</p>
+            var emailExistente = _userManager.Users
+                .FirstOrDefault(x => x.Email == model.Email &&
+                        x.Cliente != null);
 
-            <p><a href='{link}'>Confirmar e-mail</a></p>
+            if (emailExistente != null)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Já existe uma conta cadastrada com este e-mail."
+                });
+            }
 
-            <p>Se você não fez esse cadastro, ignore este e-mail.</p>
-            ");
+            // =====================================
+            // CRIAR USUÁRIO
+            // =====================================
 
-            emailEnviado = true;
+            var user = new ApplicationUser
+            {
+                UserName = $"cliente-{Guid.NewGuid()}",
+                Email = model.Email
+            };
+
+            var result = await _userManager.CreateAsync(
+                user,
+                model.Password);
+
+            if (!result.Succeeded)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = string.Join("<br>",
+                        result.Errors.Select(x => x.Description))
+                });
+            }
+
+            // =====================================
+            // ROLE
+            // =====================================
+
+            await _userManager.AddToRoleAsync(user, "Cliente");
+
+            // =====================================
+            // CLIENTE
+            // =====================================
+
+            var cliente = new Cliente
+            {
+                Nome = model.Nome,
+                Email = model.Email,
+                Telefone = model.Telefone,
+                UserId = user.Id
+            };
+
+            _context.Clientes.Add(cliente);
+            await _context.SaveChangesAsync();
+
+            user.ClienteId = cliente.Id;
+
+            await _userManager.UpdateAsync(user);
+
+            // =====================================
+            // EMAIL DE CONFIRMAÇÃO
+            // =====================================
+            // Sem login automático mais — precisa confirmar o e-mail antes de entrar.
+
+            bool emailEnviado = false;
+            string erroEmail = "";
+
+            try
+            {
+                var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+                var link =
+                    $"{LinkBaseHelper.ObterBase(Request, _configuration)}/cliente/confirmar-email" +
+                    $"?userId={Uri.EscapeDataString(user.Id)}" +
+                    $"&token={Uri.EscapeDataString(token)}";
+
+                await _emailService.SendEmailAsync(
+                    user.Email,
+                    "Confirme seu e-mail",
+                    $@"
+                <h2>Olá {cliente.Nome}</h2>
+
+                <p>Sua conta foi criada com sucesso. Falta só confirmar seu e-mail:</p>
+
+                <p><a href='{link}'>Confirmar e-mail</a></p>
+
+                <p>Se você não fez esse cadastro, ignore este e-mail.</p>
+                ");
+
+                emailEnviado = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao enviar e-mail de confirmação de cadastro pro cliente {Email}.", user.Email);
+                erroEmail = "Não foi possível enviar o e-mail de confirmação agora.";
+            }
+
+            return Json(new
+            {
+                success = true,
+                message = "Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de entrar.",
+                emailEnviado,
+                erroEmail
+            });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Falha ao enviar e-mail de confirmação de cadastro pro cliente {Email}.", user.Email);
-            erroEmail = "Não foi possível enviar o e-mail de confirmação agora.";
-        }
+            _logger.LogError(ex, "Falha ao processar cadastro de cliente para o e-mail {Email}.", model.Email);
 
-        return Json(new
-        {
-            success = true,
-            message = "Cadastro realizado! Verifique seu e-mail para confirmar a conta antes de entrar.",
-            emailEnviado,
-            erroEmail
-        });
+            return Json(new
+            {
+                success = false,
+                error = "Não foi possível concluir o cadastro agora. Tente novamente em alguns instantes."
+            });
+        }
     }
 
     [HttpGet("confirmar-email")]
@@ -290,18 +320,26 @@ public class ClientesAuthController : Controller
             return Redirect("/");
         }
 
-        var user = await _userManager.FindByIdAsync(userId);
-
-        if (user == null)
+        try
         {
-            return Redirect("/");
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                return Redirect("/");
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+
+            return Redirect(result.Succeeded
+                ? "/?login=true&type=cliente&confirmado=true"
+                : "/?login=true&type=cliente&confirmado=false");
         }
-
-        var result = await _userManager.ConfirmEmailAsync(user, token);
-
-        return Redirect(result.Succeeded
-            ? "/?login=true&type=cliente&confirmado=true"
-            : "/?login=true&type=cliente&confirmado=false");
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao confirmar e-mail de cliente (userId {UserId}).", userId);
+            return Redirect("/?login=true&type=cliente&confirmado=false");
+        }
     }
 
     // =========================
@@ -311,7 +349,15 @@ public class ClientesAuthController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout([FromServices] SignInManager<ApplicationUser> signInManager)
     {
-        await signInManager.SignOutAsync();
+        try
+        {
+            await signInManager.SignOutAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao encerrar sessão de cliente.");
+        }
+
         return Redirect("/?login=true&type=cliente");
     }
 
@@ -490,35 +536,47 @@ public class ClientesAuthController : Controller
             });
         }
 
-        var user =
-            await _userManager.GetUserAsync(User);
-
-        if (user == null || user.ClienteId == null)
+        try
         {
+            var user =
+                await _userManager.GetUserAsync(User);
+
+            if (user == null || user.ClienteId == null)
+            {
+                return Json(new
+                {
+                    autenticado = false
+                });
+            }
+
+            var cliente = await _context.Clientes
+                .FirstOrDefaultAsync(c => c.Id == user.ClienteId);
+
+            if (cliente == null)
+            {
+                return Json(new
+                {
+                    autenticado = false
+                });
+            }
+
+            return Json(new
+            {
+                autenticado = true,
+                clienteId = user.ClienteId,
+                nome = cliente.Nome,
+                telefone = cliente.Telefone
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Falha ao carregar dados do cliente logado.");
+
             return Json(new
             {
                 autenticado = false
             });
         }
-
-        var cliente = await _context.Clientes
-            .FirstOrDefaultAsync(c => c.Id == user.ClienteId);
-
-        if (cliente == null)
-        {
-            return Json(new
-            {
-                autenticado = false
-            });
-        }
-
-        return Json(new
-        {
-            autenticado = true,
-            clienteId = user.ClienteId,
-            nome = cliente.Nome,
-            telefone = cliente.Telefone
-        });
     }
 
 

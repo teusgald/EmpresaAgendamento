@@ -2,6 +2,7 @@ using EmpresaAgendamento.Data;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.ViewModels;
+using EmpresaAgendamento.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,16 +20,29 @@ namespace EmpresaAgendamento.Controllers
 
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly IEmpresaDescobertaService _empresaDescobertaService;
+        private readonly ILogger<ClienteInicioController> _logger;
 
-        public ClienteInicioController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public ClienteInicioController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            IEmpresaDescobertaService empresaDescobertaService,
+            ILogger<ClienteInicioController> logger)
         {
             _context = context;
             _userManager = userManager;
+            _empresaDescobertaService = empresaDescobertaService;
+            _logger = logger;
         }
 
         [HttpGet("")]
-        public async Task<IActionResult> Index(string? categoria)
+        public async Task<IActionResult> Index([FromQuery] EmpresaDescobertaFiltro filtro)
         {
+            try
+            {
+            filtro ??= new EmpresaDescobertaFiltro();
+            filtro.Limite = LimiteSugestoes;
+
             // Slug só existe se a própria empresa preencheu manualmente em
             // Configurações — a maioria nunca fez isso, então ficava de fora
             // da lista (nem tinha como linkar pra página dela mesmo se
@@ -42,49 +56,7 @@ namespace EmpresaAgendamento.Controllers
                 .OrderBy(c => c)
                 .ToListAsync();
 
-            // Empresa.NotaMedia/TotalAvaliacoes nunca são gravados em lugar
-            // nenhum do sistema — a nota real vem sempre calculada na hora, a
-            // partir da tabela de Avaliações (mesma conta feita na página
-            // pública). Um LEFT JOIN aqui garante que a avaliação do próprio
-            // cliente logado (ou de qualquer outro) entra na média, e que
-            // empresa sem avaliação nenhuma ainda não desaparece da lista.
-            var query =
-                from e in _context.Empresas
-                where e.Ativo && e.Slug != null && e.Slug != ""
-                join a in _context.Avaliacoes on e.Id equals a.EmpresaId into avaliacoesDaEmpresa
-                select new
-                {
-                    Empresa = e,
-                    NotaMedia = avaliacoesDaEmpresa.Any()
-                        ? (double?)avaliacoesDaEmpresa.Average(x => x.Nota)
-                        : null,
-                    TotalAvaliacoes = avaliacoesDaEmpresa.Count()
-                };
-
-            if (!string.IsNullOrWhiteSpace(categoria))
-            {
-                query = query.Where(x => x.Empresa.SegmentoAtuacao == categoria);
-            }
-
-            // Mais bem avaliadas primeiro; sem avaliação nenhuma ainda, cai
-            // pro cadastro mais recente — assim a lista nunca fica vazia
-            // só porque ninguém avaliou ainda.
-            var empresas = await query
-                .OrderByDescending(x => x.NotaMedia ?? 0)
-                .ThenByDescending(x => x.TotalAvaliacoes)
-                .ThenByDescending(x => x.Empresa.DataCadastro)
-                .Take(LimiteSugestoes)
-                .Select(x => new EmpresaSugestaoViewModel
-                {
-                    Id = x.Empresa.Id,
-                    Nome = x.Empresa.NomeFantasia ?? x.Empresa.Nome,
-                    LogoUrl = x.Empresa.LogoUrl,
-                    Categoria = x.Empresa.SegmentoAtuacao,
-                    NotaMedia = x.NotaMedia,
-                    TotalAvaliacoes = x.TotalAvaliacoes,
-                    Slug = x.Empresa.Slug!
-                })
-                .ToListAsync();
+            var empresas = await _empresaDescobertaService.BuscarAsync(filtro);
 
             var user = await _userManager.GetUserAsync(User);
             if (user?.ClienteId != null && empresas.Count > 0)
@@ -114,10 +86,23 @@ namespace EmpresaAgendamento.Controllers
             {
                 Empresas = empresas,
                 Categorias = categorias,
-                CategoriaSelecionada = categoria
+                CategoriaSelecionada = filtro.Categoria,
+                Cidade = filtro.Cidade,
+                UF = filtro.UF,
+                PrecoMinimo = filtro.PrecoMinimo,
+                PrecoMaximo = filtro.PrecoMaximo,
+                AvaliacaoMinima = filtro.AvaliacaoMinima,
+                DistanciaMaximaKm = filtro.DistanciaMaximaKm
             };
 
             return View(vm);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao carregar sugestões de empresas para o cliente.");
+                ToastHelper.Error(TempData, "Erro ao carregar sugestões de empresas.");
+                return View(new ClienteInicioViewModel());
+            }
         }
 
         private async Task GarantirSlugsAsync()
@@ -147,7 +132,10 @@ namespace EmpresaAgendamento.Controllers
                 var candidato = baseSlug;
                 var sufixo = 1;
 
-                while (slugsExistentes.Contains(candidato))
+                // Slug reservado (ex.: "empresas", "login") nunca pode virar
+                // slug de empresa — a rota literal sempre vence e a página
+                // dela ficaria inacessível em /{slug}.
+                while (slugsExistentes.Contains(candidato) || SlugHelper.EhReservado(candidato))
                 {
                     sufixo++;
                     candidato = $"{baseSlug}-{sufixo}";

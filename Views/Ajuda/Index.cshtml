@@ -1,0 +1,428 @@
+@using EmpresaAgendamento.Data
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using EmpresaAgendamento.Models
+@inject UserManager<ApplicationUser> UserManager
+@inject ApplicationDbContext _context
+
+@{
+    ViewData["Title"] = "Ajuda";
+
+    // Mesmo padrão do Views/Notificacoes/Index.cshtml: uma única view pros
+    // três papéis, layout escolhido em runtime pelo papel logado.
+    var ehCliente = User.IsInRole("Cliente");
+    Layout = ehCliente ? "_LayoutCliente" : "_Layout";
+
+    var ehFuncionario = User.IsInRole("Funcionario");
+    var ehGerente = false;
+
+    if (ehFuncionario)
+    {
+        var userId = UserManager.GetUserId(User);
+
+        var nivelAcesso = await _context.Funcionarios
+            .Where(f => f.UserId == userId)
+            .Select(f => (EmpresaAgendamento.Models.Enums.NivelAcessoFuncionario?)f.NivelAcesso)
+            .FirstOrDefaultAsync();
+
+        ehGerente = nivelAcesso == EmpresaAgendamento.Models.Enums.NivelAcessoFuncionario.Gerente;
+    }
+
+    // Dono da empresa (role "Empresa") ou Funcionário Gerente — mesmo
+    // critério usado no menu lateral pra liberar Serviços/Produtos/
+    // Fidelidade/Financeiro.
+    var podeVerModuloGerente = !ehFuncionario || ehGerente;
+
+    // Cada pergunta usa um id de collapse próprio (faq1, faq2...), gerado em
+    // sequência conforme a página é montada.
+    var contador = 0;
+    string ProximoId() => $"faq{++contador}";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Ajuda</h3>
+            <p class="page-subtitle">
+                @if (ehCliente)
+                {
+                    <text>Dúvidas sobre como agendar, acompanhar e gerenciar seus horários no Simpli Time.</text>
+                }
+                else
+                {
+                    <text>Como usar cada tela do Simpli Time — passo a passo de cadastro, edição e demais funcionalidades.</text>
+                }
+            </p>
+        </div>
+    </div>
+
+    @if (!ehCliente)
+    {
+        <!-- =========================================================
+             PORTAL EMPRESA / FUNCIONÁRIO
+             ========================================================= -->
+
+        @if (!ehFuncionario)
+        {
+            <h5 class="fw-bold mt-4 mb-2">Dashboard</h5>
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">O que o Dashboard mostra?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>O Dashboard (menu <strong>Dashboard</strong>) é a tela inicial da empresa e reúne os principais indicadores:</p>
+                        <ul>
+                            <li><strong>Total de clientes</strong> — quantos clientes já estão vinculados à sua empresa.</li>
+                            <li><strong>Agendamentos de hoje</strong> — lista do dia, com cliente, serviço e funcionário.</li>
+                            <li><strong>Faturamento mensal</strong> — soma do preço dos serviços dos agendamentos já <em>Finalizados</em> no mês, com o percentual de crescimento em relação ao mês anterior.</li>
+                            <li><strong>Gráfico de faturamento por mês</strong> e <strong>serviços mais populares</strong> (os 6 mais agendados).</li>
+                            <li><strong>Checklist de configuração inicial</strong> — mostra o que falta configurar (logo, serviços, funcionários, horário de funcionamento) até a empresa estar com o cadastro completo.</li>
+                        </ul>
+                        <p class="mb-0">Se a assinatura do sistema ainda não estiver ativa, um aviso aparece no topo com o link pra assinar — sem isso, agendamentos e clientes ficam bloqueados (só dá pra configurar a empresa).</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <h5 class="fw-bold mt-4 mb-2">Calendário e Agendamentos</h5>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como cadastro um agendamento?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>Em <strong>Agendamentos &gt; Novo</strong> (ou clicando num horário livre no <strong>Calendário</strong>):</p>
+                    <ol>
+                        <li>Escolha o <strong>cliente</strong> já cadastrado, ou marque <em>cliente avulso</em> e informe nome e telefone na hora (sem precisar cadastrá-lo antes).</li>
+                        <li>Escolha o <strong>serviço</strong> — a duração dele define automaticamente o fim do horário.</li>
+                        <li>Escolha o <strong>funcionário</strong>, ou deixe em branco pra o sistema sortear um entre os ativos (se a empresa não tiver funcionário cadastrado, o agendamento fica direto com a empresa, sem profissional vinculado).</li>
+                        <li>Escolha <strong>data e hora</strong>.</li>
+                    </ol>
+                    <p>O sistema recusa o agendamento se o funcionário já tiver outro horário conflitante (considerando a duração do serviço) ou se a empresa já tiver atingido o limite de agendamentos por mês do plano contratado. Ao salvar, o agendamento nasce com status <strong>Agendado</strong> e já entra no Financeiro como uma previsão de receita (Contas a Receber pendente).</p>
+                    <p class="mb-0">Um Funcionário logado só enxerga e só cria agendamentos em nome dele mesmo — nunca de um colega.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como mudo o status de um agendamento (confirmar, finalizar, cancelar)?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>Na lista de <strong>Agendamentos</strong>, cada linha tem um seletor de status. Os status existentes são:</p>
+                    <ul>
+                        <li><strong>Agendado</strong> — recém-criado, ainda não confirmado.</li>
+                        <li><strong>Confirmado</strong> — cliente confirmou presença.</li>
+                        <li><strong>Finalizado</strong> — atendimento concluído. Ao marcar como Finalizado, o sistema gera (ou atualiza) automaticamente a conta a receber, apura a comissão do funcionário sobre esse atendimento e, se a empresa tiver programa de fidelidade, registra a visita do cliente.</li>
+                        <li><strong>Cancelado</strong> — ao cancelar, a conta a receber gerada por esse agendamento é estornada e, se o cliente tinha usado um crédito de plano (assinatura de serviço) pra esse horário, o crédito é devolvido pra ele poder usar em outro agendamento.</li>
+                    </ul>
+                    <p class="mb-0">As abas <strong>Próximos</strong> (Agendado/Confirmado), <strong>Concluídos</strong>, <strong>Cancelados</strong> e <strong>Todos</strong> filtram a lista por esses status — dá pra filtrar também por nome do cliente e por período.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como edito ou removo um agendamento?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p><strong>Editar</strong> abre o mesmo formulário do cadastro (cliente, serviço, funcionário, data/hora) e revalida conflito de horário. <strong>Remover</strong> não apaga o registro do banco — ele é inativado e some da listagem, mas o histórico financeiro ligado a ele continua existindo.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como funciona a Comanda de um agendamento?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>A Comanda não é um item separado do menu — ela é aberta a partir do próprio agendamento (durante ou depois do atendimento) e serve pra lançar os <strong>produtos</strong> consumidos naquele horário (ex.: um produto usado no procedimento).</p>
+                    <p>Cada produto adicionado à comanda <strong>desconta na hora</strong> a quantidade do estoque do produto, e o valor da conta a receber daquele agendamento é recalculado automaticamente para incluir o total dos produtos. Remover um item da comanda devolve a quantidade ao estoque. Depois que a conta a receber daquele agendamento já foi <em>quitada</em>, a comanda trava — não dá mais pra adicionar ou remover itens.</p>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="fw-bold mt-4 mb-2">Clientes</h5>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como cadastro e edito um cliente?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>Em <strong>Clientes &gt; Novo cliente</strong> informe nome, e-mail e telefone. Um cliente que já tenha se cadastrado sozinho (pelo portal dele) ou que já tenha agendado alguma vez com sua empresa também aparece automaticamente na lista — não precisa recadastrar.</p>
+                    <p>A listagem mostra, por cliente, o total de agendamentos, a última visita concluída, o plano ativo (se ele assina algum) e o total já gasto. <strong>Editar</strong> altera nome/e-mail/telefone; o botão de ativar/inativar não apaga o cliente, só o esconde de novos agendamentos.</p>
+                </div>
+            </div>
+        </div>
+
+        @if (podeVerModuloGerente)
+        {
+            <h5 class="fw-bold mt-4 mb-2">Serviços</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como cadastro um serviço (duração e preço)?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Serviços &gt; Novo serviço</strong>, informe nome, <strong>duração em minutos</strong> e <strong>preço</strong>. A duração é o que o sistema usa pra calcular o fim de cada agendamento e detectar conflito de horário; o preço é o que vira receita ao finalizar o agendamento.</p>
+                        <p class="mb-0">Um serviço só pode ser <strong>inativado</strong> se não tiver nenhum agendamento vinculado (mesmo antigo) — do contrário o sistema bloqueia a inativação pra não quebrar o histórico.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-2">Produtos</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como cadastro um produto e controlo o estoque?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Produtos &gt; Novo produto</strong>, informe nome, descrição, preço, <strong>quantidade em estoque</strong> e, se quiser, uma foto (até 2 MB, PNG/JPG/WEBP/GIF).</p>
+                        <p class="mb-0">O estoque cadastrado aqui é o mesmo que a <strong>Comanda</strong> consome: cada produto lançado numa comanda desconta dessa quantidade, e removê-lo da comanda devolve. Só aparecem na Comanda os produtos ativos com estoque maior que zero.</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (!ehFuncionario)
+        {
+            <h5 class="fw-bold mt-4 mb-2">Funcionários</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como cadastro um funcionário e defino o nível de acesso?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Funcionários &gt; Novo funcionário</strong>, informe nome, e-mail, telefone, cargo, comissão (percentual padrão ou valor fixo por atendimento) e quais serviços ele realiza. Existem dois <strong>níveis de acesso</strong>:</p>
+                        <ul>
+                            <li><strong>Padrão</strong> — só enxerga Calendário, Agendamentos, Clientes e Atendimento, e só mexe nos próprios agendamentos.</li>
+                            <li><strong>Gerente</strong> — além disso, também enxerga Serviços, Produtos, Fidelidade e o módulo Financeiro completo (nunca enxerga Funcionários, Planos, Horário de Funcionamento, Empresa ou Assinatura — isso é exclusivo do dono).</li>
+                        </ul>
+                        <p>Seu plano de assinatura do sistema limita quantos funcionários ativos você pode ter — o cadastro bloqueia ao atingir o limite.</p>
+                        <p class="mb-0">Depois de cadastrado, use <strong>Criar acesso</strong> pra o funcionário poder logar sozinho (o sistema manda um e-mail pra ele definir a própria senha) — sem isso ele só existe como registro interno, sem login. <strong>Reenviar acesso</strong> manda um novo link de senha se ele perder o primeiro e-mail.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-2">Planos</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">O que são os Planos (PlanosServico) e como gerencio os assinantes?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p><strong>Importante:</strong> isso não tem nada a ver com o plano de assinatura do <em>sistema</em> Simpli Time (isso fica em "Assinatura", mais abaixo). Aqui é o <strong>pacote de sessões que a sua empresa vende para os seus próprios clientes</strong> — ex.: "10 cortes por mês".</p>
+                        <p>Em <strong>Planos &gt; Novo plano</strong>, defina nome, periodicidade (semanal ou mensal), quantidade de usos incluídos, valor de referência e juros por atraso (opcional). Marque quais serviços o plano cobre.</p>
+                        <p>Em <strong>Assinantes</strong> (dentro de cada plano) você adiciona um cliente diretamente, ou aprova/recusa uma solicitação que o próprio cliente fez pelo portal dele. Ao aprovar, os créditos do período ficam liberados na hora. Cada agendamento do cliente nesse plano consome 1 crédito automaticamente (e o crédito volta se o agendamento for cancelado).</p>
+                        <p class="mb-0">Cancelar a assinatura de um cliente não apaga o histórico, só encerra o uso dos créditos.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-2">Horário de Funcionamento</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como configuro o horário de funcionamento?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Horário de Funcionamento</strong>, defina dia a dia se a empresa abre, o horário de início/fim e um intervalo (almoço), se houver. É esse horário que aparece como disponível pros clientes no agendamento público.</p>
+                        <p class="mb-0">Cada funcionário também pode ter o próprio expediente (tela de <strong>Horários</strong> dentro do cadastro dele, em Funcionários) — mas o expediente dele precisa caber dentro do horário de funcionamento da empresa naquele dia; o sistema bloqueia se não couber.</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (podeVerModuloGerente)
+        {
+            <h5 class="fw-bold mt-4 mb-2">Fidelidade</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como crio um programa de Fidelidade e como o cliente acumula/resgata?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Fidelidade &gt; Novo programa</strong>, escolha se o programa vale pra <strong>um serviço específico</strong> ou é <strong>geral</strong> (qualquer serviço) — só pode existir um programa geral e um por serviço ao mesmo tempo. Defina quantas visitas são necessárias e o desconto ganho (percentual ou valor fixo).</p>
+                        <p>O cliente <strong>acumula visita automaticamente</strong> sempre que um agendamento dele é marcado como <em>Finalizado</em> (dentro do serviço coberto pelo programa). Ao completar o número de visitas necessárias, ele ganha um desconto disponível.</p>
+                        <p class="mb-0">Quando o cliente usar o desconto no balcão, marque <strong>Marcar desconto como usado</strong> na lista de clientes do programa — isso debita um desconto disponível e soma no total de descontos já usados.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-2">Financeiro</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">O que cada submenu do Financeiro faz?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p><strong>Dashboard</strong> — receitas, despesas e lucro apurados no período escolhido, saldo de caixa atual e total em aberto de contas a receber/pagar.</p>
+                        <p><strong>Caixa</strong> — extrato de todas as movimentações (entradas e saídas) já confirmadas, com filtro por período e tipo. É aqui também que se <strong>importa um extrato bancário (OFX)</strong>: o sistema sugere automaticamente com qual conta a receber/pagar cada lançamento do banco bate (quando o valor confere exatamente), e permite confirmar em lote.</p>
+                        <p><strong>Contas a Receber</strong> — o que está pendente ou parcialmente pago (todo agendamento já entra aqui como previsão, mesmo antes de finalizado). Nela dá pra lançar uma receita avulsa, <strong>registrar recebimento</strong> (total ou parcial, com forma de pagamento) — o que envia um recibo por e-mail ao cliente automaticamente — ou <strong>cancelar/estornar</strong> a conta.</p>
+                        <p><strong>Receitas</strong> — o mesmo tipo de conta, mas o histórico completo (inclui quitadas, canceladas e estornadas).</p>
+                        <p><strong>Contas a Pagar</strong> e <strong>Despesas</strong> — o mesmo conceito, só que para o que a empresa deve pagar (contas em aberto x histórico completo); permite lançar despesa avulsa e registrar pagamento.</p>
+                        <p><strong>Comissões</strong> — lista o que cada funcionário tem a receber de comissão por atendimento finalizado. O botão <strong>Pagar</strong> quita de uma vez todas as comissões pendentes de um funcionário num período, gerando a conta a pagar correspondente.</p>
+                        <p><strong>Categorias</strong> — categorias de receita/despesa usadas pra classificar os lançamentos nos relatórios. Categorias marcadas como "padrão" (criadas automaticamente pelo sistema, ex.: "Serviços", "Comissões") não podem ter nome/tipo alterados — só ativar/inativar.</p>
+                        <p class="mb-0"><strong>Relatórios</strong> — receitas e despesas agrupadas por categoria, e total de comissão por funcionário, no período escolhido.</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (!ehFuncionario)
+        {
+            <h5 class="fw-bold mt-4 mb-2">Sua Empresa</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como edito os dados da minha empresa (fotos, redes sociais)?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Empresas</strong> ficam todos os dados que aparecem na sua página pública: identidade (nome, slogan, descrição, segmento), logo (upload de imagem, até 2 MB), endereço, contato, redes sociais (Instagram, Facebook, TikTok, YouTube, site), formas de pagamento aceitas e comodidades (Wi-Fi, estacionamento, acessibilidade etc.).</p>
+                        <p class="mb-0">A <strong>galeria de fotos</strong> aceita até 5 imagens — pra trocar, remova uma antiga antes de enviar outra no lugar.</p>
+                    </div>
+                </div>
+            </div>
+
+            <h5 class="fw-bold mt-4 mb-2">Assinatura</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Como funciona minha Assinatura do Simpli Time (trial, troca de plano, faturamento)?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p><strong>Importante:</strong> isso é a assinatura da sua empresa junto ao <em>Simpli Time</em> (o próprio SaaS) — não confundir com os "Planos" que você vende pros seus clientes, que é outra tela.</p>
+                        <p>Todo plano (Start, Pro ou Business) e período (mensal, semestral ou anual) começa com <strong>7 dias grátis de teste</strong> antes da primeira cobrança. Escolha o plano em <strong>Assinatura</strong> e conclua o pagamento no checkout embutido do Stripe, direto na página.</p>
+                        <p class="mb-0">Pra trocar de plano, atualizar o cartão ou ver as faturas, use <strong>Portal de faturamento</strong> — ele abre o portal do Stripe, gerenciado por eles. Sem assinatura ativa (nem em teste), o sistema libera só a configuração da empresa; agendamentos e os demais recursos ficam bloqueados até o pagamento.</p>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <h5 class="fw-bold mt-4 mb-2">Notificações</h5>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como funcionam as notificações?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">O sino no topo avisa sobre novo agendamento, pagamento recebido e novo cadastro de cliente, entre outros. Abrir a tela de <strong>Notificações</strong> marca tudo como lido automaticamente — o contador do sino só soma o que ainda não foi visto.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- =========================================================
+             PORTAL CLIENTE
+             ========================================================= -->
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como faço um agendamento?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>Em <strong>Novo Agendamento</strong>, escolha a categoria (opcional) e a empresa onde quer agendar, o serviço desejado e a data/hora. O sistema sorteia automaticamente um profissional disponível da empresa (ou agenda direto com a empresa, se ela não tiver funcionários cadastrados) e recusa o horário se já estiver ocupado.</p>
+                    <p class="mb-0">Se a empresa tiver atingido o limite de agendamentos do mês dela, o sistema avisa e pede pra você falar diretamente com o estabelecimento.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como vejo ou cancelo meus agendamentos?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p><strong>Meus Agendamentos</strong> lista tudo o que você marcou, separado em <strong>Próximos</strong> (ainda vai acontecer) e <strong>Histórico</strong> (finalizados ou cancelados). Dá pra <strong>editar</strong> um agendamento futuro (trocar empresa, serviço, data/hora) ou <strong>cancelar</strong> — cancelar remove o agendamento da sua lista e, se você tinha usado um crédito de algum plano de assinatura pra esse horário, ele volta pra você poder usar em outro agendamento.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como funciona a Fidelidade?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">Empresas que têm programa de fidelidade contam automaticamente suas visitas sempre que um agendamento é concluído. Ao atingir o número de visitas exigido, você ganha um desconto disponível — o selo de desconto aparece no cartão da empresa na tela <strong>Início</strong>. O uso do desconto é aplicado pela própria empresa no balcão, na hora do atendimento.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">O que são os Meus Planos?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>São os <strong>pacotes de sessões</strong> vendidos pelas empresas que você frequenta (ex.: "10 cortes por mês") — não tem relação com nenhuma assinatura do próprio Simpli Time. Em <strong>Meus Planos</strong>, veja os planos disponíveis das empresas e <strong>solicite</strong> o que te interessa.</p>
+                    <p class="mb-0">A solicitação fica <em>pendente</em> até a empresa confirmar o pagamento combinado com você e aprovar — só depois disso os créditos ficam liberados pra usar em agendamentos. Cada agendamento coberto pelo plano consome 1 crédito automaticamente (e o crédito volta se você cancelar o agendamento).</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como edito meus dados pessoais?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">Nome, e-mail e telefone são os informados no seu cadastro (tela de <strong>Registro</strong>) — hoje não existe uma tela própria pra alterar esses dados depois de criada a conta. Se precisar corrigir alguma informação, fale com o <strong>Atendimento</strong>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Como instalo o Simpli Time como app no celular?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">No menu lateral, o link <strong>Instalar app</strong> aparece quando o navegador permite instalação direta (Android/Chrome). No iPhone (Safari), toque no ícone de compartilhar e escolha <em>"Adicionar à Tela de Início"</em>. Uma vez instalado, o Simpli Time abre como um app normal, sem barra de endereço.</p>
+                </div>
+            </div>
+        </div>
+    }
+
+</div>

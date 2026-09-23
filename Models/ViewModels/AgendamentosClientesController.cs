@@ -51,40 +51,48 @@ public class AgendamentosClientesController : Controller
     [HttpGet("")]
     public async Task<IActionResult> Index(string? aba)
     {
-        var user = await GetCurrentUserAsync();
-
-        if (user == null || user.ClienteId == null)
-            return RedirectLogin();
-
-        aba = string.IsNullOrWhiteSpace(aba) ? "proximos" : aba.ToLowerInvariant();
-
-        var query = _context.Agendamentos
-            .AsNoTracking()
-            .Include(a => a.Servico)
-            .Include(a => a.Empresa)
-            .Where(a => a.ClienteId == user.ClienteId);
-
-        // Por padrão só mostra o que ainda vai acontecer — vencido/cancelado
-        // vira aba de histórico separada, não fica tudo empilhado junto.
-        query = aba switch
+        try
         {
-            "historico" => query.Where(a =>
-                a.Status == StatusAgendamento.Finalizado ||
-                a.Status == StatusAgendamento.Cancelado),
-            _ => query.Where(a =>
-                a.Status == StatusAgendamento.Agendado ||
-                a.Status == StatusAgendamento.Confirmado)
-        };
+            var user = await GetCurrentUserAsync();
 
-        query = aba == "historico"
-            ? query.OrderByDescending(a => a.DataHora)
-            : query.OrderBy(a => a.DataHora);
+            if (user == null || user.ClienteId == null)
+                return RedirectLogin();
 
-        var agendamentos = await query.ToListAsync();
+            aba = string.IsNullOrWhiteSpace(aba) ? "proximos" : aba.ToLowerInvariant();
 
-        ViewBag.Aba = aba;
+            var query = _context.Agendamentos
+                .AsNoTracking()
+                .Include(a => a.Servico)
+                .Include(a => a.Empresa)
+                .Where(a => a.ClienteId == user.ClienteId);
 
-        return View(agendamentos);
+            // Por padrão só mostra o que ainda vai acontecer — vencido/cancelado
+            // vira aba de histórico separada, não fica tudo empilhado junto.
+            query = aba switch
+            {
+                "historico" => query.Where(a =>
+                    a.Status == StatusAgendamento.Finalizado ||
+                    a.Status == StatusAgendamento.Cancelado),
+                _ => query.Where(a =>
+                    a.Status == StatusAgendamento.Agendado ||
+                    a.Status == StatusAgendamento.Confirmado)
+            };
+
+            query = aba == "historico"
+                ? query.OrderByDescending(a => a.DataHora)
+                : query.OrderBy(a => a.DataHora);
+
+            var agendamentos = await query.ToListAsync();
+
+            ViewBag.Aba = aba;
+
+            return View(agendamentos);
+        }
+        catch
+        {
+            ToastHelper.Error(TempData, "Erro ao carregar seus agendamentos.");
+            return View(new List<Agendamento>());
+        }
     }
 
     // =========================
@@ -93,24 +101,32 @@ public class AgendamentosClientesController : Controller
     [HttpGet("novo")]
     public async Task<IActionResult> Create()
     {
-        var user = await GetCurrentUserAsync();
+        try
+        {
+            var user = await GetCurrentUserAsync();
 
-        if (user == null || user.ClienteId == null)
-            return RedirectLogin();
+            if (user == null || user.ClienteId == null)
+                return RedirectLogin();
 
-        ViewBag.Segmentos = await _context.Empresas
-            .Where(e => e.Ativo && e.SegmentoAtuacao != null)
-            .Select(e => e.SegmentoAtuacao!)
-            .Distinct()
-            .OrderBy(s => s)
-            .ToListAsync();
+            ViewBag.Segmentos = await _context.Empresas
+                .Where(e => e.Ativo && e.SegmentoAtuacao != null)
+                .Select(e => e.SegmentoAtuacao!)
+                .Distinct()
+                .OrderBy(s => s)
+                .ToListAsync();
 
-        ViewBag.Empresas = new SelectList(
-            await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
-            "Id", "Nome"
-        );
+            ViewBag.Empresas = new SelectList(
+                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                "Id", "Nome"
+            );
 
-        return View();
+            return View();
+        }
+        catch
+        {
+            ToastHelper.Error(TempData, "Erro ao abrir formulário de agendamento.");
+            return RedirectToAction(nameof(Index));
+        }
     }
 
     // =========================
@@ -119,19 +135,26 @@ public class AgendamentosClientesController : Controller
     [HttpGet("empresas")]
     public async Task<IActionResult> Empresas(string? segmento)
     {
-        var query = _context.Empresas.Where(e => e.Ativo);
-
-        if (!string.IsNullOrWhiteSpace(segmento))
+        try
         {
-            query = query.Where(e => e.SegmentoAtuacao == segmento);
+            var query = _context.Empresas.Where(e => e.Ativo);
+
+            if (!string.IsNullOrWhiteSpace(segmento))
+            {
+                query = query.Where(e => e.SegmentoAtuacao == segmento);
+            }
+
+            var empresas = await query
+                .OrderBy(e => e.Nome)
+                .Select(e => new { e.Id, e.Nome })
+                .ToListAsync();
+
+            return Json(empresas);
         }
-
-        var empresas = await query
-            .OrderBy(e => e.Nome)
-            .Select(e => new { e.Id, e.Nome })
-            .ToListAsync();
-
-        return Json(empresas);
+        catch
+        {
+            return Json(Array.Empty<object>());
+        }
     }
 
     // =========================
@@ -141,6 +164,8 @@ public class AgendamentosClientesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Agendamento agendamento)
     {
+        try
+        {
         var user = await GetCurrentUserAsync();
 
         if (user == null || user.ClienteId == null)
@@ -311,6 +336,12 @@ public class AgendamentosClientesController : Controller
             "/Cliente/Agendamentos");
 
         return RedirectToAction(nameof(Index));
+        }
+        catch
+        {
+            ToastHelper.Error(TempData, "Erro ao criar agendamento.");
+            return RedirectToAction(nameof(Index));
+        }
     }
 
     // =========================
@@ -319,6 +350,8 @@ public class AgendamentosClientesController : Controller
     [HttpGet("editar/{id}")]
     public async Task<IActionResult> Edit(int id)
     {
+        try
+        {
         var user = await GetCurrentUserAsync();
 
         if (user == null || user.ClienteId == null)
@@ -330,9 +363,121 @@ public class AgendamentosClientesController : Controller
         if (agendamento == null)
             return NotFound();
 
-        ViewBag.Empresas = await _context.Empresas.ToListAsync();
+        ViewBag.Empresas = new SelectList(
+            await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+            "Id", "Nome");
+
+        ViewBag.Servicos = new SelectList(
+            await _context.Servicos.Where(s => s.EmpresaId == agendamento.EmpresaId && s.Ativo).ToListAsync(),
+            "Id", "Nome");
 
         return View(agendamento);
+        }
+        catch
+        {
+            ToastHelper.Error(TempData, "Erro ao carregar agendamento.");
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("editar/{id}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, Agendamento model)
+    {
+        try
+        {
+        var user = await GetCurrentUserAsync();
+
+        if (user == null || user.ClienteId == null)
+            return RedirectLogin();
+
+        var agendamento = await _context.Agendamentos
+            .FirstOrDefaultAsync(x => x.Id == id && x.ClienteId == user.ClienteId);
+
+        if (agendamento == null)
+            return NotFound();
+
+        async Task<IActionResult> Reexibir(string erro)
+        {
+            ModelState.AddModelError("", erro);
+
+            ViewBag.Empresas = new SelectList(
+                await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
+                "Id", "Nome");
+
+            ViewBag.Servicos = new SelectList(
+                await _context.Servicos.Where(s => s.EmpresaId == model.EmpresaId && s.Ativo).ToListAsync(),
+                "Id", "Nome");
+
+            model.Id = id;
+            return View(model);
+        }
+
+        if (model.DataHora == default)
+        {
+            return await Reexibir("Selecione data e horário.");
+        }
+
+        var servico = await _context.Servicos
+            .FirstOrDefaultAsync(s =>
+                s.Id == model.ServicoId &&
+                s.EmpresaId == model.EmpresaId &&
+                s.Ativo);
+
+        if (servico == null)
+        {
+            return await Reexibir("Serviço não encontrado para a empresa selecionada.");
+        }
+
+        // A empresa pode ter mudado — sorteia de novo entre os funcionários
+        // ativos dela em vez de manter o funcionário da empresa anterior.
+        var funcionarioId = await _context.Funcionarios
+            .Where(f => f.EmpresaId == model.EmpresaId && f.Ativo)
+            .OrderBy(x => Guid.NewGuid())
+            .Select(x => (int?)x.Id)
+            .FirstOrDefaultAsync();
+
+        var inicio = model.DataHora;
+        var fim = inicio.AddMinutes(servico.DuracaoMinutos);
+
+        var conflito = await _context.Agendamentos
+            .Include(a => a.Servico)
+            .AnyAsync(a =>
+                a.Id != id &&
+                a.EmpresaId == model.EmpresaId &&
+                a.FuncionarioId == funcionarioId &&
+                a.Ativo &&
+                a.Status != StatusAgendamento.Cancelado &&
+                inicio < a.DataHora.AddMinutes(a.Servico.DuracaoMinutos) &&
+                fim > a.DataHora);
+
+        if (conflito)
+        {
+            return await Reexibir("Não há profissional disponível nesse horário. Escolha outro horário.");
+        }
+
+        if (agendamento.EmpresaId != model.EmpresaId)
+        {
+            await EmpresaClienteHelper.GarantirVinculoAsync(_context, model.EmpresaId, user.ClienteId.Value);
+        }
+
+        agendamento.EmpresaId = model.EmpresaId;
+        agendamento.ServicoId = model.ServicoId;
+        agendamento.FuncionarioId = funcionarioId;
+        agendamento.DataHora = model.DataHora;
+        agendamento.Observacao = model.Observacao;
+
+        await _context.SaveChangesAsync();
+
+        ToastHelper.Success(TempData, "Agendamento atualizado com sucesso!");
+
+        return RedirectToAction(nameof(Index));
+        }
+        catch
+        {
+            ToastHelper.Error(TempData, "Erro ao atualizar agendamento.");
+            return RedirectToAction(nameof(Index));
+        }
     }
 
     // =========================
@@ -342,28 +487,36 @@ public class AgendamentosClientesController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
     {
-        var user = await GetCurrentUserAsync();
-
-        if (user == null || user.ClienteId == null)
-            return RedirectLogin();
-
-        var agendamento = await _context.Agendamentos
-            .FirstOrDefaultAsync(x => x.Id == id && x.ClienteId == user.ClienteId);
-
-        if (agendamento != null)
+        try
         {
-            var assinaturaId = agendamento.AssinaturaPlanoServicoId;
+            var user = await GetCurrentUserAsync();
 
-            _context.Agendamentos.Remove(agendamento);
-            await _context.SaveChangesAsync();
+            if (user == null || user.ClienteId == null)
+                return RedirectLogin();
 
-            if (assinaturaId.HasValue)
+            var agendamento = await _context.Agendamentos
+                .FirstOrDefaultAsync(x => x.Id == id && x.ClienteId == user.ClienteId);
+
+            if (agendamento != null)
             {
-                await _planoCreditoService.DevolverCreditoAsync(assinaturaId.Value);
-            }
-        }
+                var assinaturaId = agendamento.AssinaturaPlanoServicoId;
 
-        return RedirectToAction(nameof(Index));
+                _context.Agendamentos.Remove(agendamento);
+                await _context.SaveChangesAsync();
+
+                if (assinaturaId.HasValue)
+                {
+                    await _planoCreditoService.DevolverCreditoAsync(assinaturaId.Value);
+                }
+            }
+
+            return RedirectToAction(nameof(Index));
+        }
+        catch
+        {
+            ToastHelper.Error(TempData, "Erro ao excluir agendamento.");
+            return RedirectToAction(nameof(Index));
+        }
     }
 
     // =========================
@@ -372,12 +525,19 @@ public class AgendamentosClientesController : Controller
     [HttpGet("servicos/{empresaId}")]
     public async Task<IActionResult> Servicos(int empresaId)
     {
-        var servicos = await _context.Servicos
-            .Where(x => x.EmpresaId == empresaId)
-            .Select(x => new { x.Id, x.Nome })
-            .ToListAsync();
+        try
+        {
+            var servicos = await _context.Servicos
+                .Where(x => x.EmpresaId == empresaId && x.Ativo)
+                .Select(x => new { x.Id, x.Nome })
+                .ToListAsync();
 
-        return Json(servicos);
+            return Json(servicos);
+        }
+        catch
+        {
+            return Json(Array.Empty<object>());
+        }
     }
 
     // Agendamento público sem login é feito por PublicoController.Agendar

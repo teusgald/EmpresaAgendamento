@@ -5,6 +5,20 @@ namespace EmpresaAgendamento.Helpers
 {
     public static class SlugHelper
     {
+        // Rotas de um segmento só na raiz do site (PublicoController usa
+        // [HttpGet("{slug}")] sob [Route("")]) — uma empresa não pode usar
+        // nenhuma delas como slug, senão a rota literal sempre vence e a
+        // página dela fica inacessível.
+        private static readonly HashSet<string> Reservados = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "login", "empresas", "termos-de-uso", "politica-de-privacidade",
+            "acesso-negado", "sessao-expirada", "erro", "manutencao",
+            "css", "js", "lib", "img", "uploads"
+        };
+
+        public static bool EhReservado(string? slug) =>
+            !string.IsNullOrWhiteSpace(slug) && Reservados.Contains(slug.Trim());
+
         // "Salão Beleza & Cia" -> "salao-beleza-cia"
         public static string Gerar(string texto)
         {

@@ -179,6 +179,7 @@ else
                                     StatusAgendamento.Confirmado => "btn-success",
                                     StatusAgendamento.Cancelado => "btn-danger",
                                     StatusAgendamento.Finalizado => "btn-secondary",
+                                    StatusAgendamento.EmAndamento => "btn-warning",
                                     _ => "btn-secondary"
                                 };
                             }
@@ -261,6 +262,16 @@ else
 
                             </a>
 
+                            @if (item.Status != StatusAgendamento.Cancelado)
+                            {
+                                <a asp-controller="Comanda"
+                                   asp-action="Index"
+                                   asp-route-agendamentoId="@item.Id"
+                                   class="btn btn-sm btn-outline-dark">
+                                    <i class="bi bi-receipt"></i> Comanda
+                                </a>
+                            }
+
                         </td>
 
                     </tr>
@@ -284,6 +295,7 @@ else
             StatusAgendamento.Confirmado => "bg-success",
             StatusAgendamento.Cancelado => "bg-danger",
             StatusAgendamento.Finalizado => "bg-secondary",
+            StatusAgendamento.EmAndamento => "bg-warning text-dark",
             _ => "bg-secondary"
         };
 
@@ -385,6 +397,16 @@ else
                         Editar
 
                     </a>
+
+                    @if (item.Status != StatusAgendamento.Cancelado)
+                    {
+                        <a asp-controller="Comanda"
+                           asp-action="Index"
+                           asp-route-agendamentoId="@item.Id"
+                           class="btn btn-outline-dark">
+                            <i class="bi bi-receipt"></i> Comanda
+                        </a>
+                    }
 
                     @if (item.ClienteAvulso &&
                    !string.IsNullOrWhiteSpace(item.TelefoneClienteAvulso))

@@ -29,7 +29,8 @@
     }
     else
     {
-        <div class="card shadow-sm mb-4">
+        <!-- DESKTOP -->
+        <div class="card shadow-sm mb-4 d-none d-lg-block">
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
@@ -79,6 +80,59 @@
                     </table>
                 </div>
             </div>
+        </div>
+
+        <!-- MOBILE -->
+        <div class="d-lg-none mb-4">
+            @foreach (var programa in Model.Programas)
+            {
+                <div class="card mobile-card mb-3">
+                    <div class="card-body">
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold mb-0">
+                                @(programa.ServicoNome ?? "Geral (qualquer serviço)")
+                            </h6>
+
+                            @if (programa.Ativo)
+                            {
+                                <span class="badge bg-success">Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>Visitas necessárias</label>
+                            <span>@programa.VisitasNecessarias</span>
+                        </div>
+
+                        <div class="mobile-info">
+                            <label>Desconto</label>
+                            <span>
+                                @(programa.TipoDesconto == TipoDescontoFidelidade.Percentual
+                                    ? $"{programa.ValorDesconto:0.##}%"
+                                    : programa.ValorDesconto.ToString("C"))
+                            </span>
+                        </div>
+
+                        <div class="mobile-actions">
+                            <a asp-action="Edit" asp-route-id="@programa.Id" class="btn btn-outline-primary">
+                                Editar
+                            </a>
+
+                            <form asp-action="Delete" asp-route-id="@programa.Id" method="post"
+                                  onsubmit="return confirm('Excluir esse programa de fidelidade? O progresso dos clientes nele será perdido.');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-danger w-100">Excluir</button>
+                            </form>
+                        </div>
+
+                    </div>
+                </div>
+            }
         </div>
     }
 

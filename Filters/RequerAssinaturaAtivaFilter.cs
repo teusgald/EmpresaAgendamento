@@ -89,12 +89,18 @@ namespace EmpresaAgendamento.Filters
                 return;
             }
 
-            var assinaturaStatus = await _context.Empresas
+            var empresaInfo = await _context.Empresas
                 .Where(e => e.Id == user.EmpresaId)
-                .Select(e => e.AssinaturaStatus)
+                .Select(e => new { e.AssinaturaStatus, e.VipAcesso })
                 .FirstOrDefaultAsync();
 
-            var assinaturaAtiva = assinaturaStatus == "active" || assinaturaStatus == "trialing";
+            // VIP (liberado manualmente pelo painel do dono do sistema, ex.:
+            // testers iniciais) nunca é bloqueado pelo paywall, independente
+            // do status da assinatura no Stripe.
+            var assinaturaAtiva =
+                empresaInfo?.VipAcesso == true ||
+                empresaInfo?.AssinaturaStatus == "active" ||
+                empresaInfo?.AssinaturaStatus == "trialing";
 
             if (!assinaturaAtiva)
             {

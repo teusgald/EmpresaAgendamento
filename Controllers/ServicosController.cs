@@ -15,13 +15,16 @@ namespace EmpresaAgendamento.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<ServicosController> _logger;
 
         public ServicosController(
             ApplicationDbContext context,
-            UserManager<ApplicationUser> userManager)
+            UserManager<ApplicationUser> userManager,
+            ILogger<ServicosController> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -71,8 +74,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return View(lista);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao carregar serviços.");
                 ToastHelper.Error(TempData, "Erro ao carregar serviços.");
                 return RedirectToAction("Index", "Home");
             }
@@ -88,8 +92,9 @@ namespace EmpresaAgendamento.Controllers
             {
                 return View();
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao abrir formulário de criação de serviço.");
                 ToastHelper.Error(TempData, "Erro ao abrir formulário.");
                 return RedirectToAction(nameof(Index));
             }
@@ -130,8 +135,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao criar serviço.");
                 ToastHelper.Error(TempData, "Erro ao criar serviço.");
                 return RedirectToAction(nameof(Index));
             }
@@ -166,8 +172,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return View(servico);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao carregar serviço {ServicoId}.", id);
                 ToastHelper.Error(TempData, "Erro ao carregar serviço.");
                 return RedirectToAction(nameof(Index));
             }
@@ -225,8 +232,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao atualizar serviço {ServicoId}.", id);
                 ToastHelper.Error(TempData, "Erro ao atualizar serviço.");
                 return RedirectToAction(nameof(Index));
             }
@@ -284,8 +292,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao alterar status do serviço {ServicoId}.", id);
                 ToastHelper.Error(TempData, "Erro ao alterar status.");
                 return RedirectToAction(nameof(Index));
             }

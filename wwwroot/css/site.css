@@ -568,7 +568,10 @@ body {
     flex-direction: column;
     transition: left .25s ease;
     z-index: 1000;
-    padding-top: 60px;
+    /* env(safe-area-inset-*) só existe de verdade no PWA instalado (iOS);
+       em navegador normal essas variáveis são 0px e não mudam nada aqui. */
+    padding-top: calc(60px + env(safe-area-inset-top, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
     .sidebar > ul.nav {
@@ -755,6 +758,49 @@ body {
     padding: 24px;
 }
 
+/* Portal do cliente: rodapé "cola" no fim da tela em páginas com pouco
+   conteúdo (padrão "sticky footer") em vez de deixar um vazio embaixo. */
+.content-cliente {
+    display: flex;
+    flex-direction: column;
+}
+
+.content-cliente .portal-content-body {
+    flex: 1 0 auto;
+}
+
+.portal-footer {
+    flex-shrink: 0;
+    margin-top: 24px;
+    padding: 16px 24px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--st-gray-300);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    align-items: center;
+    justify-content: space-between;
+    font-size: .8rem;
+    color: var(--st-gray-600);
+}
+
+    .portal-footer a {
+        color: var(--st-gray-600);
+        text-decoration: none;
+    }
+
+        .portal-footer a:hover {
+            color: var(--st-black);
+            text-decoration: underline;
+        }
+
+@media (max-width: 768px) {
+    .portal-footer {
+        padding: 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    }
+}
+
 .topbar {
     height: 60px;
     background: var(--st-black);
@@ -785,20 +831,35 @@ body {
 
 @media (max-width: 768px) {
     .topbar {
-        width: 100%;
-        margin-left: 0;
-        position: fixed;
+        /* "sticky" em vez de "fixed": no PWA instalado do iOS, elementos
+           "fixed" às vezes ficam por baixo do conteúdo rolado por um bug
+           conhecido do WebKit durante a rolagem/rubber-band — "sticky" não
+           sofre disso e, como body é o único scroller da página, se
+           comporta igual a "fixed" na prática. Como "sticky" continua no
+           fluxo normal (diferente de "fixed"), a margem negativa cancela o
+           padding lateral de 16px do .content pra ficar de ponta a ponta.
+           16px é o mesmo valor do padding do .content nesse breakpoint —
+           os dois têm que mudar juntos. */
+        width: calc(100% + 32px);
+        margin: 0 -16px;
+        position: sticky;
         top: 0;
-        left: 0;
+        z-index: 1100;
         padding-left: 15px;
         padding-right: 15px;
+        /* Some com a área do notch/status bar no PWA instalado (iOS) —
+           sem isso a topbar (e o que rola por baixo dela) invade a área
+           dos ícones de sinal/bateria. Em navegador normal isso é 0px. */
+        padding-top: env(safe-area-inset-top, 0px);
+        height: calc(60px + env(safe-area-inset-top, 0px));
     }
 
     .content {
         padding: 16px;
-        /* Compensa a topbar fixa (60px) só existir no mobile — sem isso o
-           topo do conteúdo fica escondido atrás dela. */
-        padding-top: 76px;
+        /* "sticky" continua ocupando espaço no fluxo normal (diferente de
+           "fixed"), então o conteúdo já nasce empurrado pra baixo da
+           topbar sozinho — não precisa de padding-top extra pra compensar. */
+        padding-top: 0;
     }
 }
 
@@ -1053,4 +1114,32 @@ body {
     background: var(--st-bg);
     color: var(--st-gray-600);
     font-size: 1.75rem;
+}
+
+/* ===========================================================================
+   AJUDA (FAQ) — pergunta/resposta em acordeão, mesmo padrão de collapse já
+   usado no menu lateral ("Cadastros"/"Financeiro"), só que no conteúdo
+   principal em vez da sidebar.
+   =========================================================================== */
+
+.faq-item .faq-question {
+    color: var(--st-black);
+    cursor: pointer;
+}
+
+    .faq-item .faq-question:hover {
+        background: var(--st-bg);
+    }
+
+    .faq-item .faq-question[aria-expanded="true"] {
+        border-bottom: 1px solid var(--st-gray-300);
+    }
+
+.faq-item .faq-chevron {
+    transition: transform .2s ease;
+    flex-shrink: 0;
+}
+
+.faq-item .faq-question[aria-expanded="true"] .faq-chevron {
+    transform: rotate(180deg);
 }

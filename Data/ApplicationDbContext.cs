@@ -51,6 +51,9 @@ namespace EmpresaAgendamento.Data
         public DbSet<ProgramaFidelidade> ProgramasFidelidade { get; set; }
         public DbSet<FidelidadeCliente> FidelidadeClientes { get; set; }
 
+        public DbSet<Produto> Produtos { get; set; }
+        public DbSet<ItemComanda> ItensComanda { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -730,6 +733,41 @@ namespace EmpresaAgendamento.Data
             builder.Entity<FidelidadeCliente>()
                 .HasIndex(x => new { x.ProgramaFidelidadeId, x.ClienteId })
                 .IsUnique();
+
+            #endregion
+
+            #region Comanda (Produtos)
+
+            builder.Entity<Produto>()
+                .Property(x => x.Preco)
+                .HasPrecision(10, 2);
+
+            builder.Entity<Produto>()
+                .HasOne(x => x.Empresa)
+                .WithMany(e => e.Produtos)
+                .HasForeignKey(x => x.EmpresaId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            builder.Entity<ItemComanda>()
+                .Property(x => x.PrecoUnitario)
+                .HasPrecision(10, 2);
+
+            builder.Entity<ItemComanda>()
+                .HasOne(x => x.Agendamento)
+                .WithMany(a => a.ItensComanda)
+                .HasForeignKey(x => x.AgendamentoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Restrict: um produto com histórico em comandas não pode ser
+            // excluído de verdade — só inativado (igual Serviço).
+            builder.Entity<ItemComanda>()
+                .HasOne(x => x.Produto)
+                .WithMany(p => p.ItensComanda)
+                .HasForeignKey(x => x.ProdutoId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<ItemComanda>()
+                .HasIndex(x => x.AgendamentoId);
 
             #endregion
         }

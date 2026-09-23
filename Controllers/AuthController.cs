@@ -10,14 +10,22 @@ namespace EmpresaAgendamento.Controllers
         [HttpPost("logout")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Logout(
-            [FromServices] SignInManager<ApplicationUser> signInManager)
+            [FromServices] SignInManager<ApplicationUser> signInManager,
+            [FromServices] ILogger<AuthController> logger)
         {
             // Precisa checar a role ANTES de deslogar — depois do SignOutAsync
             // o User já não carrega mais nenhuma claim/role.
             var ehCliente = User.IsInRole("Cliente");
             var ehFuncionario = User.IsInRole("Funcionario");
 
-            await signInManager.SignOutAsync();
+            try
+            {
+                await signInManager.SignOutAsync();
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Falha ao encerrar sessão.");
+            }
 
             if (ehFuncionario)
             {

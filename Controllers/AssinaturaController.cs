@@ -122,21 +122,37 @@ namespace EmpresaAgendamento.Controllers
                 return RedirectToAction("Login", "EmpresaAuth");
             }
 
-            var empresa = await _context.Empresas
-                .FirstOrDefaultAsync(e => e.Id == empresaId);
+            try
+            {
+                var empresa = await _context.Empresas
+                    .FirstOrDefaultAsync(e => e.Id == empresaId);
 
-            var tipoPlano = string.IsNullOrEmpty(empresa?.TipoPlanoEscolhido)
-                ? "mensal"
-                : empresa.TipoPlanoEscolhido;
+                var tipoPlano = string.IsNullOrEmpty(empresa?.TipoPlanoEscolhido)
+                    ? "mensal"
+                    : empresa.TipoPlanoEscolhido;
 
-            var nomePlano = string.IsNullOrEmpty(empresa?.NomePlanoEscolhido)
-                ? "Start"
-                : empresa.NomePlanoEscolhido;
+                var nomePlano = string.IsNullOrEmpty(empresa?.NomePlanoEscolhido)
+                    ? "Start"
+                    : empresa.NomePlanoEscolhido;
 
-            var planos = await _stripeService.GarantirPlanosAsync();
-            var planoId = (planos.FirstOrDefault(p => p.Nome == nomePlano) ?? planos.First()).Id;
+                var planos = await _stripeService.GarantirPlanosAsync();
+                var plano = planos.FirstOrDefault(p => p.Nome == nomePlano) ?? planos.FirstOrDefault();
 
-            return RedirectToAction(nameof(Index), new { tipoPlano, planoId });
+                if (plano == null)
+                {
+                    // Sem planos disponíveis no Stripe: cai na tela normal de
+                    // escolha de plano em vez de quebrar com lista vazia.
+                    return RedirectToAction(nameof(Index));
+                }
+
+                return RedirectToAction(nameof(Index), new { tipoPlano, planoId = plano.Id });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao iniciar assinatura (empresa {EmpresaId}).", empresaId);
+                ToastHelper.Error(TempData, MensagemErroGenerica);
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // O Stripe redireciona o navegador pra cá quando o Checkout embutido

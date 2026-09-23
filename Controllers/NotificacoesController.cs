@@ -14,16 +14,23 @@ namespace EmpresaAgendamento.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly ILogger<NotificacoesController> _logger;
 
-        public NotificacoesController(ApplicationDbContext context, UserManager<ApplicationUser> userManager)
+        public NotificacoesController(
+            ApplicationDbContext context,
+            UserManager<ApplicationUser> userManager,
+            ILogger<NotificacoesController> logger)
         {
             _context = context;
             _userManager = userManager;
+            _logger = logger;
         }
 
         [HttpGet("")]
         public async Task<IActionResult> Index()
         {
+            try
+            {
             var user = await _userManager.GetUserAsync(User);
 
             if (user == null)
@@ -76,6 +83,13 @@ namespace EmpresaAgendamento.Controllers
             ViewData["Title"] = "Notificações";
 
             return View(lista);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Falha ao carregar notificações.");
+                ToastHelper.Error(TempData, "Erro ao carregar notificações.");
+                return View(new List<Notificacao>());
+            }
         }
     }
 }

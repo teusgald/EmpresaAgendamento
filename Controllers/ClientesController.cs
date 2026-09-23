@@ -15,15 +15,18 @@ public class ClientesController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly INotificacaoService _notificacaoService;
+    private readonly ILogger<ClientesController> _logger;
 
     public ClientesController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
-        INotificacaoService notificacaoService)
+        INotificacaoService notificacaoService,
+        ILogger<ClientesController> logger)
     {
         _context = context;
         _userManager = userManager;
         _notificacaoService = notificacaoService;
+        _logger = logger;
     }
 
     private async Task<int?> GetEmpresaId()
@@ -120,8 +123,8 @@ public class ClientesController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao carregar clientes.");
             ToastHelper.Error(TempData, "Erro ao carregar clientes.");
-            // opcional: log ex.Message
             return RedirectToAction("Index", "Home");
         }
     }
@@ -175,6 +178,7 @@ public class ClientesController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao abrir cadastro de cliente.");
             ToastHelper.Error(TempData, "Erro ao abrir cadastro.");
             return RedirectToAction(nameof(Index));
         }
@@ -229,6 +233,7 @@ public class ClientesController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao criar cliente.");
             ToastHelper.Error(TempData, "Erro ao criar cliente.");
             return View(cliente);
         }
@@ -265,6 +270,7 @@ public class ClientesController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao abrir cliente {ClienteId}.", id);
             ToastHelper.Error(TempData, "Erro ao abrir cliente.");
             return RedirectToAction(nameof(Index));
         }
@@ -322,6 +328,7 @@ public class ClientesController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao atualizar cliente {ClienteId}.", id);
             ToastHelper.Error(TempData, "Erro ao atualizar cliente.");
             return RedirectToAction(nameof(Index));
         }
@@ -368,6 +375,7 @@ public class ClientesController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao alterar status do cliente {ClienteId}.", id);
             ToastHelper.Error(TempData, "Erro ao alterar status do cliente.");
             return RedirectToAction(nameof(Index));
         }

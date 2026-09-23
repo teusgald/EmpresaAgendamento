@@ -24,9 +24,19 @@
 <html lang="pt-br">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>@ViewData["Title"] - Simpli Time</title>
     <link rel="icon" type="image/png" href="/img/icon.png?v=3" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Simpli Time" />
+    <link rel="apple-touch-icon" href="/img/icon-192.png" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -90,10 +100,21 @@
         </ul>
 
         <div class="sidebar-secondary px-2 py-2">
+            <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Ajuda" ? "active" : "")"
+               asp-controller="Ajuda" asp-action="Index">
+                <i class="bi bi-question-circle"></i>
+                <span class="link-text">Ajuda</span>
+            </a>
+
             <a class="nav-link @(ViewContext.RouteData.Values["controller"]?.ToString() == "Atendimento" ? "active" : "")"
                asp-controller="Atendimento" asp-action="Index">
                 <i class="bi bi-headset"></i>
                 <span class="link-text">Atendimento</span>
+            </a>
+
+            <a class="nav-link" href="#" id="instalarAppLink" hidden>
+                <i class="bi bi-download"></i>
+                <span class="link-text">Instalar app</span>
             </a>
         </div>
 
@@ -114,7 +135,7 @@
     </div>
 
     <!-- CONTEÚDO -->
-    <div class="content" id="content">
+    <div class="content content-cliente" id="content">
 
         <!-- TOPBAR (só existe de verdade no mobile — é onde mora o botão do
              menu; o título de cada tela já aparece uma vez só, dentro do
@@ -138,9 +159,15 @@
         </div>
 
         <!-- BODY -->
-        <div class="p-4">
+        <div class="p-4 portal-content-body">
             @RenderBody()
         </div>
+
+        <!-- FOOTER -->
+        <footer class="portal-footer">
+            <span>© @DateTime.Now.Year Simpli Time — todos os direitos reservados</span>
+            <a asp-controller="Atendimento" asp-action="Index">Atendimento</a>
+        </footer>
 
     </div>
 
@@ -159,6 +186,8 @@
     }
 
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/pwa-cliente.js" asp-append-version="true"></script>
+    <script src="~/js/masks.js" asp-append-version="true"></script>
 
     <script>
         const sidebar = document.getElementById('sidebar');

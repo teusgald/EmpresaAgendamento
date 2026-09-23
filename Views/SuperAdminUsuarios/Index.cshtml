@@ -1,0 +1,187 @@
+@model EmpresaAgendamento.Models.ViewModels.SuperAdminUsuariosBuscaViewModel
+@{
+    ViewData["Title"] = "Usuários";
+    Layout = "_LayoutSuperAdmin";
+
+    string BadgeTipo(string tipo) => tipo switch
+    {
+        "Empresa" => "bg-dark",
+        "Funcionario" => "bg-info text-dark",
+        "Cliente" => "bg-secondary",
+        _ => "bg-secondary"
+    };
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Usuários</h3>
+            <p class="page-subtitle">Busque por nome/e-mail ou filtre por tipo — a busca exige pelo menos um filtro.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+
+                <div class="col-md-6">
+                    <label class="form-label small fw-semibold">Nome ou e-mail</label>
+                    <input type="text" name="termo" class="form-control" placeholder="Buscar por nome ou e-mail..." value="@Model.Termo" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold">Tipo</label>
+                    <select name="tipo" class="form-select">
+                        <option value="">Todos os tipos</option>
+                        <option value="Empresa" selected="@(Model.Tipo == "Empresa")">Empresa</option>
+                        <option value="Funcionario" selected="@(Model.Tipo == "Funcionario")">Funcionário</option>
+                        <option value="Cliente" selected="@(Model.Tipo == "Cliente")">Cliente</option>
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-search"></i> Buscar
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.Buscou)
+    {
+        <div class="alert alert-light border text-muted small">
+            <i class="bi bi-info-circle me-1"></i>
+            Informe um nome/e-mail ou selecione um tipo para buscar.
+        </div>
+    }
+    else if (!Model.Resultados.Any())
+    {
+        <div class="alert alert-light border text-muted small">
+            Nenhum usuário encontrado para esse filtro.
+        </div>
+    }
+    else
+    {
+        <!-- DESKTOP -->
+        <div class="card shadow-sm mb-4 d-none d-lg-block">
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>Tipo</th>
+                            <th>Empresa</th>
+                            <th>Plano</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var u in Model.Resultados)
+                        {
+                            <tr>
+                                <td>@u.Nome</td>
+                                <td>@u.Email</td>
+                                <td><span class="badge @BadgeTipo(u.Tipo)">@u.Tipo</span></td>
+                                <td>
+                                    @u.EmpresaNome
+                                    @if (u.EmpresaVip)
+                                    {
+                                        <span class="badge bg-info text-dark ms-1">VIP</span>
+                                    }
+                                </td>
+                                <td>@(u.PlanoNome ?? "—")</td>
+                                <td>
+                                    @if (u.Ativo)
+                                    {
+                                        <span class="badge bg-success">Ativo</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary">Inativo</span>
+                                    }
+                                </td>
+                                <td class="text-end">
+                                    @if (u.Tipo == "Empresa" && u.EmpresaId.HasValue)
+                                    {
+                                        <a asp-action="EditarEmpresa" asp-route-empresaId="@u.EmpresaId"
+                                           class="btn btn-sm btn-outline-dark">
+                                            <i class="bi bi-pencil"></i> Editar plano
+                                        </a>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- MOBILE -->
+        <div class="d-lg-none mb-4">
+            @foreach (var u in Model.Resultados)
+            {
+                <div class="mobile-card">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <div class="fw-semibold">@u.Nome</div>
+                            <div class="text-muted small">@u.Email</div>
+                        </div>
+                        <span class="badge @BadgeTipo(u.Tipo)">@u.Tipo</span>
+                    </div>
+
+                    @if (u.Tipo == "Empresa")
+                    {
+                        <div class="mobile-info">
+                            <span>Empresa</span>
+                            <span>
+                                @u.EmpresaNome
+                                @if (u.EmpresaVip)
+                                {
+                                    <span class="badge bg-info text-dark ms-1">VIP</span>
+                                }
+                            </span>
+                        </div>
+                        <div class="mobile-info">
+                            <span>Plano</span>
+                            <span>@(u.PlanoNome ?? "—")</span>
+                        </div>
+                    }
+
+                    <div class="mobile-info">
+                        <span>Status</span>
+                        <span>
+                            @if (u.Ativo)
+                            {
+                                <span class="badge bg-success">Ativo</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Inativo</span>
+                            }
+                        </span>
+                    </div>
+
+                    @if (u.Tipo == "Empresa" && u.EmpresaId.HasValue)
+                    {
+                        <div class="mobile-actions">
+                            <a asp-action="EditarEmpresa" asp-route-empresaId="@u.EmpresaId" class="btn btn-outline-dark w-100">
+                                <i class="bi bi-pencil"></i> Editar plano
+                            </a>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+
+        @if (Model.Resultados.Count == 50)
+        {
+            <p class="text-muted small">Mostrando os primeiros 50 resultados — refine a busca para ver menos itens.</p>
+        }
+    }
+
+</div>

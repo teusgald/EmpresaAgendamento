@@ -19,19 +19,22 @@ namespace EmpresaAgendamento.Controllers
         private readonly IFinanceiroService _financeiroService;
         private readonly IPlanoCreditoService _planoCreditoService;
         private readonly IFidelidadeService _fidelidadeService;
+        private readonly ILogger<AgendamentosController> _logger;
 
         public AgendamentosController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
             IFinanceiroService financeiroService,
             IPlanoCreditoService planoCreditoService,
-            IFidelidadeService fidelidadeService)
+            IFidelidadeService fidelidadeService,
+            ILogger<AgendamentosController> logger)
         {
             _context = context;
             _userManager = userManager;
             _financeiroService = financeiroService;
             _planoCreditoService = planoCreditoService;
             _fidelidadeService = fidelidadeService;
+            _logger = logger;
         }
 
         private async Task<int?> GetEmpresaId()
@@ -199,8 +202,10 @@ namespace EmpresaAgendamento.Controllers
 
                 return View(lista);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao carregar agendamentos.");
+
                 ToastHelper.Error(
                     TempData,
                     "Erro ao carregar agendamentos.");
@@ -216,7 +221,16 @@ namespace EmpresaAgendamento.Controllers
        int id,
        StatusAgendamento status)
         {
+            try
+            {
             var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "Account");
+            }
+
             var funcionarioId = await GetFuncionarioIdAsync();
 
             var agendamento = await _context.Agendamentos
@@ -259,8 +273,10 @@ namespace EmpresaAgendamento.Controllers
                         "Agendamento cancelado.");
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao atualizar financeiro do agendamento {AgendamentoId} para o status {Status}.", agendamento.Id, status);
+
                 ToastHelper.Warning(
                     TempData,
                     "Status atualizado, mas houve um problema ao atualizar o financeiro.");
@@ -277,6 +293,13 @@ namespace EmpresaAgendamento.Controllers
             }
 
             return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao alterar status do agendamento {AgendamentoId}.", id);
+                ToastHelper.Error(TempData, "Erro ao alterar status do agendamento.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -300,8 +323,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return View(new Agendamento());
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao abrir formulário de criação de agendamento.");
                 ToastHelper.Error(TempData, "Erro ao abrir formulário.");
                 return RedirectToAction(nameof(Index));
             }
@@ -361,11 +385,19 @@ namespace EmpresaAgendamento.Controllers
                             nameof(model.ClienteId),
                             "Selecione um cliente.");
                     }
+                    else if (!await _context.EmpresaClientes.AnyAsync(ec =>
+                        ec.EmpresaId == empresaId && ec.ClienteId == model.ClienteId))
+                    {
+                        ModelState.AddModelError(
+                            nameof(model.ClienteId),
+                            "Cliente não encontrado.");
+                    }
                 }
 
                 if (!ModelState.IsValid)
                 {
                     await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
                     return View(model);
                 }
 
@@ -383,6 +415,7 @@ namespace EmpresaAgendamento.Controllers
                     ToastHelper.Error(TempData, "Serviço não encontrado.");
 
                     await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
                     return View(model);
                 }
 
@@ -412,6 +445,17 @@ namespace EmpresaAgendamento.Controllers
 
                     model.FuncionarioId = funcionarioDisponivel?.Id;
                 }
+                else if (!await _context.Funcionarios.AnyAsync(f =>
+                    f.Id == model.FuncionarioId && f.EmpresaId == empresaId && f.Ativo))
+                {
+                    // Funcionário explícito escolhido no formulário, mas não
+                    // pertence a essa empresa (ou foi manipulado no POST).
+                    ToastHelper.Error(TempData, "Funcionário não encontrado.");
+
+                    await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
+                    return View(model);
+                }
 
                 // =========================
                 // CONFLITO DE HORÁRIO
@@ -439,6 +483,7 @@ namespace EmpresaAgendamento.Controllers
                         "Funcionário já possui agendamento nesse horário.");
 
                     await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
                     return View(model);
                 }
 
@@ -469,6 +514,7 @@ namespace EmpresaAgendamento.Controllers
                             $"Seu plano permite até {limiteAgendamentosMes} agendamento(s) por mês. Faça upgrade do plano para continuar.");
 
                         await CarregarCombos(empresaId.Value);
+                        ViewBag.EmpresaId = empresaId.Value;
                         return View(model);
                     }
                 }
@@ -508,8 +554,10 @@ namespace EmpresaAgendamento.Controllers
                 {
                     await _financeiroService.GerarContaReceberDeAgendamentoAsync(model.Id);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Erro ao gerar conta a receber do agendamento {AgendamentoId}.", model.Id);
+
                     ToastHelper.Warning(
                         TempData,
                         "Agendamento criado, mas houve um problema ao gerar a previsão no financeiro.");
@@ -525,11 +573,15 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao criar agendamento.");
+
                 ToastHelper.Error(
                     TempData,
                     $"Erro ao criar agendamento: {ex.Message}");
 
-                await CarregarCombos((await GetEmpresaId()) ?? 0);
+                var empresaIdCatch = (await GetEmpresaId()) ?? 0;
+                await CarregarCombos(empresaIdCatch);
+                ViewBag.EmpresaId = empresaIdCatch;
 
                 return View(model);
             }
@@ -543,6 +595,13 @@ namespace EmpresaAgendamento.Controllers
             try
             {
                 var empresaId = await GetEmpresaId();
+
+                if (empresaId == null)
+                {
+                    ToastHelper.Error(TempData, "Sessão expirada.");
+                    return RedirectToAction("Login", "Account");
+                }
+
                 var funcionarioId = await GetFuncionarioIdAsync();
 
                 var agendamento = await _context.Agendamentos
@@ -562,8 +621,9 @@ namespace EmpresaAgendamento.Controllers
 
                 return View(agendamento);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao carregar edição do agendamento {AgendamentoId}.", id);
                 ToastHelper.Error(TempData, "Erro ao carregar edição.");
                 return RedirectToAction(nameof(Index));
             }
@@ -607,6 +667,15 @@ namespace EmpresaAgendamento.Controllers
                     model.FuncionarioId = funcionarioId.Value;
                 }
 
+                if (model.DataHora == default)
+                {
+                    ToastHelper.Warning(TempData, "Selecione data e horário.");
+
+                    await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
+                    return View(model);
+                }
+
                 // =========================
                 // CLIENTE AVULSO
                 // =========================
@@ -621,6 +690,7 @@ namespace EmpresaAgendamento.Controllers
                         );
 
                         await CarregarCombos(empresaId.Value);
+                        ViewBag.EmpresaId = empresaId.Value;
                         return View(model);
                     }
 
@@ -643,6 +713,19 @@ namespace EmpresaAgendamento.Controllers
                         );
 
                         await CarregarCombos(empresaId.Value);
+                        ViewBag.EmpresaId = empresaId.Value;
+                        return View(model);
+                    }
+
+                    var clienteValido = await _context.EmpresaClientes.AnyAsync(ec =>
+                        ec.EmpresaId == empresaId && ec.ClienteId == model.ClienteId);
+
+                    if (!clienteValido)
+                    {
+                        ToastHelper.Error(TempData, "Cliente não encontrado.");
+
+                        await CarregarCombos(empresaId.Value);
+                        ViewBag.EmpresaId = empresaId.Value;
                         return View(model);
                     }
 
@@ -670,6 +753,7 @@ namespace EmpresaAgendamento.Controllers
                     );
 
                     await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
                     return View(model);
                 }
 
@@ -692,10 +776,25 @@ namespace EmpresaAgendamento.Controllers
                         .Select(x => (int?)x.Id)
                         .FirstOrDefault();
                 }
+                else if (model.FuncionarioId.HasValue)
+                {
+                    var funcionarioValido = await _context.Funcionarios.AnyAsync(f =>
+                        f.Id == model.FuncionarioId && f.EmpresaId == empresaId && f.Ativo);
+
+                    if (!funcionarioValido)
+                    {
+                        ToastHelper.Error(TempData, "Funcionário não encontrado.");
+
+                        await CarregarCombos(empresaId.Value);
+                        ViewBag.EmpresaId = empresaId.Value;
+                        return View(model);
+                    }
+
+                    agendamento.FuncionarioId = model.FuncionarioId;
+                }
                 else
                 {
-                    agendamento.FuncionarioId =
-                        model.FuncionarioId;
+                    agendamento.FuncionarioId = null;
                 }
 
                 // =========================
@@ -724,6 +823,7 @@ namespace EmpresaAgendamento.Controllers
                     );
 
                     await CarregarCombos(empresaId.Value);
+                    ViewBag.EmpresaId = empresaId.Value;
                     return View(model);
                 }
 
@@ -747,6 +847,8 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao atualizar agendamento {AgendamentoId}.", id);
+
                 ToastHelper.Error(
                     TempData,
                     $"Erro ao atualizar agendamento: {ex.Message}"
@@ -787,8 +889,9 @@ namespace EmpresaAgendamento.Controllers
                 ToastHelper.Success(TempData, "Agendamento removido.");
                 return RedirectToAction(nameof(Index));
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao remover o agendamento {AgendamentoId}.", id);
                 ToastHelper.Error(TempData, "Erro ao remover.");
                 return RedirectToAction(nameof(Index));
             }
@@ -875,6 +978,8 @@ namespace EmpresaAgendamento.Controllers
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "Erro ao carregar eventos do calendário de agendamentos.");
+
                 return Json(new
                 {
                     erro = true,

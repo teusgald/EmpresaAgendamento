@@ -1,0 +1,331 @@
+@model EmpresaAgendamento.Models.ViewModels.RelatorioDetalhadoViewModel
+
+@{
+    Layout = null;
+
+    var empresa = Model.Empresa;
+    var nomeEmpresa = empresa.NomeFantasia ?? empresa.Nome;
+
+    var enderecoEmpresa = string.Join(", ", new[] { empresa.Endereco, empresa.Numero }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    var cidadeEmpresa = string.Join(" - ", new[]
+        {
+            empresa.Bairro,
+            string.Join("/", new[] { empresa.Cidade, empresa.UF }.Where(p => !string.IsNullOrWhiteSpace(p)))
+        }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    var filtrosAplicados = new[]
+        {
+            !string.IsNullOrWhiteSpace(Model.TipoDescricao) ? $"Tipo: {Model.TipoDescricao}" : null,
+            !string.IsNullOrWhiteSpace(Model.CategoriaDescricao) ? $"Categoria: {Model.CategoriaDescricao}" : null,
+            !string.IsNullOrWhiteSpace(Model.FormaPagamentoDescricao) ? $"Forma de pagamento: {Model.FormaPagamentoDescricao}" : null,
+            !string.IsNullOrWhiteSpace(Model.FuncionarioDescricao) ? $"Funcionário: {Model.FuncionarioDescricao}" : null,
+            !string.IsNullOrWhiteSpace(Model.ClienteDescricao) ? $"Cliente: {Model.ClienteDescricao}" : null,
+        }
+        .Where(f => f != null)
+        .ToList();
+}
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Relatório financeiro</title>
+    <link rel="icon" type="image/png" href="/img/icon.png?v=3" />
+    <style>
+        :root {
+            --preto: #111111;
+            --cinza-escuro: #2b2b2b;
+            --cinza: #6b7280;
+            --cinza-claro: #e5e7eb;
+            --verde: #198754;
+            --vermelho: #dc3545;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: var(--preto);
+            background: #f8f9fa;
+            margin: 0;
+            padding: 24px;
+        }
+
+        .relatorio {
+            max-width: 960px;
+            margin: 0 auto;
+            background: #fff;
+            border: 1px solid var(--cinza-claro);
+            border-radius: 8px;
+            padding: 32px;
+        }
+
+        .cabecalho {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid var(--preto);
+            padding-bottom: 16px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .logo-empresa {
+            max-height: 56px;
+            max-width: 220px;
+            object-fit: contain;
+            display: block;
+            margin-bottom: 8px;
+        }
+
+        .cabecalho h1 {
+            font-size: 20px;
+            margin: 0 0 4px 0;
+        }
+
+        .cabecalho p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--cinza);
+        }
+
+        .titulo-relatorio {
+            text-align: right;
+        }
+
+        .titulo-relatorio h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .titulo-relatorio p {
+            margin: 4px 0 0 0;
+            font-size: 13px;
+            color: var(--cinza);
+        }
+
+        .filtros {
+            font-size: 12px;
+            color: var(--cinza);
+            margin: 0 0 20px 0;
+        }
+
+        .filtros span {
+            display: inline-block;
+            background: #f1f3f5;
+            border-radius: 4px;
+            padding: 3px 8px;
+            margin: 2px 4px 2px 0;
+        }
+
+        table.itens {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table.itens thead th {
+            text-align: left;
+            border-bottom: 2px solid var(--preto);
+            padding: 8px 6px;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--cinza-escuro);
+        }
+
+        table.itens tbody td {
+            padding: 7px 6px;
+            border-bottom: 1px solid var(--cinza-claro);
+            vertical-align: top;
+        }
+
+        table.itens td.valor,
+        table.itens th.valor {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .valor-entrada { color: var(--verde); }
+        .valor-saida { color: var(--vermelho); }
+
+        .sem-registros {
+            text-align: center;
+            color: var(--cinza);
+            padding: 32px 0;
+            font-size: 14px;
+        }
+
+        table.totais {
+            width: 100%;
+            max-width: 360px;
+            margin: 20px 0 0 auto;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        table.totais td {
+            padding: 6px 0;
+        }
+
+        table.totais td:first-child {
+            color: var(--cinza);
+        }
+
+        table.totais td:last-child {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        table.totais tr.saldo td {
+            border-top: 2px solid var(--preto);
+            padding-top: 10px;
+            font-size: 16px;
+        }
+
+        .acoes {
+            max-width: 960px;
+            margin: 16px auto 0 auto;
+            text-align: right;
+        }
+
+        .acoes button {
+            background: var(--preto);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 10px 20px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        @@media print {
+            body { background: #fff; padding: 0; }
+            .relatorio { border: none; padding: 0; }
+            .no-print { display: none !important; }
+            table.itens tbody tr { break-inside: avoid; }
+        }
+
+        @@page {
+            size: A4;
+            margin: 16mm 12mm;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="relatorio">
+
+        <div class="cabecalho">
+            <div>
+                @if (!string.IsNullOrWhiteSpace(empresa.LogoUrl))
+                {
+                    <img src="@empresa.LogoUrl" alt="@nomeEmpresa" class="logo-empresa" />
+                }
+                <h1>@nomeEmpresa</h1>
+                @if (!string.IsNullOrWhiteSpace(enderecoEmpresa))
+                {
+                    <p>@enderecoEmpresa</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(cidadeEmpresa))
+                {
+                    <p>@cidadeEmpresa</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(empresa.DocumentoNumero))
+                {
+                    <p>@empresa.DocumentoTipo: @empresa.DocumentoNumero</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(empresa.Telefone))
+                {
+                    <p>Tel: @empresa.Telefone</p>
+                }
+                @{
+                    var email = empresa.EmailContato ?? empresa.Email;
+                }
+                @if (!string.IsNullOrWhiteSpace(email))
+                {
+                    <p>@email</p>
+                }
+            </div>
+
+            <div class="titulo-relatorio">
+                <h2>RELATÓRIO FINANCEIRO</h2>
+                <p>Período: @Model.DataInicial.ToString("dd/MM/yyyy") a @Model.DataFinal.ToString("dd/MM/yyyy")</p>
+                <p>Gerado em: @Model.DataGeracao.ToString("dd/MM/yyyy HH:mm")</p>
+            </div>
+        </div>
+
+        @if (filtrosAplicados.Any())
+        {
+            <div class="filtros">
+                Filtros aplicados:
+                @foreach (var filtro in filtrosAplicados)
+                {
+                    <span>@filtro</span>
+                }
+            </div>
+        }
+
+        @if (!Model.Itens.Any())
+        {
+            <div class="sem-registros">Nenhuma movimentação encontrada para os filtros selecionados.</div>
+        }
+        else
+        {
+            <table class="itens">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Cliente</th>
+                        <th>Categoria</th>
+                        <th>Forma de pagamento</th>
+                        <th class="valor">Entrada</th>
+                        <th class="valor">Saída</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model.Itens)
+                    {
+                        <tr>
+                            <td>@item.Data.ToString("dd/MM/yyyy")</td>
+                            <td>@item.Descricao</td>
+                            <td>@(item.Cliente ?? "-")</td>
+                            <td>@(item.Categoria ?? "-")</td>
+                            <td>@(item.FormaPagamento ?? "-")</td>
+                            <td class="valor valor-entrada">@(item.Entrada > 0 ? item.Entrada.ToString("C") : "-")</td>
+                            <td class="valor valor-saida">@(item.Saida > 0 ? item.Saida.ToString("C") : "-")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <table class="totais">
+            <tr>
+                <td>Total de entradas</td>
+                <td class="valor-entrada">@Model.TotalEntradas.ToString("C")</td>
+            </tr>
+            <tr>
+                <td>Total de saídas</td>
+                <td class="valor-saida">@Model.TotalSaidas.ToString("C")</td>
+            </tr>
+            <tr class="saldo">
+                <td>Saldo do período</td>
+                <td class="@(Model.Saldo >= 0 ? "valor-entrada" : "valor-saida")">@Model.Saldo.ToString("C")</td>
+            </tr>
+        </table>
+
+    </div>
+
+    <div class="acoes no-print">
+        <button type="button" onclick="window.print()">Imprimir / Gerar PDF</button>
+    </div>
+
+</body>
+</html>

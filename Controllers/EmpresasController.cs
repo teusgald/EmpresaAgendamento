@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models.Enums;
 using EmpresaAgendamento.Models.ViewModels;
+using EmpresaAgendamento.Services;
 using System.Text.RegularExpressions;
 
 namespace EmpresaAgendamento.Controllers
@@ -36,15 +37,58 @@ namespace EmpresaAgendamento.Controllers
         private readonly ApplicationDbContext _context;
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IWebHostEnvironment _env;
+        private readonly IWhatsAppService _whatsAppService;
 
         public EmpresasController(
             ApplicationDbContext context,
             UserManager<ApplicationUser> userManager,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IWhatsAppService whatsAppService)
         {
             _context = context;
             _userManager = userManager;
             _env = env;
+            _whatsAppService = whatsAppService;
+        }
+
+        // =========================
+        // TESTAR WHATSAPP (Cloud API)
+        // =========================
+        [HttpPost("empresa/testar-whatsapp")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> TestarWhatsApp(string telefone)
+        {
+            try
+            {
+                var user = await _userManager.GetUserAsync(User);
+
+                if (user?.EmpresaId == null)
+                {
+                    ToastHelper.Error(TempData, "Acesso negado.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                if (string.IsNullOrWhiteSpace(telefone))
+                {
+                    ToastHelper.Warning(TempData, "Informe um telefone com DDD pra testar.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                await _whatsAppService.EnviarMensagemAsync(
+                    telefone,
+                    "Simpli Time: essa é uma mensagem de teste da integração com o WhatsApp. Se você recebeu, está tudo funcionando!");
+
+                ToastHelper.Success(
+                    TempData,
+                    "Envio disparado! Se o WhatsApp Cloud API ainda não estiver configurado, essa mensagem só foi gravada no log do servidor — confira lá.");
+
+                return RedirectToAction(nameof(Index));
+            }
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao testar o WhatsApp.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -344,8 +388,45 @@ namespace EmpresaAgendamento.Controllers
                 empresa.TikTok = model.TikTok;
                 empresa.YouTube = model.YouTube;
                 empresa.Site = model.Site;
-                empresa.Slug = model.Slug;
                 empresa.LinkAgendamentoExterno = model.LinkAgendamentoExterno;
+
+                // SLUG — palavra reservada (ex.: "empresas", "login") nunca
+                // pode virar slug de empresa, senão a página pública dela
+                // fica inacessível (a rota literal sempre tem prioridade
+                // sobre /{slug}). Mantém o slug atual nesse caso.
+                var avisoSlug = false;
+
+                if (SlugHelper.EhReservado(model.Slug))
+                {
+                    avisoSlug = true;
+                }
+                else
+                {
+                    empresa.Slug = model.Slug;
+                }
+
+                // CORES DE MARCA — nulo/vazio é válido (usa a cor padrão do
+                // sistema na renderização). Só rejeita se vier preenchido e
+                // fora do formato hex "#RRGGBB".
+                var avisosCor = new List<string>();
+
+                if (CorHexValida(model.CorPrimaria))
+                {
+                    empresa.CorPrimaria = string.IsNullOrWhiteSpace(model.CorPrimaria) ? null : model.CorPrimaria;
+                }
+                else
+                {
+                    avisosCor.Add("cor primária");
+                }
+
+                if (CorHexValida(model.CorSecundaria))
+                {
+                    empresa.CorSecundaria = string.IsNullOrWhiteSpace(model.CorSecundaria) ? null : model.CorSecundaria;
+                }
+                else
+                {
+                    avisosCor.Add("cor secundária");
+                }
 
                 // PAGAMENTOS
                 empresa.AceitaPix = model.AceitaPix;
@@ -366,9 +447,26 @@ namespace EmpresaAgendamento.Controllers
 
                 await _context.SaveChangesAsync();
 
+                var avisos = new List<string>();
+
                 if (avisoLogo != null)
                 {
-                    ToastHelper.Warning(TempData, $"Dados salvos, mas a logo não foi atualizada: {avisoLogo}");
+                    avisos.Add($"a logo não foi atualizada: {avisoLogo}");
+                }
+
+                if (avisosCor.Any())
+                {
+                    avisos.Add($"formato de cor inválido em {string.Join(" e ", avisosCor)} — use o padrão #RRGGBB. O restante foi salvo normalmente.");
+                }
+
+                if (avisoSlug)
+                {
+                    avisos.Add($"o endereço \"{model.Slug}\" é reservado pelo sistema e não pôde ser usado — o endereço anterior foi mantido.");
+                }
+
+                if (avisos.Any())
+                {
+                    ToastHelper.Warning(TempData, $"Dados salvos, mas {string.Join("; ", avisos)}");
                 }
                 else
                 {
@@ -393,38 +491,46 @@ namespace EmpresaAgendamento.Controllers
         [HttpGet("empresa/horarios")]
         public async Task<IActionResult> Horarios()
         {
-            var user = await _userManager.GetUserAsync(User);
-
-            if (user?.EmpresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Acesso negado.");
-                return RedirectToAction("Login", "Account");
-            }
+                var user = await _userManager.GetUserAsync(User);
 
-            var horarios = await _context.EmpresasHorarios
-                .Where(h => h.EmpresaId == user.EmpresaId)
-                .ToListAsync();
-
-            var lista = new List<EmpresaHorarioItemViewModel>();
-
-            foreach (DayOfWeek dia in Enum.GetValues<DayOfWeek>())
-            {
-                var existente = horarios.FirstOrDefault(h => h.DiaSemana == dia);
-
-                lista.Add(new EmpresaHorarioItemViewModel
+                if (user?.EmpresaId == null)
                 {
-                    DiaSemana = dia,
-                    TrabalhaNoDia = existente?.TrabalhaNoDia ?? (dia != DayOfWeek.Sunday),
-                    HoraInicio = existente?.HoraInicio ?? new TimeSpan(8, 0, 0),
-                    HoraFim = existente?.HoraFim ?? new TimeSpan(18, 0, 0),
-                    InicioIntervalo = existente?.InicioIntervalo,
-                    FimIntervalo = existente?.FimIntervalo
-                });
+                    ToastHelper.Error(TempData, "Acesso negado.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var horarios = await _context.EmpresasHorarios
+                    .Where(h => h.EmpresaId == user.EmpresaId)
+                    .ToListAsync();
+
+                var lista = new List<EmpresaHorarioItemViewModel>();
+
+                foreach (DayOfWeek dia in Enum.GetValues<DayOfWeek>())
+                {
+                    var existente = horarios.FirstOrDefault(h => h.DiaSemana == dia);
+
+                    lista.Add(new EmpresaHorarioItemViewModel
+                    {
+                        DiaSemana = dia,
+                        TrabalhaNoDia = existente?.TrabalhaNoDia ?? (dia != DayOfWeek.Sunday),
+                        HoraInicio = existente?.HoraInicio ?? new TimeSpan(8, 0, 0),
+                        HoraFim = existente?.HoraFim ?? new TimeSpan(18, 0, 0),
+                        InicioIntervalo = existente?.InicioIntervalo,
+                        FimIntervalo = existente?.FimIntervalo
+                    });
+                }
+
+                ViewBag.JaConfigurado = horarios.Any();
+
+                return View(lista);
             }
-
-            ViewBag.JaConfigurado = horarios.Any();
-
-            return View(lista);
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao carregar horário de funcionamento.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // =========================
@@ -434,38 +540,46 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Horarios(List<EmpresaHorarioItemViewModel> horarios)
         {
-            var user = await _userManager.GetUserAsync(User);
-
-            if (user?.EmpresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Acesso negado.");
-                return RedirectToAction("Login", "Account");
-            }
+                var user = await _userManager.GetUserAsync(User);
 
-            var existentes = await _context.EmpresasHorarios
-                .Where(h => h.EmpresaId == user.EmpresaId)
-                .ToListAsync();
-
-            _context.EmpresasHorarios.RemoveRange(existentes);
-
-            foreach (var item in horarios ?? new List<EmpresaHorarioItemViewModel>())
-            {
-                _context.EmpresasHorarios.Add(new EmpresaHorario
+                if (user?.EmpresaId == null)
                 {
-                    EmpresaId = user.EmpresaId.Value,
-                    DiaSemana = item.DiaSemana,
-                    TrabalhaNoDia = item.TrabalhaNoDia,
-                    HoraInicio = item.HoraInicio ?? TimeSpan.Zero,
-                    HoraFim = item.HoraFim ?? TimeSpan.Zero,
-                    InicioIntervalo = item.TrabalhaNoDia ? item.InicioIntervalo : null,
-                    FimIntervalo = item.TrabalhaNoDia ? item.FimIntervalo : null
-                });
+                    ToastHelper.Error(TempData, "Acesso negado.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var existentes = await _context.EmpresasHorarios
+                    .Where(h => h.EmpresaId == user.EmpresaId)
+                    .ToListAsync();
+
+                _context.EmpresasHorarios.RemoveRange(existentes);
+
+                foreach (var item in horarios ?? new List<EmpresaHorarioItemViewModel>())
+                {
+                    _context.EmpresasHorarios.Add(new EmpresaHorario
+                    {
+                        EmpresaId = user.EmpresaId.Value,
+                        DiaSemana = item.DiaSemana,
+                        TrabalhaNoDia = item.TrabalhaNoDia,
+                        HoraInicio = item.HoraInicio ?? TimeSpan.Zero,
+                        HoraFim = item.HoraFim ?? TimeSpan.Zero,
+                        InicioIntervalo = item.TrabalhaNoDia ? item.InicioIntervalo : null,
+                        FimIntervalo = item.TrabalhaNoDia ? item.FimIntervalo : null
+                    });
+                }
+
+                await _context.SaveChangesAsync();
+
+                ToastHelper.Success(TempData, "Horário de funcionamento atualizado com sucesso!");
+                return RedirectToAction(nameof(Horarios));
             }
-
-            await _context.SaveChangesAsync();
-
-            ToastHelper.Success(TempData, "Horário de funcionamento atualizado com sucesso!");
-            return RedirectToAction(nameof(Horarios));
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao salvar horário de funcionamento.");
+                return RedirectToAction(nameof(Horarios));
+            }
         }
 
         // =========================
@@ -475,75 +589,83 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> UploadGaleria(List<IFormFile> fotos)
         {
-            var user = await _userManager.GetUserAsync(User);
-
-            if (user?.EmpresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Acesso negado.");
-                return RedirectToAction("Login", "Account");
-            }
+                var user = await _userManager.GetUserAsync(User);
 
-            var empresa = await _context.Empresas
-                .FirstOrDefaultAsync(e => e.Id == user.EmpresaId);
-
-            if (empresa == null)
-            {
-                ToastHelper.Error(TempData, "Empresa não encontrada.");
-                return NotFound();
-            }
-
-            if (fotos == null || fotos.Count == 0 || fotos.All(f => f.Length == 0))
-            {
-                ToastHelper.Warning(TempData, "Selecione ao menos uma foto.");
-                return RedirectToAction(nameof(Index));
-            }
-
-            var totalAtual = await _context.EmpresaFotos.CountAsync(f => f.EmpresaId == empresa.Id);
-
-            if (totalAtual + fotos.Count > LimiteFotosGaleria)
-            {
-                ToastHelper.Warning(
-                    TempData,
-                    $"A galeria aceita no máximo {LimiteFotosGaleria} fotos — você já tem {totalAtual}.");
-
-                return RedirectToAction(nameof(Index));
-            }
-
-            var nomePasta = NomePastaGaleria(empresa);
-            var erros = new List<string>();
-
-            foreach (var foto in fotos)
-            {
-                if (foto.Length == 0) continue;
-
-                var (sucesso, caminhoOuErro) = await SalvarFotoGaleriaAsync(nomePasta, foto);
-
-                if (sucesso)
+                if (user?.EmpresaId == null)
                 {
-                    _context.EmpresaFotos.Add(new EmpresaFoto
+                    ToastHelper.Error(TempData, "Acesso negado.");
+                    return RedirectToAction("Login", "Account");
+                }
+
+                var empresa = await _context.Empresas
+                    .FirstOrDefaultAsync(e => e.Id == user.EmpresaId);
+
+                if (empresa == null)
+                {
+                    ToastHelper.Error(TempData, "Empresa não encontrada.");
+                    return NotFound();
+                }
+
+                if (fotos == null || fotos.Count == 0 || fotos.All(f => f.Length == 0))
+                {
+                    ToastHelper.Warning(TempData, "Selecione ao menos uma foto.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var totalAtual = await _context.EmpresaFotos.CountAsync(f => f.EmpresaId == empresa.Id);
+
+                if (totalAtual + fotos.Count > LimiteFotosGaleria)
+                {
+                    ToastHelper.Warning(
+                        TempData,
+                        $"A galeria aceita no máximo {LimiteFotosGaleria} fotos — você já tem {totalAtual}.");
+
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var nomePasta = NomePastaGaleria(empresa);
+                var erros = new List<string>();
+
+                foreach (var foto in fotos)
+                {
+                    if (foto.Length == 0) continue;
+
+                    var (sucesso, caminhoOuErro) = await SalvarFotoGaleriaAsync(nomePasta, foto);
+
+                    if (sucesso)
                     {
-                        EmpresaId = empresa.Id,
-                        Url = caminhoOuErro
-                    });
+                        _context.EmpresaFotos.Add(new EmpresaFoto
+                        {
+                            EmpresaId = empresa.Id,
+                            Url = caminhoOuErro
+                        });
+                    }
+                    else
+                    {
+                        erros.Add(caminhoOuErro);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+
+                if (erros.Any())
+                {
+                    ToastHelper.Warning(TempData, $"Algumas fotos não foram salvas: {string.Join(" ", erros)}");
                 }
                 else
                 {
-                    erros.Add(caminhoOuErro);
+                    ToastHelper.Success(TempData, "Fotos adicionadas à galeria!");
                 }
+
+                return RedirectToAction(nameof(Index));
             }
-
-            await _context.SaveChangesAsync();
-
-            if (erros.Any())
+            catch
             {
-                ToastHelper.Warning(TempData, $"Algumas fotos não foram salvas: {string.Join(" ", erros)}");
+                ToastHelper.Error(TempData, "Erro ao enviar fotos da galeria.");
+                return RedirectToAction(nameof(Index));
             }
-            else
-            {
-                ToastHelper.Success(TempData, "Fotos adicionadas à galeria!");
-            }
-
-            return RedirectToAction(nameof(Index));
         }
 
         // =========================
@@ -553,45 +675,58 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RemoverFotoGaleria(int id)
         {
-            var user = await _userManager.GetUserAsync(User);
-
-            if (user?.EmpresaId == null)
-            {
-                ToastHelper.Error(TempData, "Acesso negado.");
-                return RedirectToAction("Login", "Account");
-            }
-
-            var foto = await _context.EmpresaFotos
-                .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == user.EmpresaId);
-
-            if (foto == null)
-            {
-                ToastHelper.Error(TempData, "Foto não encontrada.");
-                return RedirectToAction(nameof(Index));
-            }
-
-            var caminhoFisico = Path.Combine(
-                _env.WebRootPath,
-                foto.Url.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-
             try
             {
-                if (System.IO.File.Exists(caminhoFisico))
+                var user = await _userManager.GetUserAsync(User);
+
+                if (user?.EmpresaId == null)
                 {
-                    System.IO.File.Delete(caminhoFisico);
+                    ToastHelper.Error(TempData, "Acesso negado.");
+                    return RedirectToAction("Login", "Account");
                 }
+
+                var foto = await _context.EmpresaFotos
+                    .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == user.EmpresaId);
+
+                if (foto == null)
+                {
+                    ToastHelper.Error(TempData, "Foto não encontrada.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var caminhoFisico = Path.Combine(
+                    _env.WebRootPath,
+                    foto.Url.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+                try
+                {
+                    if (System.IO.File.Exists(caminhoFisico))
+                    {
+                        System.IO.File.Delete(caminhoFisico);
+                    }
+                }
+                catch
+                {
+                    // Não bloqueia a remoção do registro por falha ao apagar o arquivo.
+                }
+
+                _context.EmpresaFotos.Remove(foto);
+                await _context.SaveChangesAsync();
+
+                ToastHelper.Success(TempData, "Foto removida.");
+                return RedirectToAction(nameof(Index));
             }
             catch
             {
-                // Não bloqueia a remoção do registro por falha ao apagar o arquivo.
+                ToastHelper.Error(TempData, "Erro ao remover foto da galeria.");
+                return RedirectToAction(nameof(Index));
             }
-
-            _context.EmpresaFotos.Remove(foto);
-            await _context.SaveChangesAsync();
-
-            ToastHelper.Success(TempData, "Foto removida.");
-            return RedirectToAction(nameof(Index));
         }
+
+        // Vazio/nulo é válido (usa a cor padrão do sistema na renderização
+        // pública); só valida formato quando a empresa informou algo.
+        private static bool CorHexValida(string? cor) =>
+            string.IsNullOrWhiteSpace(cor) || Regex.IsMatch(cor, "^#[0-9A-Fa-f]{6}$");
 
         // Pasta da galeria é nomeada pelo "nome" da empresa (o slug). O slug é
         // texto livre digitado pelo dono no perfil — nunca dá pra usar direto

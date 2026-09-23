@@ -16,6 +16,10 @@ namespace EmpresaAgendamento.Services
         // agendamentos antigos que nunca passaram por aqui.
         Task<ContaReceber?> GerarContaReceberDeAgendamentoAsync(int agendamentoId);
 
+        // Recalcula ValorPrevisto = Serviço + itens da comanda. Chamado pelo
+        // ComandaService a cada produto adicionado/removido do agendamento.
+        Task AtualizarValorContaReceberDeAgendamentoAsync(int agendamentoId);
+
         // Calcula e registra a comissão do funcionário responsável (idempotente).
         // Só deve ser chamado quando o agendamento é Finalizado — a comissão é
         // sobre serviço efetivamente realizado, não sobre o agendado.

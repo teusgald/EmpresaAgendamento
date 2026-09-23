@@ -1,0 +1,367 @@
+@model EmpresaAgendamento.Models.ViewModels.EmpresaDescobertaViewModel
+@{
+    // Página pública (sem login), rota "/empresas" — usa o mesmo layout das
+    // páginas públicas de empresa (_LayoutPublico, tema escuro/claro,
+    // publico.css), não o layout da Home nem o do portal autenticado. É a
+    // página de descoberta do cliente, faz parte da experiência pública.
+    ViewData["Title"] = "Encontre uma empresa";
+}
+
+@section Styles {
+    <style>
+        .descoberta-header {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 1.5rem 1.5rem 0;
+        }
+
+        .descoberta-header h1 {
+            font-size: clamp(1.5rem, 4vw, 2rem);
+            font-weight: 800;
+        }
+
+        .descoberta-header p {
+            color: var(--text2);
+            font-size: 13.5px;
+            margin-top: 4px;
+        }
+
+        .descoberta-filtros {
+            max-width: 1100px;
+            margin: 1.25rem auto 0;
+            padding: 0 1.5rem;
+        }
+
+        .descoberta-filtros-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 1.1rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: .75rem;
+            align-items: end;
+        }
+
+        .descoberta-filtros-card label {
+            display: block;
+            font-size: 11.5px;
+            color: var(--text2);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: .03em;
+        }
+
+        .descoberta-filtros-card select,
+        .descoberta-filtros-card input {
+            width: 100%;
+            background: var(--bg3);
+            border: 1px solid var(--border2);
+            color: var(--text);
+            border-radius: var(--radius-sm);
+            padding: 8px 10px;
+            font-size: 13.5px;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .descoberta-filtros-actions {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+
+        .descoberta-resultados {
+            max-width: 1100px;
+            margin: 1.5rem auto 3rem;
+            padding: 0 1.5rem;
+        }
+
+        .descoberta-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .descoberta-card {
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: block;
+            text-decoration: none;
+            color: var(--text);
+            transition: border-color .2s, transform .15s;
+        }
+
+            .descoberta-card:hover {
+                border-color: var(--accent);
+                transform: translateY(-2px);
+                color: var(--text);
+            }
+
+        .descoberta-banner {
+            width: 100%;
+            height: 110px;
+            object-fit: cover;
+            background: var(--bg3);
+        }
+
+        .descoberta-card-body {
+            padding: 14px;
+            text-align: center;
+        }
+
+        .descoberta-logo {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid var(--border2);
+            margin: -34px auto 8px;
+            background: var(--bg2);
+            display: block;
+        }
+
+        .descoberta-logo-vazia {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            margin: -34px auto 8px;
+            background: var(--bg3);
+            border: 2px solid var(--border2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: var(--text2);
+        }
+
+        .descoberta-card h3 {
+            font-size: 14.5px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .descoberta-badge {
+            display: inline-block;
+            font-size: 11px;
+            color: var(--text2);
+            border: 1px solid var(--border2);
+            border-radius: 999px;
+            padding: 2px 10px;
+            margin-bottom: 8px;
+        }
+
+        .descoberta-meta {
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .descoberta-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text2);
+        }
+
+            .descoberta-empty i {
+                font-size: 2.25rem;
+                display: block;
+                margin-bottom: .75rem;
+                color: var(--text3);
+            }
+    </style>
+}
+
+@section Navbar {
+    <a class="navbar-brand d-flex align-items-center" href="/">
+        <img id="logoSite" src="~/img/logocliente.png" alt="Logo" class="navbar-logo me-2" />
+    </a>
+
+    <div class="nav-links">
+        <a href="/">Início</a>
+    </div>
+}
+
+<div class="descoberta-header">
+    <h1>Encontre uma empresa</h1>
+    <p>Busque por categoria, localização, preço e avaliação.</p>
+</div>
+
+<div class="descoberta-filtros">
+    <form method="get" class="descoberta-filtros-card">
+        <div>
+            <label>Categoria</label>
+            <select name="categoria">
+                <option value="">Todas</option>
+                @foreach (var cat in Model.Categorias)
+                {
+                    <option value="@cat" selected="@(Model.Filtro.Categoria == cat)">@cat</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label>Cidade</label>
+            <input type="text" name="cidade" value="@Model.Filtro.Cidade" placeholder="Ex.: São Paulo" />
+        </div>
+
+        <div>
+            <label>UF</label>
+            <input type="text" name="uf" value="@Model.Filtro.UF" maxlength="2" placeholder="SP" />
+        </div>
+
+        <div>
+            <label>Avaliação mínima</label>
+            <select name="avaliacaoMinima">
+                <option value="">Qualquer</option>
+                @foreach (var nota in new[] { 5, 4, 3, 2, 1 })
+                {
+                    <option value="@nota" selected="@(Model.Filtro.AvaliacaoMinima == nota)">@nota+ estrelas</option>
+                }
+            </select>
+        </div>
+
+        <div>
+            <label>Preço mín.</label>
+            <input name="precoMinimo" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.Filtro.PrecoMinimo" />
+        </div>
+
+        <div>
+            <label>Preço máx.</label>
+            <input name="precoMaximo" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.Filtro.PrecoMaximo" />
+        </div>
+
+        <div>
+            <label>Distância máx.</label>
+            <select name="distanciaMaximaKm">
+                <option value="">Qualquer</option>
+                @foreach (var km in new[] { 5, 10, 25, 50, 100 })
+                {
+                    <option value="@km" selected="@(Model.Filtro.DistanciaMaximaKm == km)">até @km km</option>
+                }
+            </select>
+        </div>
+
+        <input type="hidden" name="latitudeUsuario" id="latitudeUsuario" value="@Context.Request.Query["latitudeUsuario"]" />
+        <input type="hidden" name="longitudeUsuario" id="longitudeUsuario" value="@Context.Request.Query["longitudeUsuario"]" />
+
+        <div class="descoberta-filtros-actions">
+            <button type="button" id="btnUsarLocalizacao" class="btn-cta" style="background:var(--bg3);color:var(--text);border:1px solid var(--border2);">
+                <i class="bi bi-geo-alt"></i> Perto de mim
+            </button>
+            <button type="submit" class="btn-cta">Filtrar</button>
+            <a href="/empresas" style="align-self:center;color:var(--text2);font-size:13px;">Limpar filtros</a>
+        </div>
+    </form>
+</div>
+
+<div class="descoberta-resultados">
+
+    @if (!Model.Empresas.Any())
+    {
+        <div class="descoberta-empty">
+            <i class="bi bi-search"></i>
+            <p>Nenhuma empresa encontrada com esses filtros.</p>
+        </div>
+    }
+    else
+    {
+        <div class="descoberta-grid">
+            @foreach (var empresa in Model.Empresas)
+            {
+                <a href="/@empresa.Slug" class="descoberta-card">
+
+                    @if (!string.IsNullOrWhiteSpace(empresa.CapaOuFotoUrl))
+                    {
+                        <img src="@empresa.CapaOuFotoUrl" alt="@empresa.Nome" class="descoberta-banner" />
+                    }
+                    else
+                    {
+                        <div class="descoberta-banner"></div>
+                    }
+
+                    <div class="descoberta-card-body">
+
+                        @if (!string.IsNullOrWhiteSpace(empresa.LogoUrl))
+                        {
+                            <img src="@empresa.LogoUrl" alt="@empresa.Nome" class="descoberta-logo" />
+                        }
+                        else
+                        {
+                            <div class="descoberta-logo-vazia"><i class="bi bi-shop"></i></div>
+                        }
+
+                        <h3>@empresa.Nome</h3>
+
+                        <span class="descoberta-badge">
+                            @(!string.IsNullOrWhiteSpace(empresa.Categoria) ? empresa.Categoria : "Sem categoria")
+                        </span>
+
+                        <div class="descoberta-meta">
+                            @if (empresa.NotaMedia.HasValue)
+                            {
+                                <span class="star">★</span>
+                                <strong>@empresa.NotaMedia.Value.ToString("0.0")</strong>
+                                <span>(@empresa.TotalAvaliacoes)</span>
+                            }
+                            else
+                            {
+                                <span>Sem avaliações ainda</span>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(empresa.Cidade) || empresa.DistanciaKm.HasValue)
+                        {
+                            <div class="descoberta-meta mt-1">
+                                <i class="bi bi-geo-alt"></i>
+                                @if (!string.IsNullOrWhiteSpace(empresa.Cidade))
+                                {
+                                    @:@empresa.Cidade@(!string.IsNullOrWhiteSpace(empresa.UF) ? $" - {empresa.UF}" : "")
+                                }
+                                @if (empresa.DistanciaKm.HasValue)
+                                {
+                                    @:(@empresa.DistanciaKm.Value.ToString("0.#") km)
+                                }
+                            </div>
+                        }
+
+                    </div>
+                </a>
+            }
+        </div>
+    }
+
+</div>
+
+@section Footer {
+    <div class="footer-bottom">
+        <span>© @DateTime.Now.Year Simpli Time</span>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // "Perto de mim" — pede a localização do navegador, preenche os
+        // campos escondidos de latitude/longitude e reenvia o filtro. Sem
+        // permissão de geolocalização, o filtro de distância só não é usado;
+        // o resto da busca continua funcionando normalmente.
+        document.getElementById("btnUsarLocalizacao")?.addEventListener("click", function () {
+            if (!navigator.geolocation) {
+                return;
+            }
+
+            var botao = this;
+            botao.disabled = true;
+
+            navigator.geolocation.getCurrentPosition(function (posicao) {
+                document.getElementById("latitudeUsuario").value = posicao.coords.latitude;
+                document.getElementById("longitudeUsuario").value = posicao.coords.longitude;
+                botao.closest("form").submit();
+            }, function () {
+                botao.disabled = false;
+            });
+        });
+    </script>
+}

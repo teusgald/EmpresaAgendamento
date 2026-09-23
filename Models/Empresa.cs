@@ -133,6 +133,15 @@ namespace EmpresaAgendamento.Models
         public string? Slug { get; set; }
         public string? LinkAgendamentoExterno { get; set; }
 
+        // Cor de marca da empresa (hex, ex.: "#111111"), usada na página
+        // pública, login/cadastro e modal de agendamento do cliente. Nula =
+        // usa a cor padrão do Simpli Time (preto/branco).
+        [StringLength(7)]
+        public string? CorPrimaria { get; set; }
+
+        [StringLength(7)]
+        public string? CorSecundaria { get; set; }
+
         // ─────────────────────────────────────────────
         // ⚙️ CONTROLE
         // ─────────────────────────────────────────────
@@ -169,6 +178,11 @@ namespace EmpresaAgendamento.Models
         [StringLength(30)]
         public string? NomePlanoEscolhido { get; set; }
 
+        // Liberado manualmente pelo painel do dono do sistema (SuperAdmin)
+        // para testers/parceiros iniciais — nunca é bloqueado pelo paywall,
+        // independente do status da assinatura no Stripe.
+        public bool VipAcesso { get; set; }
+
         // ─────────────────────────────────────────────
         // 🔗 RELACIONAMENTOS
         // ─────────────────────────────────────────────
@@ -187,6 +201,9 @@ namespace EmpresaAgendamento.Models
 
         public ICollection<Servico> Servicos { get; set; }
             = new List<Servico>();
+
+        public ICollection<Produto> Produtos { get; set; }
+            = new List<Produto>();
 
         public ICollection<Agendamento> Agendamentos { get; set; }
             = new List<Agendamento>();

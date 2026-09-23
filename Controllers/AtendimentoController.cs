@@ -41,9 +41,19 @@ namespace EmpresaAgendamento.Controllers
         [HttpGet("")]
         public async Task<IActionResult> Index()
         {
-            var model = await MontarModeloComUsuarioAsync();
-            ViewBag.Lista = await CarregarListaAsync();
-            return View(model);
+            try
+            {
+                var model = await MontarModeloComUsuarioAsync();
+                ViewBag.Lista = await CarregarListaAsync();
+                return View(model);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao carregar tela de atendimento.");
+                ToastHelper.Error(TempData, "Erro ao carregar atendimento.");
+                ViewBag.Lista = new List<Atendimento>();
+                return View(new AtendimentoViewModel());
+            }
         }
 
         [HttpPost("")]
@@ -51,62 +61,71 @@ namespace EmpresaAgendamento.Controllers
         [EnableRateLimiting("auth")]
         public async Task<IActionResult> Index(AtendimentoViewModel model)
         {
-            // Nome/Email/Origem sempre vêm do usuário logado, nunca do que foi
-            // digitado no form — evita que alguém forje remetente.
-            var modeloAtual = await MontarModeloComUsuarioAsync();
-            model.Nome = modeloAtual.Nome;
-            model.Email = modeloAtual.Email;
-            model.Origem = modeloAtual.Origem;
-
-            ModelState.Remove(nameof(AtendimentoViewModel.Nome));
-            ModelState.Remove(nameof(AtendimentoViewModel.Email));
-
-            if (!ModelState.IsValid)
-            {
-                ViewBag.Lista = await CarregarListaAsync();
-                return View(model);
-            }
-
-            var usuarioId = _userManager.GetUserId(User);
-
-            var atendimento = new Atendimento
-            {
-                UsuarioId = usuarioId,
-                Nome = model.Nome,
-                Email = model.Email,
-                Origem = model.Origem,
-                Assunto = model.Assunto,
-                Mensagem = model.Mensagem,
-                Status = StatusAtendimento.Aguardando
-            };
-
-            _context.Atendimentos.Add(atendimento);
-            await _context.SaveChangesAsync();
-
             try
             {
-                await _emailService.SendEmailAsync(
-                    EmailAtendimento,
-                    $"[Atendimento Simpli Time] {model.Assunto}",
-                    $@"
-                    <h2>Nova solicitação de atendimento</h2>
-                    <p><strong>De:</strong> {model.Nome} ({model.Origem})</p>
-                    <p><strong>E-mail para retorno:</strong> {model.Email}</p>
-                    <p><strong>Assunto:</strong> {model.Assunto}</p>
-                    <p><strong>Mensagem:</strong></p>
-                    <p>{model.Mensagem.Replace("\n", "<br>")}</p>");
+                // Nome/Email/Origem sempre vêm do usuário logado, nunca do que foi
+                // digitado no form — evita que alguém forje remetente.
+                var modeloAtual = await MontarModeloComUsuarioAsync();
+                model.Nome = modeloAtual.Nome;
+                model.Email = modeloAtual.Email;
+                model.Origem = modeloAtual.Origem;
 
-                ToastHelper.Success(TempData, "Mensagem enviada! Nossa equipe vai te responder em breve.");
+                ModelState.Remove(nameof(AtendimentoViewModel.Nome));
+                ModelState.Remove(nameof(AtendimentoViewModel.Email));
+
+                if (!ModelState.IsValid)
+                {
+                    ViewBag.Lista = await CarregarListaAsync();
+                    return View(model);
+                }
+
+                var usuarioId = _userManager.GetUserId(User);
+
+                var atendimento = new Atendimento
+                {
+                    UsuarioId = usuarioId,
+                    Nome = model.Nome,
+                    Email = model.Email,
+                    Origem = model.Origem,
+                    Assunto = model.Assunto,
+                    Mensagem = model.Mensagem,
+                    Status = StatusAtendimento.Aguardando
+                };
+
+                _context.Atendimentos.Add(atendimento);
+                await _context.SaveChangesAsync();
+
+                try
+                {
+                    await _emailService.SendEmailAsync(
+                        EmailAtendimento,
+                        $"[Atendimento Simpli Time] {model.Assunto}",
+                        $@"
+                        <h2>Nova solicitação de atendimento</h2>
+                        <p><strong>De:</strong> {model.Nome} ({model.Origem})</p>
+                        <p><strong>E-mail para retorno:</strong> {model.Email}</p>
+                        <p><strong>Assunto:</strong> {model.Assunto}</p>
+                        <p><strong>Mensagem:</strong></p>
+                        <p>{model.Mensagem.Replace("\n", "<br>")}</p>");
+
+                    ToastHelper.Success(TempData, "Mensagem enviada! Nossa equipe vai te responder em breve.");
+                }
+                catch (Exception ex)
+                {
+                    // A solicitação já ficou salva (e visível na lista) mesmo se o
+                    // e-mail falhar — só avisa que o envio não confirmou.
+                    _logger.LogError(ex, "Falha ao enviar e-mail da solicitação de atendimento {Id}.", atendimento.Id);
+                    ToastHelper.Warning(TempData, "Sua solicitação foi registrada, mas não conseguimos confirmar o envio do e-mail agora.");
+                }
+
+                return RedirectToAction(nameof(Index));
             }
             catch (Exception ex)
             {
-                // A solicitação já ficou salva (e visível na lista) mesmo se o
-                // e-mail falhar — só avisa que o envio não confirmou.
-                _logger.LogError(ex, "Falha ao enviar e-mail da solicitação de atendimento {Id}.", atendimento.Id);
-                ToastHelper.Warning(TempData, "Sua solicitação foi registrada, mas não conseguimos confirmar o envio do e-mail agora.");
+                _logger.LogError(ex, "Erro ao registrar solicitação de atendimento.");
+                ToastHelper.Error(TempData, "Erro ao registrar sua solicitação. Tente novamente.");
+                return RedirectToAction(nameof(Index));
             }
-
-            return RedirectToAction(nameof(Index));
         }
 
         // O próprio usuário marca como resolvido (não existe painel de
@@ -115,23 +134,32 @@ namespace EmpresaAgendamento.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Concluir(int id)
         {
-            var usuarioId = _userManager.GetUserId(User);
-
-            var atendimento = await _context.Atendimentos
-                .FirstOrDefaultAsync(a => a.Id == id && a.UsuarioId == usuarioId);
-
-            if (atendimento == null)
+            try
             {
-                ToastHelper.Error(TempData, "Atendimento não encontrado.");
+                var usuarioId = _userManager.GetUserId(User);
+
+                var atendimento = await _context.Atendimentos
+                    .FirstOrDefaultAsync(a => a.Id == id && a.UsuarioId == usuarioId);
+
+                if (atendimento == null)
+                {
+                    ToastHelper.Error(TempData, "Atendimento não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                atendimento.Status = StatusAtendimento.Finalizado;
+                atendimento.DataFinalizacao = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+
+                ToastHelper.Success(TempData, "Atendimento marcado como concluído.");
                 return RedirectToAction(nameof(Index));
             }
-
-            atendimento.Status = StatusAtendimento.Finalizado;
-            atendimento.DataFinalizacao = DateTime.UtcNow;
-            await _context.SaveChangesAsync();
-
-            ToastHelper.Success(TempData, "Atendimento marcado como concluído.");
-            return RedirectToAction(nameof(Index));
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro ao concluir atendimento {Id}.", id);
+                ToastHelper.Error(TempData, "Erro ao concluir atendimento.");
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         private async Task<List<Atendimento>> CarregarListaAsync()

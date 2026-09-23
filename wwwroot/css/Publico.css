@@ -10,6 +10,10 @@
     --text3: #5a5550;
     --accent: #c8a96e;
     --accent2: #e8c98e;
+    /* Cor de texto usada em cima de --accent (botões, badge, paginação
+       ativa) — recalculada pela página quando a empresa define uma cor de
+       marca própria, pra manter contraste legível (ver Views/Publico/index.cshtml). */
+    --accent-contrast: #1a1200;
     --green: #4caf7d;
     --radius: 14px;
     --radius-sm: 8px;
@@ -116,7 +120,7 @@ nav {
 
 .btn-cta {
     background: var(--accent);
-    color: #1a1200;
+    color: var(--accent-contrast);
     font-family: 'Syne', sans-serif;
     font-weight: 700;
     font-size: 13px;
@@ -182,7 +186,7 @@ nav {
     top: -4px;
     right: -4px;
     background: var(--accent);
-    color: #1a1200;
+    color: var(--accent-contrast);
     font-family: 'Syne', sans-serif;
     font-weight: 700;
     font-size: 9px;
@@ -251,7 +255,7 @@ nav {
 
 .btn-agendar {
     background: var(--accent);
-    color: #1a1200;
+    color: var(--accent-contrast);
     font-family: 'Syne', sans-serif;
     font-weight: 700;
     font-size: 14px;
@@ -629,7 +633,7 @@ nav {
     .btn-schedule:hover {
         background: var(--accent);
         border-color: var(--accent);
-        color: #1a1200;
+        color: var(--accent-contrast);
         transform: scale(1.04);
     }
 
@@ -976,6 +980,7 @@ footer ul {
     --text3: #5a5550;
     --accent: #c8a96e;
     --accent2: #e8c98e;
+    --accent-contrast: #1a1200;
     --green: #4caf7d;
     --footer-bg: #050505;
     --nav-bg: rgba(10,10,10,.85);
@@ -1079,7 +1084,7 @@ body.light-theme {
     .page-btn.active {
         background: var(--accent);
         border-color: var(--accent);
-        color: #1a1200;
+        color: var(--accent-contrast);
         font-weight: 700;
     }
 

@@ -5,12 +5,25 @@
 <html lang="pt-br">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Simpli Time</title>
 
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="icon" type="image/png" href="/img/icon.png?v=3" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- PWA — repetido aqui (mesmo conteúdo de _LayoutCliente.cshtml) porque
+         quem ainda não logou é redirecionado pra essa página antes de
+         chegar em /Cliente; sem isso, "Adicionar à Tela de Início" feito
+         antes do login virava um favorito comum do Safari, sem ícone
+         correto e sem abrir em modo tela cheia. -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#111111" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Simpli Time" />
+    <link rel="apple-touch-icon" href="/img/icon-192.png" />
 
     <style>
         body {
@@ -380,6 +393,26 @@
             border-radius: 20px;
             display: inline-block;
             margin-bottom: 10px;
+        }
+
+        .plan-tagline {
+            font-size: 13px;
+            color: #94a3b8;
+            min-height: 34px;
+            margin-bottom: 2px;
+        }
+
+        .badge-trial {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 14px;
+            background: rgba(34, 197, 94, .12);
+            color: #22c55e;
+            border: 1px solid rgba(34, 197, 94, .35);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 7px 16px;
+            border-radius: 999px;
         }
 
         /* BOTÃO DESTAQUE */
@@ -875,6 +908,9 @@
             <div class="text-center mb-4">
                 <h2 class="fw-bold">Preços simples e transparentes</h2>
                 <p class="text-secondary">Escolha o plano ideal para o tamanho da sua equipe</p>
+                <span class="badge-trial">
+                    <i class="bi bi-gift-fill me-1"></i>7 dias grátis em qualquer plano — cancele quando quiser
+                </span>
             </div>
 
             <div class="d-flex justify-content-center mb-5">
@@ -891,26 +927,31 @@
                 <div class="col-md-4">
                     <div class="plan-card">
 
-                        <h5 class="text-light">Start</h5>
-                        <p class="text-secondary mb-4">Até 2 profissionais</p>
+                        <h5 class="text-light mb-1">Start</h5>
+                        <p class="plan-tagline">Ideal pra quem trabalha sozinho ou com um sócio</p>
+                        <p class="text-secondary mb-3">Até 2 profissionais</p>
 
-                        <div class="price-promo text-success small mb-1" style="display:none;">
-                            Nos 3 primeiros meses. Depois, R$ 39,90/mês.
-                        </div>
-                        <div class="price mb-4" data-plano="Start"
-                             data-mensal="R$ 39,90 /mês" data-mensal-promo="R$ 9,99 /mês"
+                        <div class="price mb-1" data-plano="Start"
+                             data-mensal="R$ 39,90 /mês"
                              data-semestral="R$ 269,00 /semestre" data-anual="R$ 499,00 /ano">
                             R$ 39,90 <span>/mês</span>
                         </div>
 
+                        <p class="text-secondary small mb-4">
+                            7 dias grátis, depois cobramos normalmente. Sem fidelidade — cancele quando quiser.
+                        </p>
+
                         <ul class="plan-list">
-                            <li><i class="bi bi-check2"></i> Agendamentos ilimitados</li>
-                            <li><i class="bi bi-check2"></i> Gestão de clientes</li>
-                            <li><i class="bi bi-check2"></i> Controle financeiro</li>
+                            <li><i class="bi bi-check2"></i> Agenda online com página e link próprios</li>
+                            <li><i class="bi bi-check2"></i> Cadastro completo de clientes</li>
+                            <li><i class="bi bi-check2"></i> Financeiro: caixa, contas a pagar e a receber</li>
+                            <li><i class="bi bi-check2"></i> Comanda com controle de produtos e estoque</li>
+                            <li><i class="bi bi-check2"></i> Fidelidade automática com desconto por visitas</li>
+                            <li><i class="bi bi-check2"></i> Portal do cliente instalável como app (PWA)</li>
                         </ul>
 
                         <a href="#" onclick="abrirCadastroComPlano('Start'); return false;" class="btn btn-plan mt-auto">
-                            Assinar Start
+                            Começar grátis
                         </a>
 
                     </div>
@@ -922,24 +963,32 @@
 
                         <div class="badge-plan">Mais escolhido</div>
 
-                        <h5>Pro</h5>
-                        <p class="text-light-50 mb-4">Até 5 profissionais</p>
+                        <h5 class="mb-1">Pro</h5>
+                        <p class="plan-tagline">Pra salões, clínicas e barbearias em crescimento</p>
+                        <p class="text-light-50 mb-3">Até 5 profissionais</p>
 
-                        <div class="price mb-4" data-plano="Pro"
+                        <div class="price mb-1" data-plano="Pro"
                              data-mensal="R$ 79,90 /mês"
                              data-semestral="R$ 429,00 /semestre" data-anual="R$ 799,00 /ano">
                             R$ 79,90 <span>/mês</span>
                         </div>
 
+                        <p class="text-light-50 small mb-4">
+                            7 dias grátis, depois cobramos normalmente. Sem fidelidade — cancele quando quiser.
+                        </p>
+
                         <ul class="plan-list">
-                            <li><i class="bi bi-check2"></i> Tudo do Start</li>
-                            <li><i class="bi bi-check2"></i> WhatsApp automático</li>
-                            <li><i class="bi bi-check2"></i> Link personalizado</li>
+                            <li><i class="bi bi-check2"></i> Agenda online com página e link próprios</li>
+                            <li><i class="bi bi-check2"></i> Financeiro: caixa, contas a pagar/receber e comissões</li>
+                            <li><i class="bi bi-check2"></i> Comanda com controle de produtos e estoque</li>
+                            <li><i class="bi bi-check2"></i> Fidelidade automática com desconto por visitas</li>
+                            <li><i class="bi bi-check2"></i> Notificações em tempo real e lembrete por WhatsApp</li>
+                            <li><i class="bi bi-check2"></i> Portal do cliente instalável como app (PWA)</li>
                             <li><i class="bi bi-check2"></i> Suporte prioritário</li>
                         </ul>
 
                         <a href="#" onclick="abrirCadastroComPlano('Pro'); return false;" class="btn btn-plan-primary mt-auto">
-                            Assinar Pro
+                            Começar grátis
                         </a>
 
                     </div>
@@ -949,29 +998,44 @@
                 <div class="col-md-4">
                     <div class="plan-card">
 
-                        <h5 class="text-light">Business</h5>
-                        <p class="text-secondary mb-4">10+ profissionais</p>
+                        <h5 class="text-light mb-1">Business</h5>
+                        <p class="plan-tagline">Pra redes e operações com equipe grande</p>
+                        <p class="text-secondary mb-3">10+ profissionais</p>
 
-                        <div class="price mb-4" data-plano="Business"
+                        <div class="price mb-1" data-plano="Business"
                              data-mensal="R$ 119,90 /mês"
                              data-semestral="R$ 649,00 /semestre" data-anual="R$ 1.199,00 /ano">
                             R$ 119,90 <span>/mês</span>
                         </div>
 
+                        <p class="text-secondary small mb-4">
+                            7 dias grátis, depois cobramos normalmente. Sem fidelidade — cancele quando quiser.
+                        </p>
+
                         <ul class="plan-list">
-                            <li><i class="bi bi-check2"></i> Tudo do Pro</li>
-                            <li><i class="bi bi-check2"></i> Profissionais ilimitados</li>
-                            <li><i class="bi bi-check2"></i> Relatórios avançados</li>
+                            <li><i class="bi bi-check2"></i> Agenda online com página e link próprios</li>
+                            <li><i class="bi bi-check2"></i> Financeiro: caixa, contas a pagar/receber e comissões</li>
+                            <li><i class="bi bi-check2"></i> Comanda com controle de produtos e estoque</li>
+                            <li><i class="bi bi-check2"></i> Fidelidade automática com desconto por visitas</li>
+                            <li><i class="bi bi-check2"></i> Notificações em tempo real e lembrete por WhatsApp</li>
+                            <li><i class="bi bi-check2"></i> Portal do cliente instalável como app (PWA)</li>
+                            <li><i class="bi bi-check2"></i> Suporte prioritário com atendimento dedicado</li>
                         </ul>
 
                         <a href="#" onclick="abrirCadastroComPlano('Business'); return false;" class="btn btn-plan mt-auto">
-                            Assinar Business
+                            Começar grátis
                         </a>
 
                     </div>
                 </div>
 
             </div>
+
+            <p class="text-center text-secondary small mt-4 mb-0">
+                Todos os planos incluem os mesmos módulos completos — o que muda é o tamanho da equipe.
+                Precisa de mais de 10 profissionais ou uma proposta sob medida?
+                <a href="#" onclick="abrirCadastroComPlano('Business'); return false;" class="link-light">Fale com a gente</a>.
+            </p>
         </div>
     </section>
 
@@ -1077,15 +1141,7 @@
             });
 
             document.querySelectorAll(".price[data-plano]").forEach(function (el) {
-                var promo = el.parentElement.querySelector(".price-promo");
-                var mostraPromo = periodo === "mensal" && el.dataset.mensalPromo;
-
-                if (promo) {
-                    promo.style.display = mostraPromo ? "block" : "none";
-                }
-
-                var texto = mostraPromo ? el.dataset.mensalPromo
-                    : periodo === "semestral" ? el.dataset.semestral
+                var texto = periodo === "semestral" ? el.dataset.semestral
                     : periodo === "anual" ? el.dataset.anual
                     : el.dataset.mensal;
 
@@ -1121,7 +1177,13 @@
                     if (mode === "reset") url = "/empresa/resetpassword" + "?email=" + encodeURIComponent(resetEmail) + "&token=" + encodeURIComponent(resetToken);
 
             fetch(url)
-                .then(res => res.text())
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+
+                    return res.text();
+                })
                 .then(html => {
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
@@ -1131,7 +1193,13 @@
                         doc.querySelector('.card-premium');
 
                     document.getElementById('empresaContent').innerHTML =
-                        content ? content.outerHTML : "<p>Erro ao carregar empresa</p>";
+                        content ? content.outerHTML : "<p class=\"text-danger text-center my-4\">Não foi possível carregar esta tela agora. Tente novamente.</p>";
+                })
+                .catch(err => {
+                    console.error("Erro ao carregar tela de empresa:", err);
+
+                    document.getElementById('empresaContent').innerHTML =
+                        "<p class=\"text-danger text-center my-4\">Não foi possível carregar esta tela agora. Tente novamente.</p>";
                 });
         }
 
@@ -1144,7 +1212,13 @@
             if (mode === "reset") url = "/cliente/resetpassword" + "?email=" + encodeURIComponent(resetEmail) + "&token=" + encodeURIComponent(resetToken);
 
             fetch(url)
-                .then(res => res.text())
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+
+                    return res.text();
+                })
                 .then(html => {
                     const doc = new DOMParser().parseFromString(html, 'text/html');
 
@@ -1153,7 +1227,13 @@
                         doc.querySelector('.login-card');
 
                     document.getElementById('clienteContent').innerHTML =
-                        content ? content.outerHTML : "<p>Erro ao carregar cliente</p>";
+                        content ? content.outerHTML : "<p class=\"text-danger text-center my-4\">Não foi possível carregar esta tela agora. Tente novamente.</p>";
+                })
+                .catch(err => {
+                    console.error("Erro ao carregar tela de cliente:", err);
+
+                    document.getElementById('clienteContent').innerHTML =
+                        "<p class=\"text-danger text-center my-4\">Não foi possível carregar esta tela agora. Tente novamente.</p>";
                 });
         }
 

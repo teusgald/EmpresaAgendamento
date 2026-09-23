@@ -1,0 +1,27 @@
+{
+  "name": "Simpli Time — Portal do Cliente",
+  "short_name": "Simpli Time",
+  "description": "Agende, acompanhe e gerencie seus atendimentos.",
+  "start_url": "/Cliente",
+  "scope": "/",
+  "id": "/Cliente",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F8F9FA",
+  "theme_color": "#111111",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/img/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/img/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

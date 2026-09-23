@@ -1,0 +1,133 @@
+@model EmpresaAgendamento.Models.ViewModels.SuperAdminDashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    Layout = "_LayoutSuperAdmin";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Dashboard</h3>
+            <p class="page-subtitle">Visão geral de todas as empresas cadastradas na plataforma.</p>
+        </div>
+    </div>
+
+    <!-- EMPRESAS -->
+    <h6 class="text-muted fw-semibold mb-2">Empresas</h6>
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Total de empresas</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalEmpresas</h3>
+                    </div>
+                    <i class="bi bi-building fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Pagantes</h6>
+                        <h3 class="fw-bold mb-0 text-success">@Model.EmpresasPagantes</h3>
+                    </div>
+                    <i class="bi bi-cash-coin fs-4 text-success"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">VIP (sem cobrança)</h6>
+                        <h3 class="fw-bold mb-0 text-info">@Model.EmpresasVip</h3>
+                    </div>
+                    <i class="bi bi-gem fs-4 text-info"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Não pagantes</h6>
+                        <h3 class="fw-bold mb-0 text-danger">@Model.EmpresasNaoPagantes</h3>
+                    </div>
+                    <i class="bi bi-exclamation-circle fs-4 text-danger"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- USUÁRIOS -->
+    <h6 class="text-muted fw-semibold mb-2">Usuários</h6>
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Funcionários</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalFuncionarios</h3>
+                    </div>
+                    <i class="bi bi-person-badge fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Clientes</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalClientes</h3>
+                    </div>
+                    <i class="bi bi-people fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Contas ativas</h6>
+                        <h3 class="fw-bold mb-0">@Model.UsuariosAtivos</h3>
+                    </div>
+                    <i class="bi bi-person-check fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Total de contas</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalUsuarios</h3>
+                    </div>
+                    <i class="bi bi-person-lines-fill fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="d-flex flex-column flex-md-row gap-2">
+        <a asp-controller="SuperAdminFaturamento" asp-action="Index" class="btn btn-dark">
+            <i class="bi bi-cash-coin me-1"></i> Ver faturamento
+        </a>
+        <a asp-controller="SuperAdminUsuarios" asp-action="Index" class="btn btn-outline-dark">
+            <i class="bi bi-people me-1"></i> Buscar usuários
+        </a>
+    </div>
+
+</div>

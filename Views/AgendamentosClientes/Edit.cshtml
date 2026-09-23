@@ -9,6 +9,7 @@
         <div class="card-body">
             <h4 class="mb-4">Editar Agendamento</h4>
             <form asp-action="Edit" method="post">
+                @Html.AntiForgeryToken()
                 <input type="hidden" asp-for="Id" />
 
                 <div class="mb-3">

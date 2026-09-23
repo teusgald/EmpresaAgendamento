@@ -1,0 +1,153 @@
+@model EmpresaAgendamento.Models.Agendamento
+@using EmpresaAgendamento.Models
+@using EmpresaAgendamento.Models.Enums
+
+@{
+    ViewData["Title"] = "Comanda";
+
+    var produtosDisponiveis = (ViewBag.ProdutosDisponiveis as List<Produto>) ?? new List<Produto>();
+    var totalProdutos = Model.ItensComanda.Sum(i => i.Quantidade * i.PrecoUnitario);
+    var totalGeral = (Model.Servico?.Preco ?? 0) + totalProdutos;
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Comanda</h3>
+            <p class="page-subtitle">
+                @(Model.Cliente?.Nome ?? Model.NomeClienteAvulso ?? "Cliente avulso") — @Model.Servico?.Nome
+            </p>
+        </div>
+
+        <a asp-controller="Agendamentos" asp-action="Index" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Voltar
+        </a>
+    </div>
+
+    <div class="row g-3">
+
+        <div class="col-lg-7">
+
+            <div class="card shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <span>Serviço: @Model.Servico?.Nome</span>
+                        <span class="fw-semibold">@(Model.Servico?.Preco.ToString("C"))</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <h5 class="mb-3">Produtos consumidos</h5>
+
+                    @if (!Model.ItensComanda.Any())
+                    {
+                        <p class="text-muted">Nenhum produto adicionado ainda.</p>
+                    }
+                    else
+                    {
+                        <ul class="list-group mb-3">
+                            @foreach (var item in Model.ItensComanda.OrderBy(i => i.DataAdicao))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>@item.Quantidade x @item.Produto.Nome</span>
+                                    <span class="d-flex align-items-center gap-2">
+                                        <span>@((item.Quantidade * item.PrecoUnitario).ToString("C"))</span>
+                                        <form asp-action="Remover" asp-route-agendamentoId="@Model.Id" asp-route-itemId="@item.Id" method="post">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        </form>
+                                    </span>
+                                </li>
+                            }
+                        </ul>
+                    }
+
+                    @if (produtosDisponiveis.Any())
+                    {
+                        <form asp-action="Adicionar" asp-route-agendamentoId="@Model.Id" method="post" class="row g-2 align-items-end">
+                            @Html.AntiForgeryToken()
+
+                            <div class="col-6">
+                                <label class="form-label small">Produto</label>
+                                <select name="produtoId" class="form-select">
+                                    @foreach (var produto in produtosDisponiveis)
+                                    {
+                                        <option value="@produto.Id">@produto.Nome (@produto.Preco.ToString("C")) — @produto.QuantidadeEstoque em estoque</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="col-3">
+                                <label class="form-label small">Qtd.</label>
+                                <input type="number" name="quantidade" value="1" min="1" class="form-control" />
+                            </div>
+
+                            <div class="col-3">
+                                <button type="submit" class="btn btn-primary w-100">Adicionar</button>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        <p class="text-muted small mb-0">Nenhum produto ativo com estoque disponível.</p>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+
+        <div class="col-lg-5">
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+
+                    <h5 class="mb-3">Resumo</h5>
+
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted">Serviço</span>
+                        <span>@Model.Servico?.Preco.ToString("C")</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Produtos</span>
+                        <span>@totalProdutos.ToString("C")</span>
+                    </div>
+
+                    <hr />
+
+                    <div class="d-flex justify-content-between fs-5 fw-bold mb-4">
+                        <span>Total</span>
+                        <span>@totalGeral.ToString("C")</span>
+                    </div>
+
+                    @if (Model.Status != StatusAgendamento.Finalizado)
+                    {
+                        <form asp-controller="Agendamentos" asp-action="AlterarStatus" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@Model.Id" />
+                            <input type="hidden" name="status" value="@StatusAgendamento.Finalizado" />
+                            <button type="submit" class="btn btn-success w-100">
+                                Finalizar atendimento e cobrar
+                            </button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="badge bg-secondary">Atendimento já finalizado</span>
+                    }
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

@@ -13,19 +13,23 @@ namespace EmpresaAgendamento.Services
         private const string Moeda = "brl";
         private const string NomePlanoLegado = "Plano Padrão";
 
+        // Sem desconto por tempo limitado — todo plano/período tem 7 dias
+        // grátis antes da primeira cobrança (ver TrialPeriodDays em
+        // CriarCheckoutClientSecretAsync), depois cobra o valor cheio.
+        private const int DiasTesteGratis = 7;
+
         // Preços de mercado definidos com o dono do produto — 3 tiers por
-        // número de profissionais. A promoção de R$9,99 nos 3 primeiros
-        // meses (cupom) só existe no Start, que é o plano de entrada.
+        // número de profissionais.
         private static readonly PlanoSeed[] PlanosSeed =
         {
-            new("Start", LimiteFuncionarios: 2, ValorMensal: 39.90m, ValorSemestral: 269.00m, ValorAnual: 499.00m, ValorMensalPromocional: 9.99m),
-            new("Pro", LimiteFuncionarios: 5, ValorMensal: 79.90m, ValorSemestral: 429.00m, ValorAnual: 799.00m, ValorMensalPromocional: null),
-            new("Business", LimiteFuncionarios: 0, ValorMensal: 119.90m, ValorSemestral: 649.00m, ValorAnual: 1199.00m, ValorMensalPromocional: null)
+            new("Start", LimiteFuncionarios: 2, ValorMensal: 39.90m, ValorSemestral: 269.00m, ValorAnual: 499.00m),
+            new("Pro", LimiteFuncionarios: 5, ValorMensal: 79.90m, ValorSemestral: 429.00m, ValorAnual: 799.00m),
+            new("Business", LimiteFuncionarios: 0, ValorMensal: 119.90m, ValorSemestral: 649.00m, ValorAnual: 1199.00m)
         };
 
         private record PlanoSeed(
             string Nome, int LimiteFuncionarios, decimal ValorMensal,
-            decimal ValorSemestral, decimal ValorAnual, decimal? ValorMensalPromocional);
+            decimal ValorSemestral, decimal ValorAnual);
 
         public StripeService(ApplicationDbContext context)
         {
@@ -77,8 +81,7 @@ namespace EmpresaAgendamento.Services
             if (plano != null &&
                 !string.IsNullOrEmpty(plano.StripePriceIdMensal) &&
                 !string.IsNullOrEmpty(plano.StripePriceIdSemestral) &&
-                !string.IsNullOrEmpty(plano.StripePriceIdAnual) &&
-                (seed.ValorMensalPromocional == null || !string.IsNullOrEmpty(plano.StripeCouponIdPromocional)))
+                !string.IsNullOrEmpty(plano.StripePriceIdAnual))
             {
                 return plano;
             }
@@ -116,24 +119,6 @@ namespace EmpresaAgendamento.Services
                 Recurring = new PriceRecurringOptions { Interval = "year" }
             });
 
-            string? cupomId = null;
-
-            if (seed.ValorMensalPromocional.HasValue)
-            {
-                var couponService = new CouponService();
-
-                var cupom = await couponService.CreateAsync(new CouponCreateOptions
-                {
-                    Name = $"Promoção 3 primeiros meses — {seed.Nome}",
-                    Currency = Moeda,
-                    AmountOff = (long)((seed.ValorMensal - seed.ValorMensalPromocional.Value) * 100),
-                    Duration = "repeating",
-                    DurationInMonths = 3
-                });
-
-                cupomId = cupom.Id;
-            }
-
             if (plano == null)
             {
                 plano = new Plano
@@ -159,11 +144,6 @@ namespace EmpresaAgendamento.Services
             plano.StripePriceIdMensal = priceMensal.Id;
             plano.StripePriceIdSemestral = priceSemestral.Id;
             plano.StripePriceIdAnual = priceAnual.Id;
-
-            if (cupomId != null)
-            {
-                plano.StripeCouponIdPromocional = cupomId;
-            }
 
             await _context.SaveChangesAsync();
 
@@ -287,19 +267,13 @@ namespace EmpresaAgendamento.Services
                 {
                     new SessionLineItemOptions { Price = priceId, Quantity = 1 }
                 },
+                SubscriptionData = new SessionSubscriptionDataOptions
+                {
+                    TrialPeriodDays = DiasTesteGratis
+                },
                 ReturnUrl = urlRetorno,
                 AllowPromotionCodes = false
             };
-
-            // Promoção dos 3 primeiros meses só faz sentido na cobrança
-            // mensal (e só existe no plano Start).
-            if (tipoPlano == "mensal" && !string.IsNullOrEmpty(plano.StripeCouponIdPromocional))
-            {
-                options.Discounts = new List<SessionDiscountOptions>
-                {
-                    new SessionDiscountOptions { Coupon = plano.StripeCouponIdPromocional }
-                };
-            }
 
             var sessionService = new SessionService();
             var session = await sessionService.CreateAsync(options);
@@ -339,6 +313,36 @@ namespace EmpresaAgendamento.Services
             });
 
             return session.Url;
+        }
+
+        // Soma real cobrada (faturas pagas) no Stripe num intervalo — fonte
+        // de verdade pro faturamento do painel do dono do sistema; não existe
+        // um livro-caixa local separado disso.
+        public async Task<(int TotalFaturas, decimal ValorTotal)> ListarFaturasPagasAsync(DateTime inicio, DateTime fimExclusivo)
+        {
+            var invoiceService = new InvoiceService();
+
+            var options = new InvoiceListOptions
+            {
+                Status = "paid",
+                Created = new DateRangeOptions
+                {
+                    GreaterThanOrEqual = inicio,
+                    LessThan = fimExclusivo
+                },
+                Limit = 100
+            };
+
+            var totalFaturas = 0;
+            var valorTotal = 0m;
+
+            await foreach (var invoice in invoiceService.ListAutoPagingAsync(options))
+            {
+                totalFaturas++;
+                valorTotal += invoice.AmountPaid / 100m;
+            }
+
+            return (totalFaturas, valorTotal);
         }
 
         public async Task ProcessarEventoAsync(Event stripeEvent)

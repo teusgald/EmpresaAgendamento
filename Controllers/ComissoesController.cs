@@ -54,6 +54,8 @@ namespace EmpresaAgendamento.Controllers
             DateTime? dataFinal = null,
             int page = 1)
         {
+            try
+            {
             var empresaId = await GetEmpresaId();
 
             if (empresaId == null)
@@ -137,6 +139,12 @@ namespace EmpresaAgendamento.Controllers
             ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
             return View(lista);
+            }
+            catch
+            {
+                ToastHelper.Error(TempData, "Erro ao carregar comissões.");
+                return View(new List<AgendamentoFuncionario>());
+            }
         }
 
         [HttpPost("pagar")]
@@ -147,31 +155,39 @@ namespace EmpresaAgendamento.Controllers
             DateTime? dataFinal,
             FormaPagamento formaPagamento)
         {
-            var empresaId = await GetEmpresaId();
-
-            if (empresaId == null)
+            try
             {
-                ToastHelper.Error(TempData, "Sessão expirada.");
-                return RedirectToAction("Login", "EmpresaAuth");
+                var empresaId = await GetEmpresaId();
+
+                if (empresaId == null)
+                {
+                    ToastHelper.Error(TempData, "Sessão expirada.");
+                    return RedirectToAction("Login", "EmpresaAuth");
+                }
+
+                var usuarioId = _userManager.GetUserId(User);
+
+                var (sucesso, erro, conta) = await _financeiroService.PagarComissoesPendentesAsync(
+                    empresaId.Value, funcionarioId, dataInicial, dataFinal, formaPagamento, usuarioId);
+
+                if (!sucesso)
+                {
+                    ToastHelper.Error(TempData, erro ?? "Erro ao pagar comissões.");
+                }
+                else
+                {
+                    ToastHelper.Success(
+                        TempData,
+                        $"Comissões pagas com sucesso! Total: {conta!.ValorPago:C}");
+                }
+
+                return RedirectToAction(nameof(Index));
             }
-
-            var usuarioId = _userManager.GetUserId(User);
-
-            var (sucesso, erro, conta) = await _financeiroService.PagarComissoesPendentesAsync(
-                empresaId.Value, funcionarioId, dataInicial, dataFinal, formaPagamento, usuarioId);
-
-            if (!sucesso)
+            catch
             {
-                ToastHelper.Error(TempData, erro ?? "Erro ao pagar comissões.");
+                ToastHelper.Error(TempData, "Erro ao pagar comissões.");
+                return RedirectToAction(nameof(Index));
             }
-            else
-            {
-                ToastHelper.Success(
-                    TempData,
-                    $"Comissões pagas com sucesso! Total: {conta!.ValorPago:C}");
-            }
-
-            return RedirectToAction(nameof(Index));
         }
     }
 }

@@ -1,0 +1,56 @@
+@model EmpresaAgendamento.Models.Produto
+
+<div class="container mt-4">
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h4 class="mb-4">Editar Produto</h4>
+
+            <div asp-validation-summary="All" class="text-danger"></div>
+
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="Id" />
+
+                <div class="mb-3">
+                    <label class="form-label">Nome</label>
+                    <input asp-for="Nome" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descrição</label>
+                    <textarea asp-for="Descricao" class="form-control"></textarea>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Preço</label>
+                        <input asp-for="Preco" class="form-control" data-mask="dinheiro" placeholder="R$ 0,00" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Estoque</label>
+                        <input asp-for="QuantidadeEstoque" type="number" min="0" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="mb-3 mt-3">
+                    <label class="form-label">Foto</label>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.FotoUrl))
+                    {
+                        <div class="mb-2">
+                            <img src="@Model.FotoUrl" alt="@Model.Nome" style="max-height:100px;border-radius:8px;" />
+                        </div>
+                    }
+
+                    <input type="file" name="fotoFile" accept="image/png,image/jpeg,image/webp,image/gif" class="form-control" />
+                    <small class="text-muted">PNG, JPG, WEBP ou GIF — até 2 MB. Deixe em branco para manter a foto atual.</small>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Voltar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

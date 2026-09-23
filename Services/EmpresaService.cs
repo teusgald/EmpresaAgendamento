@@ -102,8 +102,13 @@ namespace EmpresaAgendamento.Services
             if (user == null)
                 return (false, "Empresa não encontrada.");
 
+            // isPersistent: true — sem isso, o cookie de login não usa o
+            // ExpireTimeSpan/SlidingExpiration configurado em
+            // ConfigureApplicationCookie (Program.cs) e vira um cookie de
+            // sessão, que o iOS costuma descartar ao reabrir o app instalado
+            // (PWA), fazendo a sessão "expirar" a cada abertura.
             var result = await _signInManager.PasswordSignInAsync(
-                user, model.Password, false, true);
+                user, model.Password, true, true);
 
             if (!result.Succeeded)
             {

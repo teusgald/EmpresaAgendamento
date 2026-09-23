@@ -92,6 +92,32 @@ namespace EmpresaAgendamento.Services
             return conta;
         }
 
+        // Recalcula o valor previsto da conta a receber do agendamento como
+        // Serviço + soma dos itens da comanda — chamado pelo ComandaService
+        // toda vez que um produto é adicionado/removido durante o
+        // atendimento. Garante que a conta existe antes (idempotente).
+        public async Task AtualizarValorContaReceberDeAgendamentoAsync(int agendamentoId)
+        {
+            var conta = await GerarContaReceberDeAgendamentoAsync(agendamentoId);
+
+            if (conta == null)
+                return;
+
+            var agendamento = await _context.Agendamentos
+                .Include(a => a.Servico)
+                .Include(a => a.ItensComanda)
+                .FirstOrDefaultAsync(a => a.Id == agendamentoId);
+
+            if (agendamento == null)
+                return;
+
+            var totalProdutos = agendamento.ItensComanda.Sum(i => i.Quantidade * i.PrecoUnitario);
+
+            conta.ValorPrevisto = agendamento.Servico.Preco + totalProdutos;
+
+            await _context.SaveChangesAsync();
+        }
+
         // Calcula e registra a comissão do funcionário responsável pelo
         // agendamento, reaproveitando AgendamentoFuncionario (nunca populado
         // até então). Não paga a comissão — só a apura; o pagamento em si é

@@ -47,10 +47,6 @@ namespace EmpresaAgendamento.Models
         [StringLength(60)]
         public string? StripePriceIdAnual { get; set; }
 
-        // Cupom aplicado no checkout mensal (ex.: 3 primeiros meses com desconto).
-        [StringLength(60)]
-        public string? StripeCouponIdPromocional { get; set; }
-
         public ICollection<Empresa> Empresas { get; set; }
     = new List<Empresa>();
     }

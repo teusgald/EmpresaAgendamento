@@ -46,6 +46,99 @@
     var mapsUrl = $"https://www.google.com/maps/search/?api=1&query={queryMaps}";
 
     var linhasHorario = HorarioFormatHelper.FormatarPorDia(empresa.Horarios);
+
+    // Cor de marca da empresa (opcional) — sobrescreve as variáveis de cor
+    // só nesta página (renderização por request, nunca vaza pra outra
+    // empresa). Sem cor configurada, mantém o padrão do Simpli Time.
+    //
+    // A ideia é literal: a página usa SÓ as duas cores escolhidas — a
+    // PRIMÁRIA é o fundo dominante do layout inteiro (não uma versão
+    // "escurecida" dela por cima do tema padrão — é a cor em si), e a
+    // SECUNDÁRIA cuida dos detalhes (botões, links, destaques). Branco,
+    // preto etc. só entram como base neutra de texto/contraste — nunca
+    // substituindo a cor escolhida por outra coisa.
+    static bool EhHexValido(string? hex) =>
+        !string.IsNullOrWhiteSpace(hex) && System.Text.RegularExpressions.Regex.IsMatch(hex, "^#[0-9A-Fa-f]{6}$");
+
+    static (int R, int G, int B) HexParaRgb(string hex) => (
+        Convert.ToInt32(hex.Substring(1, 2), 16),
+        Convert.ToInt32(hex.Substring(3, 2), 16),
+        Convert.ToInt32(hex.Substring(5, 2), 16));
+
+    // Mistura linear simples de duas cores (mesmo resultado do color-mix()
+    // do CSS em srgb) — usada só pra criar variação de profundidade (cards
+    // um pouco mais claros/escuros que o fundo) sem inventar uma cor nova:
+    // é sempre a própria cor da empresa misturada com o neutro de contraste.
+    static string Misturar(string hexA, string hexB, double pctA)
+    {
+        var (ar, ag, ab) = HexParaRgb(hexA);
+        var (br, bg, bb) = HexParaRgb(hexB);
+        var p = Math.Clamp(pctA, 0, 100) / 100.0;
+
+        int r = (int)Math.Round(ar * p + br * (1 - p));
+        int g = (int)Math.Round(ag * p + bg * (1 - p));
+        int b = (int)Math.Round(ab * p + bb * (1 - p));
+
+        return $"#{r:X2}{g:X2}{b:X2}";
+    }
+
+    static string ComAlpha(string hex, double alpha)
+    {
+        var (r, g, b) = HexParaRgb(hex);
+        return $"rgba({r},{g},{b},{alpha.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
+    }
+
+    // Luminância relativa — decide se o texto/contraste em cima de uma cor
+    // fica preto ou branco, pra manter legível com qualquer cor escolhida
+    // (inclusive branco ou preto puro).
+    static string CorContraste(string hex)
+    {
+        var (r, g, b) = HexParaRgb(hex);
+        var luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminancia > 0.6 ? "#111111" : "#ffffff";
+    }
+
+    var temPrimaria = EhHexValido(empresa.CorPrimaria);
+    var temSecundaria = EhHexValido(empresa.CorSecundaria);
+
+    var corMarcaCss = "";
+    var corMarcaLoginCss = "";
+
+    if (temPrimaria)
+    {
+        var primaria = empresa.CorPrimaria!;
+        var textoBase = CorContraste(primaria);
+
+        // Fundo = a própria cor primária, sem alteração nenhuma. bg2/3/4 são
+        // só um leve degradê de profundidade (cards, inputs) misturando a
+        // mesma cor com o neutro de contraste — nunca uma cor diferente.
+        var bg2 = Misturar(primaria, textoBase, 92);
+        var bg3 = Misturar(primaria, textoBase, 84);
+        var bg4 = Misturar(primaria, textoBase, 76);
+
+        var texto2 = Misturar(textoBase, primaria, 65);
+        var texto3 = Misturar(textoBase, primaria, 40);
+
+        // Secundária = detalhes (botões, links, seleção, ícones). Sem
+        // secundária configurada, os detalhes usam um tom do neutro de
+        // contraste misturado na própria primária — continua sendo "só as
+        // duas cores da empresa" (aqui, só a primária existe mesmo).
+        var detalhe = temSecundaria ? empresa.CorSecundaria! : Misturar(primaria, textoBase, 75);
+        var detalhe2 = Misturar(detalhe, textoBase, 85);
+        var detalheContraste = CorContraste(detalhe);
+
+        corMarcaCss =
+            $"--bg:{primaria};" +
+            $"--bg2:{bg2};--bg3:{bg3};--bg4:{bg4};" +
+            $"--text:{textoBase};--text2:{texto2};--text3:{texto3};" +
+            $"--border:{ComAlpha(textoBase, 0.10)};--border2:{ComAlpha(textoBase, 0.18)};" +
+            $"--footer-bg:{bg2};--nav-bg:{ComAlpha(primaria, 0.92)};" +
+            $"--accent:{detalhe};--accent2:{detalhe2};--accent-contrast:{detalheContraste};";
+
+        corMarcaLoginCss =
+            $"--login-btn:{detalhe};--login-btn-hover:{detalhe2};" +
+            $"--login-btn-contrast:{detalheContraste};--login-accent-soft:{detalhe}22;";
+    }
 }
 
 @section Styles {
@@ -75,22 +168,96 @@
             color: #212529;
         }
 
-        #clienteLoginContent .form-control {
+        #clienteLoginContent {
+            /* Padrão do sistema (sem cor de marca configurada pela empresa)
+               — mantém o azul original em vez de herdar o dourado padrão do
+               resto da página pública, que é um elemento visual diferente. */
+            --login-btn: #2563eb;
+            --login-btn-hover: #1e40af;
+            --login-btn-contrast: #ffffff;
+            --login-accent-soft: #eff6ff;
+        }
+
+        /* Ícone e título — existiam em site.css (Home/telas do portal), mas
+           a página pública não carrega site.css, então ficavam sem nenhum
+           estilo (círculo, tamanho, cor). */
+        #clienteLoginContent .auth-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--login-accent-soft);
+            color: var(--login-btn);
+            font-size: 1.5rem;
+            margin-bottom: .75rem;
+        }
+
+        #clienteLoginContent .auth-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: .25rem;
+        }
+
+        #clienteLoginContent .form-control,
+        #clienteLoginContent .form-select {
             border-radius: 10px;
+            border: 1px solid #E5E7EB;
+        }
+
+        #clienteLoginContent .form-control:focus,
+        #clienteLoginContent .form-select:focus {
+            border-color: var(--login-btn);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--login-btn) 15%, transparent);
+        }
+
+        #clienteLoginContent .form-check-input:checked {
+            background-color: var(--login-btn);
+            border-color: var(--login-btn);
         }
 
         #clienteLoginContent .btn-primary,
         #clienteLoginContent .btn-dark {
             border-radius: 10px;
-            background: #2563eb;
+            background: var(--login-btn);
+            color: var(--login-btn-contrast);
             border: none;
         }
 
         #clienteLoginContent .btn-primary:hover,
         #clienteLoginContent .btn-dark:hover {
-            background: #1e40af;
+            background: var(--login-btn-hover);
+        }
+
+        #clienteLoginContent a {
+            color: #6B7280;
+        }
+
+        #clienteLoginContent a:hover {
+            color: var(--login-btn);
         }
     </style>
+
+    @if (!string.IsNullOrEmpty(corMarcaCss))
+    {
+        <style>
+            /* Mesma regra pro tema escuro (:root) e pro claro
+               (body.light-theme, ativado pelo botão 🌙/☀️) — com cor de
+               marca configurada, a página usa sempre a mesma cor da
+               empresa, o alternador de tema não "revela" o preto/branco
+               padrão por baixo. */
+            :root, body.light-theme {
+                @Html.Raw(corMarcaCss)
+            }
+        </style>
+    }
+
+    @if (!string.IsNullOrEmpty(corMarcaLoginCss))
+    {
+        <style>#clienteLoginContent{@Html.Raw(corMarcaLoginCss)}</style>
+    }
 }
 
 @section Navbar {
@@ -107,6 +274,7 @@
         <a href="#">Início</a>
         <a href="#servicos">Serviços</a>
         <a href="#contato">Contato</a>
+        <a href="/empresas">Encontrar empresas</a>
     </div>
 
     <div id="areaClienteNavbar">
@@ -225,6 +393,10 @@
             <div class="tabs-wrapper">
                 <div class="tabs">
                     <button class="tab-btn active" data-tab="tabServicos">Serviços</button>
+                    @if (Model.TemProdutos)
+                    {
+                        <button class="tab-btn" data-tab="tabProdutos">Produtos</button>
+                    }
                     @if (Model.PlanosServico != null && Model.PlanosServico.Any())
                     {
                         <button class="tab-btn" data-tab="tabPlanos">Planos</button>
@@ -263,7 +435,7 @@
                                     }
 
                                     <div class="meta">
-                                        <span class="price">R$ @s.Preco.ToString("F2")</span>
+                                        <span class="price">@(s.Preco > 0 ? $"R$ {s.Preco:F2}" : "Grátis")</span>
                                         <span class="duration">🕐 @s.DuracaoMinutos min</span>
                                     </div>
                                 </div>
@@ -290,6 +462,51 @@
 
             </div>
 
+            @if (Model.TemProdutos)
+            {
+                <!-- ===================== PRODUTOS ===================== -->
+                <div id="tabProdutos" class="tab-pane-publico" style="display:none">
+
+                    <div class="services-list">
+
+                        @foreach (var p in Model.Produtos)
+                        {
+                            <div class="service-item">
+
+                                @if (!string.IsNullOrWhiteSpace(p.FotoUrl))
+                                {
+                                    <img src="@p.FotoUrl" alt="@p.Nome" class="service-img" style="object-fit:cover;" />
+                                }
+                                else
+                                {
+                                    <div class="service-img">🧴</div>
+                                }
+
+                                <div class="service-info">
+                                    <div class="name">@p.Nome</div>
+
+                                    @if (!string.IsNullOrEmpty(p.Descricao))
+                                    {
+                                        <div class="desc">@p.Descricao</div>
+                                    }
+
+                                    <div class="meta">
+                                        <span class="price">R$ @p.Preco.ToString("F2")</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        }
+
+                    </div>
+
+                    <p class="small mt-2" style="color:var(--text2)">
+                        Produtos disponíveis para consumo durante o atendimento — não são vendidos separadamente por aqui.
+                    </p>
+
+                </div>
+            }
+
             @if (Model.PlanosServico != null && Model.PlanosServico.Any())
             {
                 <!-- ===================== PLANOS ===================== -->
@@ -311,8 +528,15 @@
                                 @if (plano.ValorReferencia.HasValue)
                                 {
                                     <div class="plan-price">
-                                        R$ @plano.ValorReferencia.Value.ToString("F2")
-                                        <span>/ @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "semana" : "mês")</span>
+                                        @if (plano.ValorReferencia.Value > 0)
+                                        {
+                                            @($"R$ {plano.ValorReferencia.Value:F2}")
+                                            <span>/ @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "semana" : "mês")</span>
+                                        }
+                                        else
+                                        {
+                                            @:Grátis
+                                        }
                                     </div>
                                 }
 
@@ -342,6 +566,8 @@
                         }
 
                     </div>
+
+                    <div class="pagination-public" id="planosPaginacao"></div>
 
                 </div>
             }
@@ -476,6 +702,8 @@
                     }
 
                 </div>
+
+                <div class="pagination-public" id="avaliacoesPaginacao"></div>
 
             </div>
 
@@ -670,6 +898,7 @@
 @section Footer {
     <div class="footer-bottom">
         <span>© @DateTime.Now.Year @nome</span>
+        <span class="footer-powered">Desenvolvido por <strong>Simpli Time</strong> — sistemas de agendamento online</span>
     </div>
 }
 
@@ -737,29 +966,33 @@
                     </select>
                 </div>
 
-                <hr />
+                <div id="blocoLoginCadastro">
 
-                <div class="text-center">
+                    <hr />
 
-                    <small>
-                        Possui cadastro?
-                    </small>
+                    <div class="text-center">
 
-                    <br />
+                        <small>
+                            Possui cadastro?
+                        </small>
 
-                    <a href="#"
-                       id="abrirLoginCliente">
-                        Entrar
-                    </a>
+                        <br />
 
-                    |
+                        <a href="#"
+                           id="abrirLoginCliente">
+                            Entrar
+                        </a>
 
-                    <a href="#"
-                       data-bs-toggle="modal"
-                       data-bs-target="#clienteLoginModal"
-                       data-cliente-mode="register">
-                        Criar Conta
-                    </a>
+                        |
+
+                        <a href="#"
+                           data-bs-toggle="modal"
+                           data-bs-target="#clienteLoginModal"
+                           data-cliente-mode="register">
+                            Criar Conta
+                        </a>
+
+                    </div>
 
                 </div>
 
@@ -930,67 +1163,99 @@
         });
 
         // ==========================================
-        // FILTRO + PAGINAÇÃO DE SERVIÇOS (5 por página)
+        // PAGINAÇÃO (5 por página) — Serviços, Planos e Avaliações
         // ==========================================
+        // Cada lista tem seu próprio contador de página e seu próprio
+        // seletor ESCOPADO à aba (ex.: "#tabServicos .service-item") — sem
+        // isso, a paginação de Serviços pegava também os itens da aba
+        // Produtos (que reaproveita a mesma classe .service-item mas não
+        // tem data-name), quebrando com erro de JS pra empresa que cadastra
+        // produto.
 
-        const SERVICOS_POR_PAGINA = 5;
-        let paginaServicoAtual = 1;
+        const ITENS_POR_PAGINA = 5;
 
-        function servicosFiltrados() {
+        function criarPaginador(itemSelector, navId, filtroFn) {
 
-            const q = document.getElementById("searchInput")?.value.toLowerCase() || "";
+            let paginaAtual = 1;
 
-            return Array.from(document.querySelectorAll(".service-item"))
-                .filter(item => item.dataset.name.includes(q));
+            function itensFiltrados() {
+                const todos = Array.from(document.querySelectorAll(itemSelector));
+                return filtroFn ? todos.filter(filtroFn) : todos;
+            }
+
+            function render() {
+
+                const itens = itensFiltrados();
+                const totalPaginas = Math.max(1, Math.ceil(itens.length / ITENS_POR_PAGINA));
+
+                if (paginaAtual > totalPaginas) {
+                    paginaAtual = totalPaginas;
+                }
+
+                document.querySelectorAll(itemSelector)
+                    .forEach(item => item.style.display = "none");
+
+                itens
+                    .slice(
+                        (paginaAtual - 1) * ITENS_POR_PAGINA,
+                        paginaAtual * ITENS_POR_PAGINA
+                    )
+                    .forEach(item => item.style.display = "");
+
+                const nav = document.getElementById(navId);
+
+                if (!nav) return;
+
+                nav.innerHTML = "";
+
+                if (totalPaginas <= 1) return;
+
+                for (let i = 1; i <= totalPaginas; i++) {
+
+                    const btn = document.createElement("button");
+
+                    btn.type = "button";
+                    btn.textContent = i;
+                    btn.className = "page-btn" + (i === paginaAtual ? " active" : "");
+
+                    btn.addEventListener("click", () => {
+                        paginaAtual = i;
+                        render();
+                    });
+
+                    nav.appendChild(btn);
+                }
+            }
+
+            return {
+                render,
+                resetPagina() {
+                    paginaAtual = 1;
+                    render();
+                }
+            };
         }
 
+        const paginadorServicos = criarPaginador(
+            "#tabServicos .service-item",
+            "servicosPaginacao",
+            item => {
+                const q = document.getElementById("searchInput")?.value.toLowerCase() || "";
+                return (item.dataset.name || "").includes(q);
+            }
+        );
+
+        const paginadorPlanos = criarPaginador("#tabPlanos .plan-card", "planosPaginacao");
+        const paginadorAvaliacoes = criarPaginador("#tabAvaliacoes .review-item", "avaliacoesPaginacao");
+
         function renderPaginacaoServicos() {
-
-            const itens = servicosFiltrados();
-            const totalPaginas = Math.max(1, Math.ceil(itens.length / SERVICOS_POR_PAGINA));
-
-            if (paginaServicoAtual > totalPaginas) {
-                paginaServicoAtual = totalPaginas;
-            }
-
-            document.querySelectorAll(".service-item")
-                .forEach(item => item.style.display = "none");
-
-            itens
-                .slice(
-                    (paginaServicoAtual - 1) * SERVICOS_POR_PAGINA,
-                    paginaServicoAtual * SERVICOS_POR_PAGINA
-                )
-                .forEach(item => item.style.display = "");
-
-            const nav = document.getElementById("servicosPaginacao");
-
-            if (!nav) return;
-
-            nav.innerHTML = "";
-
-            if (totalPaginas <= 1) return;
-
-            for (let i = 1; i <= totalPaginas; i++) {
-
-                const btn = document.createElement("button");
-
-                btn.type = "button";
-                btn.textContent = i;
-                btn.className = "page-btn" + (i === paginaServicoAtual ? " active" : "");
-
-                btn.addEventListener("click", () => {
-                    paginaServicoAtual = i;
-                    renderPaginacaoServicos();
-                });
-
-                nav.appendChild(btn);
-            }
+            paginadorServicos.render();
+            paginadorPlanos.render();
+            paginadorAvaliacoes.render();
         }
 
         function filterServices() {
-            paginaServicoAtual = 1;
-            renderPaginacaoServicos();
+            paginadorServicos.resetPagina();
         }
 
         // ==========================================
@@ -1299,6 +1564,11 @@
                     "blocoDadosCliente"
                 );
 
+            const blocoLogin =
+                document.getElementById(
+                    "blocoLoginCadastro"
+                );
+
             const clienteId =
                 document.getElementById(
                     "ClienteId"
@@ -1325,6 +1595,9 @@
 
             if (bloco)
                 bloco.style.display = "block";
+
+            if (blocoLogin)
+                blocoLogin.style.display = "block";
 
             try {
 
@@ -1353,6 +1626,10 @@
 
                 bloco.style.display =
                     "none";
+
+                if (blocoLogin)
+                    blocoLogin.style.display = "none";
+
                             const areaNavbar =
             document.getElementById(
                 "areaClienteNavbar"

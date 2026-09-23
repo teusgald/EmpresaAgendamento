@@ -22,6 +22,9 @@
 
     var descricaoServico = Model.Agendamento?.Servico?.Nome ?? Model.Descricao;
 
+    var itensComanda = Model.Agendamento?.ItensComanda?.OrderBy(i => i.DataAdicao).ToList()
+        ?? new List<EmpresaAgendamento.Models.ItemComanda>();
+
     var numeroRecibo = Model.Id.ToString("D6");
 }
 
@@ -206,9 +209,29 @@
             <p>
                 Recebi de <strong>@nomeCliente</strong> a quantia de
                 <span class="valor-destaque">@Model.ValorRecebido.ToString("C")</span>
-                referente a <strong>@descricaoServico</strong>.
+                referente a <strong>@descricaoServico</strong>@(itensComanda.Any() ? " e produtos consumidos" : "").
             </p>
         </div>
+
+        @if (itensComanda.Any())
+        {
+            <table class="detalhes">
+                <tr>
+                    <td colspan="2" style="color:var(--preto); font-weight:bold;">Itens</td>
+                </tr>
+                <tr>
+                    <td>Serviço: @Model.Agendamento?.Servico?.Nome</td>
+                    <td>@Model.Agendamento?.Servico?.Preco.ToString("C")</td>
+                </tr>
+                @foreach (var item in itensComanda)
+                {
+                    <tr>
+                        <td>@item.Quantidade x @item.Produto.Nome</td>
+                        <td>@((item.Quantidade * item.PrecoUnitario).ToString("C"))</td>
+                    </tr>
+                }
+            </table>
+        }
 
         <table class="detalhes">
             <tr>
@@ -220,7 +243,7 @@
                 <td>@(Model.FormaPagamento?.ToString() ?? "-")</td>
             </tr>
             <tr>
-                <td>Valor total do serviço</td>
+                <td>Valor total</td>
                 <td>@Model.ValorPrevisto.ToString("C")</td>
             </tr>
             <tr>

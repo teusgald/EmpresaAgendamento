@@ -1,0 +1,249 @@
+@model IEnumerable<EmpresaAgendamento.Models.Produto>
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Produtos</h3>
+            <p class="page-subtitle">Itens consumidos durante o atendimento (ex.: bebidas, cremes) — aparecem na comanda e no site público.</p>
+        </div>
+
+        <a asp-action="Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i>Novo Produto
+        </a>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-box-seam"></i>
+                <p>Nenhum produto cadastrado ainda.</p>
+                <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Cadastrar o primeiro produto</a>
+            </div>
+        </div>
+    }
+    else
+    {
+
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+
+                <thead class="table-light">
+                    <tr>
+                        <th></th>
+                        <th>Nome</th>
+                        <th>Preço</th>
+                        <th>Estoque</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+
+                            <td style="width:48px;">
+                                @if (!string.IsNullOrWhiteSpace(item.FotoUrl))
+                                {
+                                    <img src="@item.FotoUrl" alt="@item.Nome" class="rounded" width="40" height="40" style="object-fit:cover;" />
+                                }
+                                else
+                                {
+                                    <div class="rounded bg-light d-flex align-items-center justify-content-center" style="width:40px;height:40px;">
+                                        <i class="bi bi-box-seam text-muted"></i>
+                                    </div>
+                                }
+                            </td>
+
+                            <td>@item.Nome</td>
+
+                            <td>@item.Preco.ToString("C")</td>
+
+                            <td>
+                                @if (item.QuantidadeEstoque <= 0)
+                                {
+                                    <span class="badge bg-danger">Sem estoque</span>
+                                }
+                                else
+                                {
+                                    @item.QuantidadeEstoque
+                                }
+                            </td>
+
+                            <td>
+                                @if (item.Ativo)
+                                {
+                                    <span class="badge bg-success">Ativo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inativo</span>
+                                }
+                            </td>
+
+                            <td class="text-end">
+
+                                <a asp-action="Edit"
+                                   asp-route-id="@item.Id"
+                                   class="btn btn-sm btn-outline-primary">
+                                    Editar
+                                </a>
+
+                                <form asp-action="ToggleAtivo"
+                                      method="post"
+                                      class="d-inline">
+
+                                    @Html.AntiForgeryToken()
+
+                                    <input type="hidden"
+                                           name="id"
+                                           value="@item.Id" />
+
+                                    @if (item.Ativo)
+                                    {
+                                        <button type="submit"
+                                                class="btn btn-sm btn-success">
+                                            Ativo
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit"
+                                                class="btn btn-sm btn-outline-secondary">
+                                            Inativo
+                                        </button>
+                                    }
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    </div>
+
+    <!-- MOBILE -->
+    <div class="d-lg-none">
+
+        @foreach (var item in Model)
+        {
+            <div class="card mobile-card mb-3">
+
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+
+                        <h6 class="fw-bold mb-0">
+                            @item.Nome
+                        </h6>
+
+                        @if (item.Ativo)
+                        {
+                            <span class="badge bg-success">
+                                Ativo
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">
+                                Inativo
+                            </span>
+                        }
+
+                    </div>
+
+                    <div class="mobile-info">
+                        <label>Preço</label>
+                        <span>@item.Preco.ToString("C")</span>
+                    </div>
+
+                    <div class="mobile-info">
+                        <label>Estoque</label>
+                        <span>
+                            @if (item.QuantidadeEstoque <= 0)
+                            {
+                                <span class="badge bg-danger">Sem estoque</span>
+                            }
+                            else
+                            {
+                                @item.QuantidadeEstoque
+                            }
+                        </span>
+                    </div>
+
+                    <div class="mobile-actions">
+
+                        <a asp-action="Edit"
+                           asp-route-id="@item.Id"
+                           class="btn btn-outline-primary">
+                            Editar
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+        }
+
+    </div>
+
+    }
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+
+            <nav>
+                <ul class="pagination">
+
+                    <!-- ANTERIOR -->
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage - 1)">
+                            Anterior
+                        </a>
+                    </li>
+
+                    <!-- PÁGINAS -->
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-page="@i">
+                                @i
+                            </a>
+                        </li>
+                    }
+
+                    <!-- PRÓXIMO -->
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link"
+                           asp-action="Index"
+                           asp-route-page="@(ViewBag.CurrentPage + 1)">
+                            Próximo
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+
+        </div>
+    }
+
+</div>

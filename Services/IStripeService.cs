@@ -25,5 +25,10 @@ namespace EmpresaAgendamento.Services
         // Processa um evento de webhook do Stripe já validado (assinatura
         // conferida antes de chamar isso) e sincroniza o status da empresa.
         Task ProcessarEventoAsync(Stripe.Event stripeEvent);
+
+        // Quantidade e soma (em R$) das faturas pagas no Stripe dentro do
+        // intervalo [inicio, fimExclusivo) — usado no Faturamento do painel
+        // do dono do sistema.
+        Task<(int TotalFaturas, decimal ValorTotal)> ListarFaturasPagasAsync(DateTime inicio, DateTime fimExclusivo);
     }
 }

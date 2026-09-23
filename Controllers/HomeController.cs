@@ -54,6 +54,11 @@ public class HomeController : Controller
             return Redirect("/funcionario/login?sessaoExpirada=true");
         }
 
+        if (url.StartsWith("/superadmin", StringComparison.OrdinalIgnoreCase))
+        {
+            return Redirect("/superadmin/login?sessaoExpirada=true");
+        }
+
         var tipo = url.StartsWith("/Cliente", StringComparison.OrdinalIgnoreCase) ? "cliente" : "empresa";
 
         return Redirect($"/?login=true&type={tipo}&sessaoExpirada=true");
@@ -70,6 +75,18 @@ public class HomeController : Controller
         {
             RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
         });
+    }
+
+    // Destino do app.UseStatusCodePagesWithReExecute("/erro/{0}") (ver
+    // Program.cs) — cobre 404 (rota inexistente, slug/id que não existe) e
+    // qualquer outro status sem página própria, pra nunca sobrar a tela
+    // crua do servidor.
+    [HttpGet("/erro/{codigo:int}")]
+    [AllowAnonymous]
+    public IActionResult ErroStatusCode(int codigo)
+    {
+        ViewBag.Codigo = codigo;
+        return View("StatusCode");
     }
 
     // Tela mostrada quando "Manutencao:Ativa" está ligado no appsettings

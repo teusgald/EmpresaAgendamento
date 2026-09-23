@@ -17,9 +17,9 @@
     <div class="card shadow-sm mb-3">
         <div class="card-body">
             <form method="get" class="row g-2 align-items-end">
-                <div class="col-md-6">
+                <div class="col-6 col-md-3">
                     <label class="form-label">Categoria</label>
-                    <select name="categoria" class="form-select" onchange="this.form.submit()">
+                    <select name="categoria" class="form-select">
                         <option value="">Todas as categorias</option>
                         @foreach (var cat in Model.Categorias)
                         {
@@ -27,12 +27,80 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-3">
-                    <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Cidade</label>
+                    <input type="text" name="cidade" class="form-control" value="@Model.Cidade" placeholder="Ex.: São Paulo" />
+                </div>
+                <div class="col-6 col-md-1">
+                    <label class="form-label">UF</label>
+                    <input type="text" name="uf" class="form-control" value="@Model.UF" maxlength="2" placeholder="SP" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Avaliação mínima</label>
+                    <select name="avaliacaoMinima" class="form-select">
+                        <option value="">Qualquer</option>
+                        @foreach (var nota in new[] { 5, 4, 3, 2, 1 })
+                        {
+                            <option value="@nota" selected="@(Model.AvaliacaoMinima == nota)">@nota+ estrelas</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Preço mín.</label>
+                    <input name="precoMinimo" class="form-control" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.PrecoMinimo" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Preço máx.</label>
+                    <input name="precoMaximo" class="form-control" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.PrecoMaximo" />
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label">Distância máx.</label>
+                    <select name="distanciaMaximaKm" class="form-select">
+                        <option value="">Qualquer</option>
+                        @foreach (var km in new[] { 5, 10, 25, 50, 100 })
+                        {
+                            <option value="@km" selected="@(Model.DistanciaMaximaKm == km)">até @km km</option>
+                        }
+                    </select>
+                </div>
+                <input type="hidden" name="latitudeUsuario" id="latitudeUsuario" value="@Context.Request.Query["latitudeUsuario"]" />
+                <input type="hidden" name="longitudeUsuario" id="longitudeUsuario" value="@Context.Request.Query["longitudeUsuario"]" />
+                <div class="col-6 col-md-2 d-flex align-items-end">
+                    <button type="button" id="btnUsarLocalizacao" class="btn btn-outline-secondary w-100">
+                        <i class="bi bi-geo-alt"></i> Perto de mim
+                    </button>
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-outline-primary">Filtrar</button>
                 </div>
             </form>
         </div>
     </div>
+
+    @section Scripts {
+        <script>
+            // "Perto de mim" — pede a localização do navegador, preenche os
+            // campos escondidos de latitude/longitude e reenvia o filtro. Sem
+            // permissão de geolocalização, o filtro de distância só não é
+            // usado; o resto da busca continua funcionando normalmente.
+            document.getElementById("btnUsarLocalizacao")?.addEventListener("click", function () {
+                if (!navigator.geolocation) {
+                    return;
+                }
+
+                var botao = this;
+                botao.disabled = true;
+
+                navigator.geolocation.getCurrentPosition(function (posicao) {
+                    document.getElementById("latitudeUsuario").value = posicao.coords.latitude;
+                    document.getElementById("longitudeUsuario").value = posicao.coords.longitude;
+                    botao.closest("form").submit();
+                }, function () {
+                    botao.disabled = false;
+                });
+            });
+        </script>
+    }
 
     @if (!Model.Empresas.Any())
     {
@@ -93,6 +161,21 @@
                                         <span class="text-muted">Sem avaliações ainda</span>
                                     }
                                 </div>
+
+                                @if (!string.IsNullOrWhiteSpace(empresa.Cidade) || empresa.DistanciaKm.HasValue)
+                                {
+                                    <div class="small text-muted mt-1">
+                                        <i class="bi bi-geo-alt"></i>
+                                        @if (!string.IsNullOrWhiteSpace(empresa.Cidade))
+                                        {
+                                            @:@empresa.Cidade@(!string.IsNullOrWhiteSpace(empresa.UF) ? $" - {empresa.UF}" : "")
+                                        }
+                                        @if (empresa.DistanciaKm.HasValue)
+                                        {
+                                            @:(@empresa.DistanciaKm.Value.ToString("0.#") km)
+                                        }
+                                    </div>
+                                }
 
                                 @if (empresa.DescontosFidelidadeDisponiveis > 0)
                                 {

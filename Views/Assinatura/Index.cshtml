@@ -5,7 +5,8 @@
     ViewData["Title"] = "Assinatura";
 
     var planos = (ViewBag.Planos as List<Plano>) ?? new List<Plano>();
-    var temAssinaturaAtiva = Model.AssinaturaStatus == "active" || Model.AssinaturaStatus == "trialing";
+    var emTeste = Model.AssinaturaStatus == "trialing";
+    var temAssinaturaAtiva = Model.AssinaturaStatus == "active" || emTeste;
     var clientSecret = ViewBag.ClientSecret as string;
     var tipoPlanoSelecionado = ViewBag.TipoPlanoSelecionado as string;
     var planoSelecionado = ViewBag.PlanoSelecionado as Plano;
@@ -16,6 +17,38 @@
         "anual" => "Anual",
         "semestral" => "Semestral",
         _ => "Mensal"
+    };
+
+    // Mesma lista em todo plano — os módulos são os mesmos pra Start, Pro e
+    // Business, o que muda é só o limite de profissionais (mantém consistente
+    // com a página de vendas em Home/index.cshtml, sem prometer recurso
+    // exclusivo de tier que na prática não é bloqueado pro plano de baixo).
+    List<string> FuncionalidadesDoPlano(string nome)
+    {
+        var lista = new List<string>
+        {
+            "Agenda online com página e link próprios",
+            "Financeiro: caixa, contas a pagar/receber e comissões",
+            "Comanda com controle de produtos e estoque",
+            "Fidelidade automática com desconto por visitas",
+            "Notificações em tempo real e lembrete por WhatsApp",
+            "Portal do cliente instalável como app (PWA)"
+        };
+
+        if (nome is "Pro" or "Business")
+        {
+            lista.Add("Suporte prioritário" + (nome == "Business" ? " com atendimento dedicado" : ""));
+        }
+
+        return lista;
+    }
+
+    string TaglineDoPlano(string nome) => nome switch
+    {
+        "Start" => "Ideal pra quem trabalha sozinho ou com um sócio",
+        "Pro" => "Pra salões, clínicas e barbearias em crescimento",
+        "Business" => "Pra redes e operações com equipe grande",
+        _ => ""
     };
 }
 
@@ -28,7 +61,31 @@
 
             <h5 class="mb-3">Status atual</h5>
 
-            @if (temAssinaturaAtiva)
+            @if (emTeste)
+            {
+                <p class="mb-1">
+                    <span class="badge bg-info text-dark">
+                        <i class="bi bi-gift-fill me-1"></i>Em teste grátis
+                    </span>
+                    @if (Model.Plano != null)
+                    {
+                        <span class="badge bg-dark">@Model.Plano.Nome</span>
+                    }
+                </p>
+
+                @if (Model.AssinaturaValidaAte.HasValue)
+                {
+                    <p class="text-muted mb-3">
+                        Seu teste grátis termina em @Model.AssinaturaValidaAte.Value.ToString("dd/MM/yyyy")
+                        — depois disso, a cobrança começa automaticamente no cartão cadastrado.
+                    </p>
+                }
+
+                <a asp-action="Portal" class="btn btn-outline-primary">
+                    Gerenciar assinatura (cartão, faturas, cancelar)
+                </a>
+            }
+            else if (temAssinaturaAtiva)
             {
                 <p class="mb-1">
                     <span class="badge bg-success">Ativa</span>
@@ -57,7 +114,7 @@
                     </span>
                 </p>
                 <p class="text-muted mb-0">
-                    Assine um plano para continuar usando o Simpli Time.
+                    Assine um plano para continuar usando o Simpli Time — 7 dias grátis antes da primeira cobrança.
                 </p>
             }
 
@@ -73,12 +130,17 @@
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0">
-                            Pagamento — Plano @(planoSelecionado?.Nome) (@NomePeriodo(tipoPlanoSelecionado))
+                            Plano @(planoSelecionado?.Nome) (@NomePeriodo(tipoPlanoSelecionado)) — 7 dias grátis
                         </h5>
                         <a asp-action="Index" class="small text-muted">
                             <i class="bi bi-arrow-left"></i> Trocar plano
                         </a>
                     </div>
+
+                    <p class="text-muted small mb-3">
+                        Nenhuma cobrança agora. Seu cartão só é debitado depois dos 7 dias de teste — cancele
+                        antes disso pelo Portal de faturamento sem pagar nada.
+                    </p>
 
                     <div id="checkout" data-client-secret="@clientSecret"></div>
 
@@ -101,6 +163,12 @@
         }
         else
         {
+            <div class="text-center mb-4">
+                <span class="badge-teste-gratis">
+                    <i class="bi bi-gift-fill me-1"></i>7 dias grátis em qualquer plano — cancele quando quiser
+                </span>
+            </div>
+
             <div class="d-flex justify-content-center mb-4">
                 <div class="btn-group" role="group" aria-label="Periodicidade">
                     <button type="button" class="btn btn-outline-dark periodo-btn active" data-periodo="mensal" onclick="selecionarPeriodoAssinatura('mensal')">Mensal</button>
@@ -109,48 +177,53 @@
                 </div>
             </div>
 
-            <div class="row g-3">
+            <div class="row g-3 justify-content-center">
 
                 @foreach (var plano in planos)
                 {
                     var destaque = plano.Nome == "Pro";
-                    var limiteTexto = plano.LimiteFuncionarios > 0 ? $"Até {plano.LimiteFuncionarios} profissionais" : "Profissionais ilimitados";
 
                     <div class="col-md-4">
-                        <div class="card shadow-sm h-100 @(destaque ? "border-primary border-2" : "")">
+                        <div class="card plano-card shadow-sm h-100 @(destaque ? "plano-card-destaque" : "")">
                             <div class="card-body d-flex flex-column">
 
                                 @if (destaque)
                                 {
-                                    <span class="badge bg-primary mb-2 align-self-start">Mais escolhido</span>
+                                    <span class="badge bg-primary mb-2 align-self-start">
+                                        <i class="bi bi-star-fill me-1"></i>Mais escolhido
+                                    </span>
                                 }
 
-                                <h5 class="fw-bold">@plano.Nome</h5>
-                                <p class="text-muted small mb-3">@limiteTexto</p>
+                                <h5 class="fw-bold mb-1">@plano.Nome</h5>
+                                <p class="text-muted small mb-1" style="min-height:34px;">
+                                    @TaglineDoPlano(plano.Nome)
+                                </p>
+                                <p class="text-muted small mb-3">
+                                    @(plano.LimiteFuncionarios > 0 ? $"Até {plano.LimiteFuncionarios} profissionais" : "Profissionais ilimitados")
+                                </p>
 
                                 <p class="fs-3 fw-bold mb-1 preco-plano"
                                    data-mensal="@plano.ValorMensal.ToString("C")"
-                                   data-mensal-promo="@(plano.StripeCouponIdPromocional != null ? "R$ 9,99" : "")"
                                    data-semestral="@plano.ValorSemestral?.ToString("C")"
                                    data-anual="@plano.ValorAnual?.ToString("C")">
                                     @plano.ValorMensal.ToString("C")<span class="fs-6 fw-normal">/mês</span>
                                 </p>
 
-                                @if (plano.StripeCouponIdPromocional != null)
-                                {
-                                    <p class="text-success small mb-3 aviso-promo">
-                                        Nos 3 primeiros meses. Depois, @plano.ValorMensal.ToString("C")/mês.
-                                    </p>
-                                }
-                                else
-                                {
-                                    <p class="text-muted small mb-3">&nbsp;</p>
-                                }
+                                <p class="text-success small fw-semibold mb-3">
+                                    <i class="bi bi-gift-fill me-1"></i>7 dias grátis, depois cobramos normalmente.
+                                </p>
+
+                                <ul class="lista-funcionalidades mb-4">
+                                    @foreach (var item in FuncionalidadesDoPlano(plano.Nome))
+                                    {
+                                        <li><i class="bi bi-check2"></i> @item</li>
+                                    }
+                                </ul>
 
                                 <a asp-action="Index" asp-route-tipoPlano="mensal" asp-route-planoId="@plano.Id"
                                    class="btn @(destaque ? "btn-primary" : "btn-outline-dark") w-100 mt-auto btn-assinar"
                                    data-plano-id="@plano.Id">
-                                    Assinar @plano.Nome
+                                    Começar grátis
                                 </a>
 
                             </div>
@@ -160,6 +233,11 @@
 
             </div>
 
+            <p class="text-center text-muted small mt-4 mb-0">
+                Todos os planos incluem os mesmos módulos completos — o que muda é só o tamanho da equipe.
+                Sem fidelidade contratual, cancele quando quiser pelo Portal de faturamento.
+            </p>
+
             <script>
                 function selecionarPeriodoAssinatura(periodo) {
 
@@ -168,15 +246,7 @@
                     });
 
                     document.querySelectorAll(".preco-plano").forEach(function (el) {
-                        var promo = el.parentElement.querySelector(".aviso-promo");
-                        var mostraPromo = periodo === "mensal" && el.dataset.mensalPromo;
-
-                        if (promo) {
-                            promo.style.display = mostraPromo ? "block" : "none";
-                        }
-
-                        var valor = mostraPromo ? el.dataset.mensalPromo
-                            : periodo === "semestral" ? el.dataset.semestral
+                        var valor = periodo === "semestral" ? el.dataset.semestral
                             : periodo === "anual" ? el.dataset.anual
                             : el.dataset.mensal;
 
@@ -194,3 +264,51 @@
     }
 
 </div>
+
+<style>
+    .badge-teste-gratis {
+        display: inline-flex;
+        align-items: center;
+        background: var(--st-success-bg, #dcfce7);
+        color: var(--st-success, #15803d);
+        border: 1px solid rgba(21, 128, 61, .25);
+        font-size: 13px;
+        font-weight: 600;
+        padding: 7px 16px;
+        border-radius: 999px;
+    }
+
+    .plano-card {
+        border-radius: 16px;
+        transition: transform .15s ease, box-shadow .15s ease;
+    }
+
+        .plano-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 28px rgba(0,0,0,.08) !important;
+        }
+
+    .plano-card-destaque {
+        border: 2px solid var(--st-black, #111111) !important;
+    }
+
+    .lista-funcionalidades {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        font-size: .875rem;
+    }
+
+        .lista-funcionalidades li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 5px 0;
+            color: var(--st-gray-900, #2B2B2B);
+        }
+
+        .lista-funcionalidades i {
+            color: var(--st-success, #15803d);
+            margin-top: 2px;
+        }
+</style>

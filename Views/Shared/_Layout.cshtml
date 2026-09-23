@@ -10,13 +10,16 @@
 
 	var empresaInfo = await _context.Users
 		.Where(u => u.Id == userId)
-		.Select(u => new { u.EmpresaId, u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus })
+		.Select(u => new { u.EmpresaId, u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus, u.Empresa.VipAcesso })
 		.FirstOrDefaultAsync();
 
 	var nomeUsuario = empresaInfo?.Nome;
 	var logoEmpresa = empresaInfo?.LogoUrl;
 
-	var assinaturaAtiva = empresaInfo?.AssinaturaStatus == "active" || empresaInfo?.AssinaturaStatus == "trialing";
+	var assinaturaAtiva =
+		empresaInfo?.VipAcesso == true ||
+		empresaInfo?.AssinaturaStatus == "active" ||
+		empresaInfo?.AssinaturaStatus == "trialing";
 
 	var notificacoesNaoLidas = empresaInfo?.EmpresaId != null
 		? await _context.Notificacoes.CountAsync(n => n.EmpresaId == empresaInfo.EmpresaId && !n.Lida)
@@ -44,6 +47,18 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 	<title>@ViewData["Title"] - Simpli Time</title>
 	<link rel="icon" type="image/png" href="/img/icon.png?v=3" />
+
+	<!-- PWA — manifest próprio do portal da Empresa/Funcionário (start_url
+	     de dashboard da empresa; não pode usar /manifest.json, que é do
+	     portal do Cliente e abriria sempre em /Cliente). -->
+	<link rel="manifest" href="/manifest-empresa.json" />
+	<meta name="theme-color" content="#111111" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+	<meta name="apple-mobile-web-app-title" content="Simpli Time" />
+	<link rel="apple-touch-icon" href="/img/icon-192.png" />
+
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -208,6 +223,14 @@
 						</a>
 					</li>
 
+					<!-- PRODUTOS -->
+					<li class="nav-item">
+						<a class="nav-link" asp-controller="Produtos" asp-action="Index">
+							<i class="bi bi-box-seam"></i>
+							<span class="link-text">Produtos</span>
+						</a>
+					</li>
+
 					<!-- FIDELIDADE -->
 					<li class="nav-item">
 						<a class="nav-link" asp-controller="Fidelidade" asp-action="Index">
@@ -253,6 +276,13 @@
 								<a class="nav-link" asp-controller="Servicos" asp-action="Index">
 									<i class="bi bi-scissors"></i>
 									<span class="link-text">Serviços</span>
+								</a>
+							</li>
+
+							<li>
+								<a class="nav-link" asp-controller="Produtos" asp-action="Index">
+									<i class="bi bi-box-seam"></i>
+									<span class="link-text">Produtos</span>
 								</a>
 							</li>
 
@@ -408,9 +438,18 @@
 		</ul>
 
 		<div class="sidebar-secondary px-2 py-2">
+			<a class="nav-link" asp-controller="Ajuda" asp-action="Index">
+				<i class="bi bi-question-circle"></i>
+				<span class="link-text">Ajuda</span>
+			</a>
 			<a class="nav-link" asp-controller="Atendimento" asp-action="Index">
 				<i class="bi bi-headset"></i>
 				<span class="link-text">Atendimento</span>
+			</a>
+
+			<a class="nav-link" href="#" id="instalarAppLink" hidden>
+				<i class="bi bi-download"></i>
+				<span class="link-text">Instalar app</span>
 			</a>
 		</div>
 
@@ -477,6 +516,8 @@
 	}
 
 	<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+	<script src="~/js/pwa-empresa.js" asp-append-version="true"></script>
+	<script src="~/js/masks.js" asp-append-version="true"></script>
 	<script>
 				const sidebar = document.getElementById('sidebar');
 		const hamburger = document.getElementById('hamburger');

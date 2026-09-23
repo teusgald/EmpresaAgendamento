@@ -1,0 +1,109 @@
+@model EmpresaAgendamento.Models.ViewModels.SuperAdminFaturamentoViewModel
+@{
+    ViewData["Title"] = "Faturamento";
+    Layout = "_LayoutSuperAdmin";
+
+    string NomePeriodo(string p) => p switch
+    {
+        "dia" => "Hoje",
+        "semana" => "Esta semana",
+        "ano" => "Este ano",
+        "personalizado" => "Período personalizado",
+        _ => "Este mês"
+    };
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Faturamento</h3>
+            <p class="page-subtitle">Faturas pagas no Stripe — soma real cobrada de todas as empresas.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-2 align-items-end">
+
+                <div class="col-auto">
+                    <div class="btn-group" role="group">
+                        <a href="@Url.Action("Index", new { periodo = "dia" })"
+                           class="btn btn-sm @(Model.Periodo == "dia" ? "btn-dark" : "btn-outline-dark")">Diário</a>
+                        <a href="@Url.Action("Index", new { periodo = "semana" })"
+                           class="btn btn-sm @(Model.Periodo == "semana" ? "btn-dark" : "btn-outline-dark")">Semanal</a>
+                        <a href="@Url.Action("Index", new { periodo = "mes" })"
+                           class="btn btn-sm @(Model.Periodo == "mes" ? "btn-dark" : "btn-outline-dark")">Mensal</a>
+                        <a href="@Url.Action("Index", new { periodo = "ano" })"
+                           class="btn btn-sm @(Model.Periodo == "ano" ? "btn-dark" : "btn-outline-dark")">Anual</a>
+                    </div>
+                </div>
+
+                <div class="col-auto">
+                    <label class="form-label small mb-0">De</label>
+                    <input type="date" name="dataInicial" class="form-control form-control-sm"
+                           value="@Model.DataInicial.ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-auto">
+                    <label class="form-label small mb-0">Até</label>
+                    <input type="date" name="dataFinal" class="form-control form-control-sm"
+                           value="@Model.DataFinalExclusiva.AddDays(-1).ToString("yyyy-MM-dd")" />
+                </div>
+
+                <div class="col-auto">
+                    <input type="hidden" name="periodo" value="personalizado" />
+                    <button type="submit" class="btn btn-sm btn-outline-dark">Filtrar</button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <div class="row g-3 mb-4">
+
+        <div class="col-md-4 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">@NomePeriodo(Model.Periodo)</h6>
+                        <h3 class="fw-bold mb-0 text-success">@Model.ValorTotal.ToString("C")</h3>
+                    </div>
+                    <i class="bi bi-cash-stack fs-4 text-success"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Faturas pagas</h6>
+                        <h3 class="fw-bold mb-0">@Model.TotalFaturas</h3>
+                    </div>
+                    <i class="bi bi-receipt fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 col-sm-6">
+            <div class="card shadow-sm p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Ticket médio</h6>
+                        <h3 class="fw-bold mb-0">
+                            @((Model.TotalFaturas > 0 ? Model.ValorTotal / Model.TotalFaturas : 0).ToString("C"))
+                        </h3>
+                    </div>
+                    <i class="bi bi-graph-up fs-4 text-muted"></i>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <p class="text-muted small">
+        Período: @Model.DataInicial.ToString("dd/MM/yyyy") até @Model.DataFinalExclusiva.AddDays(-1).ToString("dd/MM/yyyy").
+    </p>
+
+</div>

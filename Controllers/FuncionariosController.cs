@@ -84,6 +84,7 @@ public class FuncionariosController : Controller
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao carregar funcionários.");
             ToastHelper.Error(TempData, "Erro ao carregar funcionários.");
             return RedirectToAction("Index", "Home");
         }
@@ -118,8 +119,9 @@ public class FuncionariosController : Controller
 
             return View(vm);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao abrir formulário de criação de funcionário.");
             ToastHelper.Error(TempData, "Erro ao abrir formulário.");
             return RedirectToAction(nameof(Index));
         }
@@ -206,7 +208,12 @@ public class FuncionariosController : Controller
             _context.Funcionarios.Add(funcionario);
             await _context.SaveChangesAsync();
 
-            foreach (var servicoId in vm.ServicosSelecionados ?? new List<int>())
+            var idsServicosValidos = await _context.Servicos
+                .Where(s => s.EmpresaId == empresaId && (vm.ServicosSelecionados ?? new List<int>()).Contains(s.Id))
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            foreach (var servicoId in idsServicosValidos)
             {
                 _context.FuncionariosServicos.Add(new FuncionarioServico
                 {
@@ -220,8 +227,9 @@ public class FuncionariosController : Controller
             ToastHelper.Success(TempData, "Funcionário cadastrado com sucesso!");
             return RedirectToAction(nameof(Index));
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao criar funcionário.");
             ToastHelper.Error(TempData, "Erro ao criar funcionário.");
             return RedirectToAction(nameof(Index));
         }
@@ -235,6 +243,12 @@ public class FuncionariosController : Controller
         try
         {
             var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "Account");
+            }
 
             var funcionario = await _context.Funcionarios
                 .Include(f => f.Servicos)
@@ -264,7 +278,8 @@ public class FuncionariosController : Controller
             };
 
             vm.ServicosDisponiveis = await _context.Servicos
-                .Where(s => s.EmpresaId == empresaId)
+                .Where(s => s.EmpresaId == empresaId && s.Ativo)
+                .OrderBy(s => s.Nome)
                 .Select(s => new SelectListItem
                 {
                     Value = s.Id.ToString(),
@@ -274,8 +289,9 @@ public class FuncionariosController : Controller
 
             return View(vm);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao carregar funcionário {FuncionarioId}.", id);
             ToastHelper.Error(TempData, "Erro ao carregar funcionário.");
             return RedirectToAction(nameof(Index));
         }
@@ -347,7 +363,12 @@ public class FuncionariosController : Controller
 
             _context.FuncionariosServicos.RemoveRange(antigos);
 
-            foreach (var servicoId in vm.ServicosSelecionados ?? new List<int>())
+            var idsServicosValidos = await _context.Servicos
+                .Where(s => s.EmpresaId == empresaId && (vm.ServicosSelecionados ?? new List<int>()).Contains(s.Id))
+                .Select(s => s.Id)
+                .ToListAsync();
+
+            foreach (var servicoId in idsServicosValidos)
             {
                 _context.FuncionariosServicos.Add(new FuncionarioServico
                 {
@@ -361,8 +382,9 @@ public class FuncionariosController : Controller
             ToastHelper.Success(TempData, "Funcionário atualizado com sucesso.");
             return RedirectToAction(nameof(Index));
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao atualizar funcionário {FuncionarioId}.", id);
             ToastHelper.Error(TempData, "Erro ao atualizar funcionário.");
             return RedirectToAction(nameof(Index));
         }
@@ -378,6 +400,12 @@ public class FuncionariosController : Controller
         try
         {
             var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "Account");
+            }
 
             var funcionario = await _context.Funcionarios
                 .FirstOrDefaultAsync(f =>
@@ -414,8 +442,9 @@ public class FuncionariosController : Controller
 
             return RedirectToAction(nameof(Index));
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "Erro ao alterar status do funcionário {FuncionarioId}.", id);
             ToastHelper.Error(TempData, "Erro ao alterar status.");
             return RedirectToAction(nameof(Index));
         }
@@ -428,6 +457,8 @@ public class FuncionariosController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CriarAcesso(int id)
     {
+        try
+        {
         var empresaId = await GetEmpresaId();
 
         if (empresaId == null)
@@ -524,6 +555,13 @@ public class FuncionariosController : Controller
         }
 
         return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao criar acesso do funcionário {FuncionarioId}.", id);
+            ToastHelper.Error(TempData, "Erro ao criar acesso do funcionário.");
+            return RedirectToAction(nameof(Index));
+        }
     }
 
     // =========================
@@ -534,6 +572,8 @@ public class FuncionariosController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ReenviarAcesso(int id)
     {
+        try
+        {
         var empresaId = await GetEmpresaId();
 
         if (empresaId == null)
@@ -594,6 +634,13 @@ public class FuncionariosController : Controller
         }
 
         return RedirectToAction(nameof(Index));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao reenviar acesso do funcionário {FuncionarioId}.", id);
+            ToastHelper.Error(TempData, "Erro ao reenviar acesso do funcionário.");
+            return RedirectToAction(nameof(Index));
+        }
     }
 
     // =========================
@@ -602,51 +649,60 @@ public class FuncionariosController : Controller
     [HttpGet]
     public async Task<IActionResult> Horarios(int id)
     {
-        var empresaId = await GetEmpresaId();
-
-        if (empresaId == null)
+        try
         {
-            ToastHelper.Error(TempData, "Sessão expirada.");
-            return RedirectToAction("Login", "Account");
+            var empresaId = await GetEmpresaId();
+
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "Account");
+            }
+
+            var funcionario = await _context.Funcionarios
+                .Include(f => f.Horarios)
+                .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+
+            if (funcionario == null)
+            {
+                ToastHelper.Error(TempData, "Funcionário não encontrado.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var lista = new List<FuncionarioHorarioItemViewModel>();
+
+            foreach (DayOfWeek dia in Enum.GetValues<DayOfWeek>())
+            {
+                var existente = funcionario.Horarios.FirstOrDefault(h => h.DiaSemana == dia);
+
+                lista.Add(new FuncionarioHorarioItemViewModel
+                {
+                    DiaSemana = dia,
+                    TrabalhaNoDia = existente?.TrabalhaNoDia ?? (dia != DayOfWeek.Sunday),
+                    HoraInicio = existente?.HoraInicio ?? new TimeSpan(8, 0, 0),
+                    HoraFim = existente?.HoraFim ?? new TimeSpan(18, 0, 0),
+                    InicioIntervalo = existente?.InicioIntervalo,
+                    FimIntervalo = existente?.FimIntervalo
+                });
+            }
+
+            var horariosEmpresa = await _context.EmpresasHorarios
+                .Where(h => h.EmpresaId == empresaId)
+                .ToDictionaryAsync(h => h.DiaSemana);
+
+            ViewBag.FuncionarioId = funcionario.Id;
+            ViewBag.FuncionarioNome = funcionario.Nome;
+            ViewBag.JaConfigurado = funcionario.Horarios.Any();
+            ViewBag.HorariosEmpresa = horariosEmpresa;
+
+            return View(lista);
         }
-
-        var funcionario = await _context.Funcionarios
-            .Include(f => f.Horarios)
-            .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
-
-        if (funcionario == null)
+        catch (Exception ex)
         {
-            ToastHelper.Error(TempData, "Funcionário não encontrado.");
+            _logger.LogError(ex, "Erro ao carregar horários do funcionário {FuncionarioId}.", id);
+            ToastHelper.Error(TempData, "Erro ao carregar horários do funcionário.");
             return RedirectToAction(nameof(Index));
         }
-
-        var lista = new List<FuncionarioHorarioItemViewModel>();
-
-        foreach (DayOfWeek dia in Enum.GetValues<DayOfWeek>())
-        {
-            var existente = funcionario.Horarios.FirstOrDefault(h => h.DiaSemana == dia);
-
-            lista.Add(new FuncionarioHorarioItemViewModel
-            {
-                DiaSemana = dia,
-                TrabalhaNoDia = existente?.TrabalhaNoDia ?? (dia != DayOfWeek.Sunday),
-                HoraInicio = existente?.HoraInicio ?? new TimeSpan(8, 0, 0),
-                HoraFim = existente?.HoraFim ?? new TimeSpan(18, 0, 0),
-                InicioIntervalo = existente?.InicioIntervalo,
-                FimIntervalo = existente?.FimIntervalo
-            });
-        }
-
-        var horariosEmpresa = await _context.EmpresasHorarios
-            .Where(h => h.EmpresaId == empresaId)
-            .ToDictionaryAsync(h => h.DiaSemana);
-
-        ViewBag.FuncionarioId = funcionario.Id;
-        ViewBag.FuncionarioNome = funcionario.Nome;
-        ViewBag.JaConfigurado = funcionario.Horarios.Any();
-        ViewBag.HorariosEmpresa = horariosEmpresa;
-
-        return View(lista);
     }
 
     // Confere se o expediente do funcionário cabe dentro do horário de
@@ -696,69 +752,78 @@ public class FuncionariosController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Horarios(int id, List<FuncionarioHorarioItemViewModel> horarios)
     {
-        var empresaId = await GetEmpresaId();
-
-        if (empresaId == null)
+        try
         {
-            ToastHelper.Error(TempData, "Sessão expirada.");
-            return RedirectToAction("Login", "Account");
-        }
+            var empresaId = await GetEmpresaId();
 
-        var funcionario = await _context.Funcionarios
-            .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+            if (empresaId == null)
+            {
+                ToastHelper.Error(TempData, "Sessão expirada.");
+                return RedirectToAction("Login", "Account");
+            }
 
-        if (funcionario == null)
-        {
-            ToastHelper.Error(TempData, "Funcionário não encontrado.");
+            var funcionario = await _context.Funcionarios
+                .FirstOrDefaultAsync(f => f.Id == id && f.EmpresaId == empresaId);
+
+            if (funcionario == null)
+            {
+                ToastHelper.Error(TempData, "Funcionário não encontrado.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            horarios ??= new List<FuncionarioHorarioItemViewModel>();
+
+            var horariosEmpresa = await _context.EmpresasHorarios
+                .Where(h => h.EmpresaId == empresaId)
+                .ToDictionaryAsync(h => h.DiaSemana);
+
+            foreach (var item in horarios)
+            {
+                var erro = ValidarDentroDoExpedienteEmpresa(item, horariosEmpresa);
+
+                if (erro != null)
+                {
+                    ToastHelper.Error(TempData, erro);
+
+                    ViewBag.FuncionarioId = funcionario.Id;
+                    ViewBag.FuncionarioNome = funcionario.Nome;
+                    ViewBag.JaConfigurado = true;
+                    ViewBag.HorariosEmpresa = horariosEmpresa;
+
+                    return View(horarios);
+                }
+            }
+
+            var existentes = await _context.FuncionariosHorarios
+                .Where(h => h.FuncionarioId == id)
+                .ToListAsync();
+
+            _context.FuncionariosHorarios.RemoveRange(existentes);
+
+            foreach (var item in horarios)
+            {
+                _context.FuncionariosHorarios.Add(new FuncionarioHorario
+                {
+                    FuncionarioId = id,
+                    DiaSemana = item.DiaSemana,
+                    TrabalhaNoDia = item.TrabalhaNoDia,
+                    HoraInicio = item.HoraInicio ?? TimeSpan.Zero,
+                    HoraFim = item.HoraFim ?? TimeSpan.Zero,
+                    InicioIntervalo = item.TrabalhaNoDia ? item.InicioIntervalo : null,
+                    FimIntervalo = item.TrabalhaNoDia ? item.FimIntervalo : null
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            ToastHelper.Success(TempData, "Horários de trabalho atualizados com sucesso!");
             return RedirectToAction(nameof(Index));
         }
-
-        horarios ??= new List<FuncionarioHorarioItemViewModel>();
-
-        var horariosEmpresa = await _context.EmpresasHorarios
-            .Where(h => h.EmpresaId == empresaId)
-            .ToDictionaryAsync(h => h.DiaSemana);
-
-        foreach (var item in horarios)
+        catch (Exception ex)
         {
-            var erro = ValidarDentroDoExpedienteEmpresa(item, horariosEmpresa);
-
-            if (erro != null)
-            {
-                ToastHelper.Error(TempData, erro);
-
-                ViewBag.FuncionarioId = funcionario.Id;
-                ViewBag.FuncionarioNome = funcionario.Nome;
-                ViewBag.JaConfigurado = true;
-                ViewBag.HorariosEmpresa = horariosEmpresa;
-
-                return View(horarios);
-            }
+            _logger.LogError(ex, "Erro ao salvar horários do funcionário {FuncionarioId}.", id);
+            ToastHelper.Error(TempData, "Erro ao salvar horários do funcionário.");
+            return RedirectToAction(nameof(Index));
         }
-
-        var existentes = await _context.FuncionariosHorarios
-            .Where(h => h.FuncionarioId == id)
-            .ToListAsync();
-
-        _context.FuncionariosHorarios.RemoveRange(existentes);
-
-        foreach (var item in horarios)
-        {
-            _context.FuncionariosHorarios.Add(new FuncionarioHorario
-            {
-                FuncionarioId = id,
-                DiaSemana = item.DiaSemana,
-                TrabalhaNoDia = item.TrabalhaNoDia,
-                HoraInicio = item.HoraInicio ?? TimeSpan.Zero,
-                HoraFim = item.HoraFim ?? TimeSpan.Zero,
-                InicioIntervalo = item.TrabalhaNoDia ? item.InicioIntervalo : null,
-                FimIntervalo = item.TrabalhaNoDia ? item.FimIntervalo : null
-            });
-        }
-
-        await _context.SaveChangesAsync();
-
-        ToastHelper.Success(TempData, "Horários de trabalho atualizados com sucesso!");
-        return RedirectToAction(nameof(Index));
     }
 }
