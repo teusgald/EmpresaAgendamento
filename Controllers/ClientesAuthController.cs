@@ -16,6 +16,7 @@ public class ClientesAuthController : Controller
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _configuration;
+    private readonly IClienteUnificacaoService _clienteUnificacaoService;
     private readonly ILogger<ClientesAuthController> _logger;
 
     public ClientesAuthController(
@@ -24,6 +25,7 @@ public class ClientesAuthController : Controller
         SignInManager<ApplicationUser> signInManager,
         IEmailService emailService,
         IConfiguration configuration,
+        IClienteUnificacaoService clienteUnificacaoService,
         ILogger<ClientesAuthController> logger)
     {
         _context = context;
@@ -31,6 +33,7 @@ public class ClientesAuthController : Controller
         _signInManager = signInManager;
         _emailService = emailService;
         _configuration = configuration;
+        _clienteUnificacaoService = clienteUnificacaoService;
         _logger = logger;
     }
 
@@ -202,6 +205,24 @@ public class ClientesAuthController : Controller
                 {
                     success = false,
                     error = "Já existe uma conta cadastrada com este e-mail."
+                });
+            }
+
+            // Cliente cadastrado por alguma empresa (sem login próprio) com
+            // esse mesmo e-mail — em vez de criar um segundo cadastro do
+            // zero, a pessoa precisa "ativar" o que já existe (mesmo link de
+            // definir senha do "Esqueci minha senha") pra não perder o
+            // histórico de agendamentos que já tem com essa(s) empresa(s).
+            var temCadastroParaAtivar = await _context.Clientes
+                .AnyAsync(c => c.Email == model.Email && c.UserId == null);
+
+            if (temCadastroParaAtivar)
+            {
+                return Json(new
+                {
+                    success = false,
+                    error = "Já existe um cadastro com esse e-mail em alguma empresa que você já visitou. " +
+                        "Clique em \"Esqueci minha senha\" pra definir uma senha e ver seu histórico."
                 });
             }
 
@@ -385,6 +406,59 @@ public class ClientesAuthController : Controller
                     x.Email == model.Email &&
                     x.Cliente != null);
 
+            // Sem conta própria ainda, mas existe cadastro feito por alguma
+            // empresa (Cliente sem UserId) com esse e-mail — "ativa" agora:
+            // cria a conta de login por trás dos panos (sem senha
+            // utilizável ainda) e une os cadastros duplicados, se houver
+            // mais de uma empresa que já cadastrou essa pessoa. A senha de
+            // verdade só é definida quando o link deste e-mail for usado.
+            var ativandoConta = false;
+
+            if (user == null)
+            {
+                var clienteParaAtivar = await _clienteUnificacaoService.UnificarOrfaosAsync(model.Email);
+
+                if (clienteParaAtivar != null)
+                {
+                    user = new ApplicationUser
+                    {
+                        UserName = $"cliente-{Guid.NewGuid()}",
+                        Email = model.Email,
+                        NomeCompleto = clienteParaAtivar.Nome,
+                        EmailConfirmed = false
+                    };
+
+                    // Senha aleatória descartável — a pessoa nunca a vê, ela
+                    // define a própria logo abaixo (mesmo padrão usado em
+                    // FuncionariosController pro convite de funcionário).
+                    var senhaDescartavel = Guid.NewGuid().ToString("N") + "Aa1!";
+
+                    var resultCriacao = await _userManager.CreateAsync(user, senhaDescartavel);
+
+                    if (resultCriacao.Succeeded)
+                    {
+                        await _userManager.AddToRoleAsync(user, "Cliente");
+
+                        clienteParaAtivar.UserId = user.Id;
+                        user.ClienteId = clienteParaAtivar.Id;
+
+                        await _context.SaveChangesAsync();
+                        await _userManager.UpdateAsync(user);
+
+                        ativandoConta = true;
+                    }
+                    else
+                    {
+                        _logger.LogError(
+                            "Falha ao criar conta de ativação pro cliente {ClienteId} (e-mail {Email}): {Erros}.",
+                            clienteParaAtivar.Id, model.Email,
+                            string.Join("; ", resultCriacao.Errors.Select(e => e.Description)));
+
+                        user = null;
+                    }
+                }
+            }
+
             // Resposta sempre igual, exista ou não a conta — senão dá pra
             // descobrir quais e-mails têm cadastro só testando esse formulário.
             if (user != null)
@@ -398,10 +472,22 @@ public class ClientesAuthController : Controller
                          $"&email={Uri.EscapeDataString(model.Email)}" +
                          $"&token={Uri.EscapeDataString(token)}";
 
-                await _emailService.SendEmailAsync(
-                    model.Email,
-                    "Recuperação de Senha",
-                    $@"
+                var assunto = ativandoConta ? "Seu cadastro já existe — ative sua conta" : "Recuperação de Senha";
+
+                var corpo = ativandoConta
+                    ? $@"
+                <h2>Encontramos seu cadastro!</h2>
+
+                <p>Você já tem agendamentos e histórico registrados com a gente. Defina uma senha pra acessar sua conta e ver tudo:</p>
+
+                <p>
+                    <a href='{link}'>
+                        Clique aqui para definir sua senha
+                    </a>
+                </p>
+
+                <p>Se você não reconhece isso, ignore este email.</p>"
+                    : $@"
                 <h2>Recuperação de Senha</h2>
 
                 <p>Recebemos uma solicitação para redefinir sua senha.</p>
@@ -412,8 +498,9 @@ public class ClientesAuthController : Controller
                     </a>
                 </p>
 
-                <p>Se você não solicitou esta alteração, ignore este email.</p>"
-                );
+                <p>Se você não solicitou esta alteração, ignore este email.</p>";
+
+                await _emailService.SendEmailAsync(model.Email, assunto, corpo);
             }
             else
             {
@@ -489,6 +576,17 @@ public class ClientesAuthController : Controller
 
             if (result.Succeeded)
             {
+                // Clicar num link mandado por e-mail e conseguir definir a
+                // senha já prova que a pessoa tem acesso a essa caixa de
+                // entrada — conta como confirmação de e-mail (cobre tanto o
+                // "esqueci a senha" normal quanto a ativação de conta criada
+                // a partir de um cadastro feito pela empresa).
+                if (!user.EmailConfirmed)
+                {
+                    user.EmailConfirmed = true;
+                    await _userManager.UpdateAsync(user);
+                }
+
                 _logger.LogInformation("Senha redefinida com sucesso (cliente, e-mail {Email}).", model.Email);
 
                 return Json(new

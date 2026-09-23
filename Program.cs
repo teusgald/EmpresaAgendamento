@@ -101,6 +101,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IEmpresaService, EmpresaService>();
 builder.Services.AddScoped<IEmpresaDescobertaService, EmpresaDescobertaService>();
+builder.Services.AddScoped<IClienteUnificacaoService, ClienteUnificacaoService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificacaoAgendamentoService, NotificacaoAgendamentoService>();

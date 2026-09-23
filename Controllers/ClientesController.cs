@@ -113,7 +113,8 @@ public class ClientesController : Controller
                 TotalAgendamentos = totalAgendamentos.TryGetValue(c.Id, out var total) ? total : 0,
                 UltimaVisita = ultimasVisitas.TryGetValue(c.Id, out var ultima) ? ultima : null,
                 PlanoAtivo = planosAtivos.TryGetValue(c.Id, out var plano) ? plano : null,
-                GastoTotal = gastos.TryGetValue(c.Id, out var gasto) ? gasto : 0
+                GastoTotal = gastos.TryGetValue(c.Id, out var gasto) ? gasto : 0,
+                TemContaPropria = c.UserId != null
             }).ToList();
 
             ViewBag.CurrentPage = page;
@@ -266,6 +267,14 @@ public class ClientesController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            // Cliente já tem conta própria (se cadastrou/ativou sozinho) —
+            // os dados passam a ser dele, a empresa só visualiza.
+            if (cliente.UserId != null)
+            {
+                ToastHelper.Warning(TempData, "Esse cliente já tem conta própria — os dados são gerenciados por ele.");
+                return RedirectToAction(nameof(Index));
+            }
+
             return View(cliente);
         }
         catch (Exception ex)
@@ -313,6 +322,14 @@ public class ClientesController : Controller
             if (existente == null)
             {
                 ToastHelper.Error(TempData, "Cliente não encontrado.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            // Mesma trava do GET — nunca confiar só na tela não mostrar o
+            // botão de editar; um POST direto não pode passar por cima.
+            if (existente.UserId != null)
+            {
+                ToastHelper.Warning(TempData, "Esse cliente já tem conta própria — os dados são gerenciados por ele.");
                 return RedirectToAction(nameof(Index));
             }
 

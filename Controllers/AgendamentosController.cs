@@ -19,6 +19,7 @@ namespace EmpresaAgendamento.Controllers
         private readonly IFinanceiroService _financeiroService;
         private readonly IPlanoCreditoService _planoCreditoService;
         private readonly IFidelidadeService _fidelidadeService;
+        private readonly INotificacaoAgendamentoService _notificacaoAgendamentoService;
         private readonly ILogger<AgendamentosController> _logger;
 
         public AgendamentosController(
@@ -27,6 +28,7 @@ namespace EmpresaAgendamento.Controllers
             IFinanceiroService financeiroService,
             IPlanoCreditoService planoCreditoService,
             IFidelidadeService fidelidadeService,
+            INotificacaoAgendamentoService notificacaoAgendamentoService,
             ILogger<AgendamentosController> logger)
         {
             _context = context;
@@ -34,6 +36,7 @@ namespace EmpresaAgendamento.Controllers
             _financeiroService = financeiroService;
             _planoCreditoService = planoCreditoService;
             _fidelidadeService = fidelidadeService;
+            _notificacaoAgendamentoService = notificacaoAgendamentoService;
             _logger = logger;
         }
 
@@ -563,6 +566,20 @@ namespace EmpresaAgendamento.Controllers
                         "Agendamento criado, mas houve um problema ao gerar a previsão no financeiro.");
 
                     return RedirectToAction(nameof(Index));
+                }
+
+                // E-mail de confirmação pro cliente — mesmo comportamento de
+                // quando é o próprio cliente que agenda (público/portal). Sem
+                // efeito pra cliente avulso (sem Cliente.Email cadastrado) —
+                // o serviço já trata isso internamente. Auxiliar: nunca
+                // bloqueia o agendamento, que já foi salvo com sucesso.
+                try
+                {
+                    await _notificacaoAgendamentoService.EnviarConfirmacaoAsync(model.Id);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Falha ao enviar e-mail de confirmação do agendamento {AgendamentoId}.", model.Id);
                 }
 
                 ToastHelper.Success(

@@ -57,7 +57,16 @@
 
                         <tr>
 
-                            <td>@item.Nome</td>
+                            <td>
+                                @item.Nome
+                                @if (item.TemContaPropria)
+                                {
+                                    <br />
+                                    <span class="badge bg-light text-dark border" title="Cliente ativou a própria conta — dados gerenciados por ele.">
+                                        <i class="bi bi-person-check text-success"></i> Conta própria
+                                    </span>
+                                }
+                            </td>
 
                             <td>
                                 @if (!string.IsNullOrWhiteSpace(item.Telefone))
@@ -105,11 +114,14 @@
 
                             <td class="text-end">
 
-                                <a asp-action="Edit"
-                                   asp-route-id="@item.Id"
-                                   class="btn btn-sm btn-outline-primary">
-                                    Editar
-                                </a>
+                                @if (!item.TemContaPropria)
+                                {
+                                    <a asp-action="Edit"
+                                       asp-route-id="@item.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Editar
+                                    </a>
+                                }
 
                                 <form asp-action="ToggleAtivo"
                                       method="post"
@@ -169,6 +181,10 @@
 
                         <h6 class="fw-bold mb-0">
                             @item.Nome
+                            @if (item.TemContaPropria)
+                            {
+                                <i class="bi bi-person-check text-success ms-1" title="Cliente ativou a própria conta"></i>
+                            }
                         </h6>
 
                         @if (item.Ativo)
@@ -212,15 +228,18 @@
                         <span>@item.GastoTotal.ToString("C")</span>
                     </div>
 
-                    <div class="mobile-actions">
+                    @if (!item.TemContaPropria)
+                    {
+                        <div class="mobile-actions">
 
-                        <a asp-action="Edit"
-                           asp-route-id="@item.Id"
-                           class="btn btn-outline-primary">
-                            Editar
-                        </a>
+                            <a asp-action="Edit"
+                               asp-route-id="@item.Id"
+                               class="btn btn-outline-primary">
+                                Editar
+                            </a>
 
-                    </div>
+                        </div>
+                    }
 
                 </div>
 

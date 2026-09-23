@@ -12,5 +12,9 @@ namespace EmpresaAgendamento.Models.ViewModels
         public DateTime? UltimaVisita { get; set; }
         public string? PlanoAtivo { get; set; }
         public decimal GastoTotal { get; set; }
+
+        // Cliente já ativou/criou conta própria (UserId preenchido) — a
+        // empresa deixa de poder editar os dados dele a partir daí.
+        public bool TemContaPropria { get; set; }
     }
 }
