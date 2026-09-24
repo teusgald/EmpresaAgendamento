@@ -1,4 +1,4 @@
-﻿@model EmpresaAgendamento.ViewModels.EmpresaPublicaViewModel
+@model EmpresaAgendamento.ViewModels.EmpresaPublicaViewModel
 @using EmpresaAgendamento.Helpers
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 
@@ -26,8 +26,6 @@
         }
         .Where(p => !string.IsNullOrWhiteSpace(p)));
 
-    // CEP entra na mesma linha do bairro/cidade, sem cor diferenciada —
-    // igual ao layout original — e só aparece se realmente tiver valor.
     var linhaEndereco = linhaBairroCidade;
 
     if (!string.IsNullOrWhiteSpace(empresa.CEP))
@@ -46,99 +44,60 @@
     var mapsUrl = $"https://www.google.com/maps/search/?api=1&query={queryMaps}";
 
     var linhasHorario = HorarioFormatHelper.FormatarPorDia(empresa.Horarios);
+    var linhasHorarioResumo = HorarioFormatHelper.FormatarLinhas(empresa.Horarios);
 
-    // Cor de marca da empresa (opcional) — sobrescreve as variáveis de cor
-    // só nesta página (renderização por request, nunca vaza pra outra
-    // empresa). Sem cor configurada, mantém o padrão do Simpli Time.
-    //
-    // A ideia é literal: a página usa SÓ as duas cores escolhidas — a
-    // PRIMÁRIA é o fundo dominante do layout inteiro (não uma versão
-    // "escurecida" dela por cima do tema padrão — é a cor em si), e a
-    // SECUNDÁRIA cuida dos detalhes (botões, links, destaques). Branco,
-    // preto etc. só entram como base neutra de texto/contraste — nunca
-    // substituindo a cor escolhida por outra coisa.
-    static bool EhHexValido(string? hex) =>
-        !string.IsNullOrWhiteSpace(hex) && System.Text.RegularExpressions.Regex.IsMatch(hex, "^#[0-9A-Fa-f]{6}$");
+    var agora = DateTime.Now;
+    var statusAtual = HorarioFormatHelper.ObterStatusAtual(empresa.Horarios, agora);
+    var horarioDeHoje = HorarioFormatHelper.HorarioDeHoje(empresa.Horarios, agora);
 
-    static (int R, int G, int B) HexParaRgb(string hex) => (
-        Convert.ToInt32(hex.Substring(1, 2), 16),
-        Convert.ToInt32(hex.Substring(3, 2), 16),
-        Convert.ToInt32(hex.Substring(5, 2), 16));
+    // Capa do hero: banner que a empresa configurou em Configurações, e na
+    // falta dele a primeira foto da galeria — mesma cascata já usada em
+    // EmpresaDescobertaService.cs pra o card da vitrine de empresas. Sem
+    // nenhuma das duas, cai num gradiente (ver .hero-cover-wrap.sem-capa).
+    var capaUrl = !string.IsNullOrWhiteSpace(empresa.CapaBannerUrl)
+        ? empresa.CapaBannerUrl
+        : Model.Fotos.OrderBy(f => f.DataUpload).Select(f => f.Url).FirstOrDefault();
 
-    // Mistura linear simples de duas cores (mesmo resultado do color-mix()
-    // do CSS em srgb) — usada só pra criar variação de profundidade (cards
-    // um pouco mais claros/escuros que o fundo) sem inventar uma cor nova:
-    // é sempre a própria cor da empresa misturada com o neutro de contraste.
-    static string Misturar(string hexA, string hexB, double pctA)
+    var temAnoFundacao = empresa.AnoFundacao.HasValue
+        && empresa.AnoFundacao.Value > 1900
+        && empresa.AnoFundacao.Value <= agora.Year;
+
+    var anosAtuando = temAnoFundacao ? agora.Year - empresa.AnoFundacao!.Value : 0;
+
+    // Só mostra a faixa de números se tiver pelo menos um número real —
+    // nada de estimativa/placeholder ("2.400+ clientes") sem dado por trás.
+    var temTrustbar = Model.TotalAvaliacoes > 0 || temAnoFundacao;
+
+    // As 5 fotos mais antigas pra prévia acima da aba — mesma ordenação que
+    // a aba Galeria já usa (Model.Fotos vem ordenado por DataUpload do
+    // controller).
+    var fotosDestaque = Model.Fotos.Take(5).ToList();
+
+    // Prévia de avaliações: as com comentário, nota mais alta primeiro —
+    // é vitrine, não a lista completa (essa continua na aba).
+    var depoimentosDestaque = Model.Avaliacoes
+        .Where(a => !string.IsNullOrWhiteSpace(a.Comentario))
+        .OrderByDescending(a => a.Nota)
+        .ThenByDescending(a => a.DataAtualizacao ?? a.DataCriacao)
+        .Take(3)
+        .ToList();
+
+    string? whatsappLink = null;
+
+    if (!string.IsNullOrEmpty(empresa.WhatsApp))
     {
-        var (ar, ag, ab) = HexParaRgb(hexA);
-        var (br, bg, bb) = HexParaRgb(hexB);
-        var p = Math.Clamp(pctA, 0, 100) / 100.0;
-
-        int r = (int)Math.Round(ar * p + br * (1 - p));
-        int g = (int)Math.Round(ag * p + bg * (1 - p));
-        int b = (int)Math.Round(ab * p + bb * (1 - p));
-
-        return $"#{r:X2}{g:X2}{b:X2}";
+        whatsappLink = empresa.WhatsApp.StartsWith("http")
+            ? empresa.WhatsApp
+            : $"https://wa.me/{empresa.WhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "")}";
     }
 
-    static string ComAlpha(string hex, double alpha)
-    {
-        var (r, g, b) = HexParaRgb(hex);
-        return $"rgba({r},{g},{b},{alpha.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
-    }
-
-    // Luminância relativa — decide se o texto/contraste em cima de uma cor
-    // fica preto ou branco, pra manter legível com qualquer cor escolhida
-    // (inclusive branco ou preto puro).
-    static string CorContraste(string hex)
-    {
-        var (r, g, b) = HexParaRgb(hex);
-        var luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-        return luminancia > 0.6 ? "#111111" : "#ffffff";
-    }
-
-    var temPrimaria = EhHexValido(empresa.CorPrimaria);
-    var temSecundaria = EhHexValido(empresa.CorSecundaria);
-
-    var corMarcaCss = "";
-    var corMarcaLoginCss = "";
-
-    if (temPrimaria)
-    {
-        var primaria = empresa.CorPrimaria!;
-        var textoBase = CorContraste(primaria);
-
-        // Fundo = a própria cor primária, sem alteração nenhuma. bg2/3/4 são
-        // só um leve degradê de profundidade (cards, inputs) misturando a
-        // mesma cor com o neutro de contraste — nunca uma cor diferente.
-        var bg2 = Misturar(primaria, textoBase, 92);
-        var bg3 = Misturar(primaria, textoBase, 84);
-        var bg4 = Misturar(primaria, textoBase, 76);
-
-        var texto2 = Misturar(textoBase, primaria, 65);
-        var texto3 = Misturar(textoBase, primaria, 40);
-
-        // Secundária = detalhes (botões, links, seleção, ícones). Sem
-        // secundária configurada, os detalhes usam um tom do neutro de
-        // contraste misturado na própria primária — continua sendo "só as
-        // duas cores da empresa" (aqui, só a primária existe mesmo).
-        var detalhe = temSecundaria ? empresa.CorSecundaria! : Misturar(primaria, textoBase, 75);
-        var detalhe2 = Misturar(detalhe, textoBase, 85);
-        var detalheContraste = CorContraste(detalhe);
-
-        corMarcaCss =
-            $"--bg:{primaria};" +
-            $"--bg2:{bg2};--bg3:{bg3};--bg4:{bg4};" +
-            $"--text:{textoBase};--text2:{texto2};--text3:{texto3};" +
-            $"--border:{ComAlpha(textoBase, 0.10)};--border2:{ComAlpha(textoBase, 0.18)};" +
-            $"--footer-bg:{bg2};--nav-bg:{ComAlpha(primaria, 0.92)};" +
-            $"--accent:{detalhe};--accent2:{detalhe2};--accent-contrast:{detalheContraste};";
-
-        corMarcaLoginCss =
-            $"--login-btn:{detalhe};--login-btn-hover:{detalhe2};" +
-            $"--login-btn-contrast:{detalheContraste};--login-accent-soft:{detalhe}22;";
-    }
+    // Cor de marca da empresa (opcional) — sobrescreve as variáveis de cor só
+    // nesta página (renderização por request, nunca vaza pra outra empresa).
+    // Cálculo mora em Helpers/CorMarcaHelper.cs — inclui o ajuste de
+    // contraste mínimo do texto (ver comentário lá) e é usado tanto aqui
+    // quanto no botão do modal de login/cadastro do cliente, mais abaixo.
+    var corMarcaCss = CorMarcaHelper.GerarVariaveisTema(empresa.CorPrimaria, empresa.CorSecundaria);
+    var corMarcaLoginCss = CorMarcaHelper.GerarVariaveisLogin(empresa.CorPrimaria, empresa.CorSecundaria);
 }
 
 @section Styles {
@@ -268,11 +227,13 @@
              class="navbar-logo me-2" />
     </a>
 
-
-
     <div class="nav-links">
         <a href="#">Início</a>
         <a href="#servicos">Serviços</a>
+        @if (fotosDestaque.Any())
+        {
+            <a href="#galeria-preview">Galeria</a>
+        }
         <a href="#contato">Contato</a>
         <a href="/empresas">Encontrar empresas</a>
     </div>
@@ -292,11 +253,24 @@
 
 <div class="hero">
 
-    <div class="hero-header">
+    <div class="hero-cover-wrap @(string.IsNullOrWhiteSpace(capaUrl) ? "sem-capa" : "")">
+        @if (!string.IsNullOrWhiteSpace(capaUrl))
+        {
+            <img src="@capaUrl" alt="" />
+        }
+        <div class="hero-cover-fade"></div>
+    </div>
+
+    <div class="hero-header hero-body @(string.IsNullOrWhiteSpace(capaUrl) ? "" : "com-capa")">
 
         <div class="hero-identity">
             <div class="logo-ring">
                 <img src="@empresa.LogoUrl" />
+
+                @if (Model.NotaMedia.HasValue)
+                {
+                    <div class="rating-badge">★ @Model.NotaMedia.Value.ToString("F1")</div>
+                }
             </div>
 
             <div class="hero-name">
@@ -305,10 +279,47 @@
                 <div class="segment">
                     @empresa.SegmentoAtuacao
                 </div>
+
+                @if (!string.IsNullOrWhiteSpace(empresa.Slogan))
+                {
+                    <p style="font-size:13px;color:var(--text2);margin-top:4px;max-width:520px;">@empresa.Slogan</p>
+                }
+
+                @if (Model.NotaMedia.HasValue)
+                {
+                    <div class="stars">
+                        @for (int i = 1; i <= 5; i++)
+                        {
+                            <span class="star">@(i <= Math.Round(Model.NotaMedia.Value) ? "★" : "☆")</span>
+                        }
+                        <span class="review-count">@Model.NotaMedia.Value.ToString("F1") (@Model.TotalAvaliacoes avaliações)</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(statusAtual.Texto))
+                {
+                    <div class="status-chip @(statusAtual.Aberto ? "aberto" : "fechado")">
+                        @if (statusAtual.Aberto)
+                        {
+                            <span class="pulse"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-clock"></i>
+                        }
+                        @statusAtual.Texto
+                    </div>
+                }
             </div>
         </div>
 
         <div class="hero-actions">
+            @if (whatsappLink != null)
+            {
+                <a class="btn-wpp" href="@whatsappLink" target="_blank" rel="noopener">
+                    <i class="bi bi-whatsapp"></i> WhatsApp
+                </a>
+            }
             <button class="btn-agendar">Agendar agora</button>
         </div>
 
@@ -316,591 +327,843 @@
 
 </div>
 
-<div class="layout">
+<div class="wrap">
     <input type="hidden"
            id="EmpresaId"
            value="@Model.Empresa.Id" />
 
-    <div class="left-col">
-
-        <p class="desc-text" id="desc">
-            @empresa.Descricao
-        </p>
-
-        <button class="toggle-desc" onclick="toggleDesc()">Ver mais</button>
-
-        <!-- Comodidades -->
-        <!-- Comodidades -->
-        <div>
-            <div class="section-title">Comodidades</div>
-            <div class="section-sub">Clique no item para obter informações</div>
-
-            <div class="amenities-grid">
-
-                <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
-                     title="Wi-Fi gratuito disponível">
-                    <div class="icon">📶</div>
-                    <div class="label">Wi-Fi</div>
-                </div>
-
-                <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
-                     title="Estacionamento disponível">
-                    <div class="icon">🚗</div>
-                    <div class="label">Estacionamento</div>
-                </div>
-
-                <div class="amenity @(Model.Empresa.TemAcessibilidade ? "" : "off")"
-                     title="Acessibilidade no local">
-                    <div class="icon">♿</div>
-                    <div class="label">Acessibilidade</div>
-                </div>
-
-                <div class="amenity @(Model.Empresa.TemArCondicionado ? "" : "off")"
-                     title="Ambiente climatizado">
-                    <div class="icon">❄️</div>
-                    <div class="label">Ar-condicionado</div>
-                </div>
-
-                <div class="amenity @(Model.Empresa.AtendimentoOnline ? "" : "off")"
-                     title="Atendimento online disponível">
-                    <div class="icon">💻</div>
-                    <div class="label">Atendimento online</div>
-                </div>
-
-                <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
-                     title="Ambiente com conexão disponível">
-                    <div class="icon">☕</div>
-                    <div class="label">Café / Wi-Fi</div>
-                </div>
-
-                <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
-                     title="Ambiente seguro e estruturado">
-                    <div class="icon">🔒</div>
-                    <div class="label">Segurança</div>
-                </div>
-
-                <div class="amenity @(string.IsNullOrEmpty(Model.Empresa.ComodidadesExtras) ? "off" : "")"
-                     title="@Model.Empresa.ComodidadesExtras">
-                    <div class="icon">➕</div>
-                    <div class="label">Extras</div>
-                </div>
-
-            </div>
-        </div>
-
-        <div id="servicos">
-
-            <div class="tabs-wrapper">
-                <div class="tabs">
-                    <button class="tab-btn active" data-tab="tabServicos">Serviços</button>
-                    @if (Model.TemProdutos)
-                    {
-                        <button class="tab-btn" data-tab="tabProdutos">Produtos</button>
-                    }
-                    @if (Model.PlanosServico != null && Model.PlanosServico.Any())
-                    {
-                        <button class="tab-btn" data-tab="tabPlanos">Planos</button>
-                    }
-                    <button class="tab-btn" data-tab="tabGaleria">Galeria</button>
-                    <button class="tab-btn" data-tab="tabAvaliacoes">Avaliações (@Model.TotalAvaliacoes)</button>
-                </div>
-            </div>
-
-            <!-- ===================== SERVIÇOS ===================== -->
-            <div id="tabServicos" class="tab-pane-publico">
-
-                <div class="search-box">
-                    <input type="search"
-                           placeholder="Pesquisar serviço"
-                           id="searchInput"
-                           oninput="filterServices()" />
-                </div>
-
-                <div class="services-list">
-
-                    @if (Model.Servicos != null && Model.Servicos.Any())
-                    {
-                        foreach (var s in Model.Servicos)
-                        {
-                            <div class="service-item" data-name="@s.Nome.ToLower()">
-
-                                <div class="service-img">💇</div>
-
-                                <div class="service-info">
-                                    <div class="name">@s.Nome</div>
-
-                                    @if (!string.IsNullOrEmpty(s.Descricao))
-                                    {
-                                        <div class="desc">@s.Descricao</div>
-                                    }
-
-                                    <div class="meta">
-                                        <span class="price">@(s.Preco > 0 ? $"R$ {s.Preco:F2}" : "Grátis")</span>
-                                        <span class="duration">🕐 @s.DuracaoMinutos min</span>
-                                    </div>
-                                </div>
-
-                                <button class="btn-schedule"
-                                        data-servico="@s.Id"
-                                        data-servico-nome="@s.Nome">
-                                    Agendar
-                                </button>
-
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <p style="color:var(--text2)">
-                            Nenhum serviço disponível.
-                        </p>
-                    }
-
-                </div>
-
-                <div class="pagination-public" id="servicosPaginacao"></div>
-
-            </div>
-
-            @if (Model.TemProdutos)
-            {
-                <!-- ===================== PRODUTOS ===================== -->
-                <div id="tabProdutos" class="tab-pane-publico" style="display:none">
-
-                    <div class="services-list">
-
-                        @foreach (var p in Model.Produtos)
-                        {
-                            <div class="service-item">
-
-                                @if (!string.IsNullOrWhiteSpace(p.FotoUrl))
-                                {
-                                    <img src="@p.FotoUrl" alt="@p.Nome" class="service-img" style="object-fit:cover;" />
-                                }
-                                else
-                                {
-                                    <div class="service-img">🧴</div>
-                                }
-
-                                <div class="service-info">
-                                    <div class="name">@p.Nome</div>
-
-                                    @if (!string.IsNullOrEmpty(p.Descricao))
-                                    {
-                                        <div class="desc">@p.Descricao</div>
-                                    }
-
-                                    <div class="meta">
-                                        <span class="price">R$ @p.Preco.ToString("F2")</span>
-                                    </div>
-                                </div>
-
-                            </div>
-                        }
-
-                    </div>
-
-                    <p class="small mt-2" style="color:var(--text2)">
-                        Produtos disponíveis para consumo durante o atendimento — não são vendidos separadamente por aqui.
-                    </p>
-
-                </div>
-            }
-
-            @if (Model.PlanosServico != null && Model.PlanosServico.Any())
-            {
-                <!-- ===================== PLANOS ===================== -->
-                <div id="tabPlanos" class="tab-pane-publico" style="display:none">
-
-                    <div class="plans-grid">
-
-                        @foreach (var plano in Model.PlanosServico)
-                        {
-                            <div class="plan-card">
-
-                                <div class="plan-card-header">
-                                    <h4>@plano.Nome</h4>
-                                    <span class="plan-periodicidade">
-                                        @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "Semanal" : "Mensal")
-                                    </span>
-                                </div>
-
-                                @if (plano.ValorReferencia.HasValue)
-                                {
-                                    <div class="plan-price">
-                                        @if (plano.ValorReferencia.Value > 0)
-                                        {
-                                            @($"R$ {plano.ValorReferencia.Value:F2}")
-                                            <span>/ @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "semana" : "mês")</span>
-                                        }
-                                        else
-                                        {
-                                            @:Grátis
-                                        }
-                                    </div>
-                                }
-
-                                <div class="plan-usos">
-                                    @plano.QuantidadeUsos sessões por período
-                                </div>
-
-                                @if (plano.Servicos.Any())
-                                {
-                                    <ul class="plan-servicos">
-                                        @foreach (var item in plano.Servicos)
-                                        {
-                                            <li>@item.Servico.Nome</li>
-                                        }
-                                    </ul>
-                                }
-
-                                <button class="btn-agendar btn-contratar-plano" data-plano-id="@plano.Id" style="margin-top:10px;">
-                                    Contratar plano
-                                </button>
-
-                                <p class="plan-contato-nota">
-                                    A empresa confirma o pagamento com você e libera os créditos.
-                                </p>
-
-                            </div>
-                        }
-
-                    </div>
-
-                    <div class="pagination-public" id="planosPaginacao"></div>
-
-                </div>
-            }
-
-            <!-- ===================== GALERIA ===================== -->
-            <div id="tabGaleria" class="tab-pane-publico" style="display:none">
-
-                @if (Model.Fotos != null && Model.Fotos.Any())
-                {
-                    <div class="gallery">
-
-                        <div class="gallery-main" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="0">
-                            <img src="@Model.Fotos[0].Url" alt="Foto 1" />
-                        </div>
-
-                        @if (Model.Fotos.Count > 1)
-                        {
-                            <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="1">
-                                <img src="@Model.Fotos[1].Url" alt="Foto 2" />
-                            </div>
-                        }
-
-                        @if (Model.Fotos.Count > 2)
-                        {
-                            <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="2">
-                                <img src="@Model.Fotos[2].Url" alt="Foto 3" />
-
-                                @if (Model.Fotos.Count > 3)
-                                {
-                                    <div class="gallery-more">
-                                        +@(Model.Fotos.Count - 3) fotos
-                                    </div>
-                                }
-                            </div>
-                        }
-
-                    </div>
-                }
-                else
-                {
-                    <p style="color:var(--text2)">Nenhuma foto adicionada ainda.</p>
-                }
-
-            </div>
-
-            <!-- ===================== AVALIAÇÕES ===================== -->
-            <div id="tabAvaliacoes" class="tab-pane-publico" style="display:none">
-
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-
-                    <div>
-                        @if (Model.NotaMedia.HasValue)
-                        {
-                            <span class="stars-display">
-                                @for (int i = 1; i <= 5; i++)
-                                {
-                                    <span class="star">@(i <= Math.Round(Model.NotaMedia.Value) ? "★" : "☆")</span>
-                                }
-                            </span>
-                            <strong>@Model.NotaMedia.Value.ToString("F1")</strong>
-                            <span class="review-count">(@Model.TotalAvaliacoes avaliações)</span>
-                        }
-                        else
-                        {
-                            <span class="review-count">Ainda sem avaliações — seja o primeiro!</span>
-                        }
-                    </div>
-
-                    <button class="btn-agendar" id="btnAbrirAvaliacao" style="padding:8px 18px;font-size:13px;">
-                        Deixar avaliação
-                    </button>
-
-                </div>
-
-                <div id="formAvaliacao" style="display:none" class="mb-4">
-
-                    <div class="star-picker" id="starPicker">
-                        <span class="star-pick" data-valor="1">★</span>
-                        <span class="star-pick" data-valor="2">★</span>
-                        <span class="star-pick" data-valor="3">★</span>
-                        <span class="star-pick" data-valor="4">★</span>
-                        <span class="star-pick" data-valor="5">★</span>
-                    </div>
-
-                    <textarea id="comentarioAvaliacao"
-                              class="form-control mt-2"
-                              rows="3"
-                              placeholder="Conte como foi sua experiência (opcional)"></textarea>
-
-                    <button class="btn-agendar mt-2" id="btnEnviarAvaliacao" style="padding:8px 18px;font-size:13px;">
-                        Enviar
-                    </button>
-
-                    <div id="avaliacaoAlert" class="mt-2"></div>
-
-                </div>
-
-                <div class="reviews-list">
-
-                    @if (Model.Avaliacoes != null && Model.Avaliacoes.Any())
-                    {
-                        foreach (var av in Model.Avaliacoes)
-                        {
-                            <div class="review-item">
-
-                                <div class="review-header">
-                                    <strong>@(av.Cliente?.Nome ?? "Cliente")</strong>
-
-                                    <span class="stars-display">
-                                        @for (int i = 1; i <= 5; i++)
-                                        {
-                                            <span class="star">@(i <= av.Nota ? "★" : "☆")</span>
-                                        }
-                                    </span>
-                                </div>
-
-                                @if (!string.IsNullOrWhiteSpace(av.Comentario))
-                                {
-                                    <p class="review-comment">@av.Comentario</p>
-                                }
-
-                                <span class="review-date">
-                                    @((av.DataAtualizacao ?? av.DataCriacao).ToString("dd/MM/yyyy"))
-                                </span>
-
-                            </div>
-                        }
-                    }
-                    else
-                    {
-                        <p style="color:var(--text2)">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
-                    }
-
-                </div>
-
-                <div class="pagination-public" id="avaliacoesPaginacao"></div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <aside class="sidebar">
+    <!-- Info essencial visível sem precisar rolar — inclusive no celular,
+         onde a sidebar completa (mais abaixo) só aparece depois de todo o
+         conteúdo de serviços. -->
+    <div class="quickinfo">
 
         @if (temLocalizacao)
         {
-            <!-- Localização -->
-            <div class="sidebar-section" id="contato">
-                <h3>📍 Localização</h3>
+            <a class="qi-item link" href="@mapsUrl" target="_blank" rel="noopener">
+                <i class="bi bi-geo-alt"></i>
+                <div class="lbl">@(string.IsNullOrWhiteSpace(linhaRua) ? linhaEndereco : linhaRua)</div>
+            </a>
+        }
 
-                <div class="location-row">
-                    <p>
-                        @if (!string.IsNullOrWhiteSpace(linhaRua))
+        @if (horarioDeHoje != null)
+        {
+            <div class="qi-item">
+                <i class="bi bi-clock"></i>
+                <div class="lbl">Hoje</div>
+                <div class="val">@horarioDeHoje</div>
+            </div>
+        }
+
+        @if (empresa.AceitaPix || empresa.AceitaDinheiro || empresa.AceitaCartaoDebito || empresa.AceitaCartaoCredito)
+        {
+            <div class="qi-item">
+                <i class="bi bi-credit-card"></i>
+                <div class="lbl">
+                    @string.Join(" · ", new[] {
+                        empresa.AceitaPix ? "Pix" : null,
+                        empresa.AceitaDinheiro ? "Dinheiro" : null,
+                        empresa.AceitaCartaoDebito ? "Débito" : null,
+                        empresa.AceitaCartaoCredito ? "Crédito" : null,
+                    }.Where(t => t != null))
+                </div>
+                @if (empresa.ParcelamentoMaximo > 1)
+                {
+                    <div class="val">até @(empresa.ParcelamentoMaximo)x</div>
+                }
+            </div>
+        }
+
+        @if (whatsappLink != null)
+        {
+            <a class="qi-item link" href="@whatsappLink" target="_blank" rel="noopener">
+                <i class="bi bi-whatsapp"></i>
+                <div class="lbl">Fale agora</div>
+                <div class="val">@empresa.WhatsApp</div>
+            </a>
+        }
+
+    </div>
+
+    @if (temTrustbar)
+    {
+        <div class="trustbar">
+            @if (Model.NotaMedia.HasValue)
+            {
+                <div class="trust-stat"><div class="n">@Model.NotaMedia.Value.ToString("F1")</div><div class="l">nota média</div></div>
+            }
+            @if (Model.TotalAvaliacoes > 0)
+            {
+                <div class="trust-stat"><div class="n">@Model.TotalAvaliacoes</div><div class="l">avaliaç@(Model.TotalAvaliacoes == 1 ? "ão" : "ões")</div></div>
+            }
+            @if (temAnoFundacao)
+            {
+                <div class="trust-stat"><div class="n">@anosAtuando</div><div class="l">ano@(anosAtuando == 1 ? "" : "s") de atuação</div></div>
+            }
+        </div>
+    }
+
+    @if (fotosDestaque.Any())
+    {
+        <section id="galeria-preview" style="margin-bottom:2.5rem;">
+            <div class="preview-head">
+                <h2>Nosso trabalho</h2>
+                @if (Model.Fotos.Count > fotosDestaque.Count)
+                {
+                    <button type="button" class="ver-todas" data-abrir-aba="tabGaleria">Ver todas as fotos (@Model.Fotos.Count) →</button>
+                }
+            </div>
+
+            <div class="gallery">
+
+                <div class="gallery-main" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="0">
+                    <img src="@fotosDestaque[0].Url" alt="Foto 1" />
+                </div>
+
+                @if (fotosDestaque.Count > 1)
+                {
+                    <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="1">
+                        <img src="@fotosDestaque[1].Url" alt="Foto 2" />
+                    </div>
+                }
+
+                @if (fotosDestaque.Count > 2)
+                {
+                    <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="2">
+                        <img src="@fotosDestaque[2].Url" alt="Foto 3" />
+
+                        @if (Model.Fotos.Count > 3)
                         {
-                            @linhaRua
-                            <br />
+                            <div class="gallery-more">
+                                +@(Model.Fotos.Count - 3) fotos
+                            </div>
                         }
-                        @linhaEndereco
-                    </p>
+                    </div>
+                }
 
-                    <a href="@mapsUrl"
-                       target="_blank"
-                       class="map-btn"
-                       title="Ver no mapa">
-                        🗺️
-                    </a>
+            </div>
+        </section>
+    }
+
+    @if (depoimentosDestaque.Any())
+    {
+        <section id="avaliacoes-preview" style="margin-bottom:2.5rem;">
+            <div class="preview-head">
+                <h2>O que dizem os clientes</h2>
+                <button type="button" class="ver-todas" data-abrir-aba="tabAvaliacoes">Ver todas (@Model.TotalAvaliacoes) →</button>
+            </div>
+
+            <div class="testi-grid">
+                @foreach (var av in depoimentosDestaque)
+                {
+                    <div class="testi-card">
+                        <span class="stars-display">
+                            @for (int i = 1; i <= 5; i++)
+                            {
+                                <span class="star">@(i <= av.Nota ? "★" : "☆")</span>
+                            }
+                        </span>
+                        <p>"@av.Comentario"</p>
+                        <div class="testi-who">
+                            <div class="testi-avatar">@(string.IsNullOrWhiteSpace(av.Cliente?.Nome) ? "?" : av.Cliente.Nome.Trim().Substring(0, 1).ToUpper())</div>
+                            <div>
+                                <div class="name">@(av.Cliente?.Nome ?? "Cliente")</div>
+                                <div class="when">@((av.DataAtualizacao ?? av.DataCriacao).ToString("dd/MM/yyyy"))</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
+
+    <div class="layout">
+
+        <div class="left-col">
+
+            <p class="desc-text" id="desc">
+                @empresa.Descricao
+            </p>
+
+            <button class="toggle-desc" onclick="toggleDesc()">Ver mais</button>
+
+            <!-- Comodidades -->
+            <div>
+                <div class="section-title">Comodidades</div>
+                <div class="section-sub">Clique no item para obter informações</div>
+
+                <div class="amenities-grid">
+
+                    <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
+                         title="Wi-Fi gratuito disponível">
+                        <div class="icon"><i class="bi bi-wifi"></i></div>
+                        <div class="label">Wi-Fi</div>
+                    </div>
+
+                    <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
+                         title="Estacionamento disponível">
+                        <div class="icon"><i class="bi bi-p-square"></i></div>
+                        <div class="label">Estacionamento</div>
+                    </div>
+
+                    <div class="amenity @(Model.Empresa.TemAcessibilidade ? "" : "off")"
+                         title="Acessibilidade no local">
+                        <div class="icon"><i class="bi bi-universal-access"></i></div>
+                        <div class="label">Acessibilidade</div>
+                    </div>
+
+                    <div class="amenity @(Model.Empresa.TemArCondicionado ? "" : "off")"
+                         title="Ambiente climatizado">
+                        <div class="icon"><i class="bi bi-snow"></i></div>
+                        <div class="label">Ar-condicionado</div>
+                    </div>
+
+                    <div class="amenity @(Model.Empresa.AtendimentoOnline ? "" : "off")"
+                         title="Atendimento online disponível">
+                        <div class="icon"><i class="bi bi-laptop"></i></div>
+                        <div class="label">Atendimento online</div>
+                    </div>
+
+                    <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
+                         title="Ambiente com conexão disponível">
+                        <div class="icon"><i class="bi bi-cup-hot"></i></div>
+                        <div class="label">Café / Wi-Fi</div>
+                    </div>
+
+                    <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
+                         title="Ambiente seguro e estruturado">
+                        <div class="icon"><i class="bi bi-shield-check"></i></div>
+                        <div class="label">Segurança</div>
+                    </div>
+
+                    <div class="amenity @(string.IsNullOrEmpty(Model.Empresa.ComodidadesExtras) ? "off" : "")"
+                         title="@Model.Empresa.ComodidadesExtras">
+                        <div class="icon"><i class="bi bi-plus-circle"></i></div>
+                        <div class="label">Extras</div>
+                    </div>
+
                 </div>
             </div>
-        }
 
-        @if (linhasHorario.Any())
-        {
+            <div id="servicos">
+
+                <div class="tabs-wrapper">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="tabServicos">Serviços</button>
+                        @if (Model.TemProdutos)
+                        {
+                            <button class="tab-btn" data-tab="tabProdutos">Produtos</button>
+                        }
+                        @if (Model.PlanosServico != null && Model.PlanosServico.Any())
+                        {
+                            <button class="tab-btn" data-tab="tabPlanos">Planos</button>
+                        }
+                        <button class="tab-btn" data-tab="tabGaleria">Galeria</button>
+                        <button class="tab-btn" data-tab="tabAvaliacoes">Avaliações (@Model.TotalAvaliacoes)</button>
+                    </div>
+                </div>
+
+                <!-- ===================== SERVIÇOS ===================== -->
+                <div id="tabServicos" class="tab-pane-publico">
+
+                    <div class="search-box">
+                        <i class="bi bi-search"></i>
+                        <input type="search"
+                               placeholder="Pesquisar serviço"
+                               id="searchInput"
+                               oninput="filterServices()" />
+                    </div>
+
+                    <div class="services-list">
+
+                        @if (Model.Servicos != null && Model.Servicos.Any())
+                        {
+                            foreach (var s in Model.Servicos)
+                            {
+                                <div class="service-item" data-name="@s.Nome.ToLower()">
+
+                                    <div class="service-img"><i class="bi bi-stars"></i></div>
+
+                                    <div class="service-info">
+                                        <div class="name">@s.Nome</div>
+
+                                        @if (!string.IsNullOrEmpty(s.Descricao))
+                                        {
+                                            <div class="desc">@s.Descricao</div>
+                                        }
+
+                                        <div class="meta">
+                                            <span class="price">@(s.Preco > 0 ? $"R$ {s.Preco:F2}" : "Grátis")</span>
+                                            <span class="duration"><i class="bi bi-clock"></i> @s.DuracaoMinutos min</span>
+                                        </div>
+                                    </div>
+
+                                    <button class="btn-schedule"
+                                            data-servico="@s.Id"
+                                            data-servico-nome="@s.Nome">
+                                        Agendar
+                                    </button>
+
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p style="color:var(--text2)">
+                                Nenhum serviço disponível.
+                            </p>
+                        }
+
+                    </div>
+
+                    <div class="pagination-public" id="servicosPaginacao"></div>
+
+                </div>
+
+                @if (Model.TemProdutos)
+                {
+                    <!-- ===================== PRODUTOS ===================== -->
+                    <div id="tabProdutos" class="tab-pane-publico" style="display:none">
+
+                        <div class="services-list">
+
+                            @foreach (var p in Model.Produtos)
+                            {
+                                <div class="service-item">
+
+                                    @if (!string.IsNullOrWhiteSpace(p.FotoUrl))
+                                    {
+                                        <img src="@p.FotoUrl" alt="@p.Nome" class="service-img" style="object-fit:cover;" />
+                                    }
+                                    else
+                                    {
+                                        <div class="service-img"><i class="bi bi-bag"></i></div>
+                                    }
+
+                                    <div class="service-info">
+                                        <div class="name">@p.Nome</div>
+
+                                        @if (!string.IsNullOrEmpty(p.Descricao))
+                                        {
+                                            <div class="desc">@p.Descricao</div>
+                                        }
+
+                                        <div class="meta">
+                                            <span class="price">R$ @p.Preco.ToString("F2")</span>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            }
+
+                        </div>
+
+                        <p class="small mt-2" style="color:var(--text2)">
+                            Produtos disponíveis para consumo durante o atendimento — não são vendidos separadamente por aqui.
+                        </p>
+
+                    </div>
+                }
+
+                @if (Model.PlanosServico != null && Model.PlanosServico.Any())
+                {
+                    <!-- ===================== PLANOS ===================== -->
+                    <div id="tabPlanos" class="tab-pane-publico" style="display:none">
+
+                        <div class="plans-grid">
+
+                            @foreach (var plano in Model.PlanosServico)
+                            {
+                                <div class="plan-card">
+
+                                    <div class="plan-card-header">
+                                        <h4>@plano.Nome</h4>
+                                        <span class="plan-periodicidade">
+                                            @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "Semanal" : "Mensal")
+                                        </span>
+                                    </div>
+
+                                    @if (plano.ValorReferencia.HasValue)
+                                    {
+                                        <div class="plan-price">
+                                            @if (plano.ValorReferencia.Value > 0)
+                                            {
+                                                @($"R$ {plano.ValorReferencia.Value:F2}")
+                                                <span>/ @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "semana" : "mês")</span>
+                                            }
+                                            else
+                                            {
+                                                @:Grátis
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="plan-usos">
+                                        @plano.QuantidadeUsos sessões por período
+                                    </div>
+
+                                    @if (plano.Servicos.Any())
+                                    {
+                                        <ul class="plan-servicos">
+                                            @foreach (var item in plano.Servicos)
+                                            {
+                                                <li>@item.Servico.Nome</li>
+                                            }
+                                        </ul>
+                                    }
+
+                                    <button class="btn-agendar btn-contratar-plano" data-plano-id="@plano.Id" style="margin-top:10px;">
+                                        Contratar plano
+                                    </button>
+
+                                    <p class="plan-contato-nota">
+                                        A empresa confirma o pagamento com você e libera os créditos.
+                                    </p>
+
+                                </div>
+                            }
+
+                        </div>
+
+                        <div class="pagination-public" id="planosPaginacao"></div>
+
+                    </div>
+                }
+
+                <!-- ===================== GALERIA ===================== -->
+                <div id="tabGaleria" class="tab-pane-publico" style="display:none">
+
+                    @if (Model.Fotos != null && Model.Fotos.Any())
+                    {
+                        <div class="gallery">
+
+                            <div class="gallery-main" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="0">
+                                <img src="@Model.Fotos[0].Url" alt="Foto 1" />
+                            </div>
+
+                            @if (Model.Fotos.Count > 1)
+                            {
+                                <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="1">
+                                    <img src="@Model.Fotos[1].Url" alt="Foto 2" />
+                                </div>
+                            }
+
+                            @if (Model.Fotos.Count > 2)
+                            {
+                                <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="2">
+                                    <img src="@Model.Fotos[2].Url" alt="Foto 3" />
+
+                                    @if (Model.Fotos.Count > 3)
+                                    {
+                                        <div class="gallery-more">
+                                            +@(Model.Fotos.Count - 3) fotos
+                                        </div>
+                                    }
+                                </div>
+                            }
+
+                        </div>
+                    }
+                    else
+                    {
+                        <p style="color:var(--text2)">Nenhuma foto adicionada ainda.</p>
+                    }
+
+                </div>
+
+                <!-- ===================== AVALIAÇÕES ===================== -->
+                <div id="tabAvaliacoes" class="tab-pane-publico" style="display:none">
+
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+
+                        <div>
+                            @if (Model.NotaMedia.HasValue)
+                            {
+                                <span class="stars-display">
+                                    @for (int i = 1; i <= 5; i++)
+                                    {
+                                        <span class="star">@(i <= Math.Round(Model.NotaMedia.Value) ? "★" : "☆")</span>
+                                    }
+                                </span>
+                                <strong>@Model.NotaMedia.Value.ToString("F1")</strong>
+                                <span class="review-count">(@Model.TotalAvaliacoes avaliações)</span>
+                            }
+                            else
+                            {
+                                <span class="review-count">Ainda sem avaliações — seja o primeiro!</span>
+                            }
+                        </div>
+
+                        <button class="btn-agendar" id="btnAbrirAvaliacao" style="padding:8px 18px;font-size:13px;">
+                            Deixar avaliação
+                        </button>
+
+                    </div>
+
+                    <div id="formAvaliacao" style="display:none" class="mb-4">
+
+                        <div class="star-picker" id="starPicker">
+                            <span class="star-pick" data-valor="1">★</span>
+                            <span class="star-pick" data-valor="2">★</span>
+                            <span class="star-pick" data-valor="3">★</span>
+                            <span class="star-pick" data-valor="4">★</span>
+                            <span class="star-pick" data-valor="5">★</span>
+                        </div>
+
+                        <textarea id="comentarioAvaliacao"
+                                  class="form-control mt-2"
+                                  rows="3"
+                                  placeholder="Conte como foi sua experiência (opcional)"></textarea>
+
+                        <button class="btn-agendar mt-2" id="btnEnviarAvaliacao" style="padding:8px 18px;font-size:13px;">
+                            Enviar
+                        </button>
+
+                        <div id="avaliacaoAlert" class="mt-2"></div>
+
+                    </div>
+
+                    <div class="reviews-list">
+
+                        @if (Model.Avaliacoes != null && Model.Avaliacoes.Any())
+                        {
+                            foreach (var av in Model.Avaliacoes)
+                            {
+                                <div class="review-item">
+
+                                    <div class="review-header">
+                                        <strong>@(av.Cliente?.Nome ?? "Cliente")</strong>
+
+                                        <span class="stars-display">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                <span class="star">@(i <= av.Nota ? "★" : "☆")</span>
+                                            }
+                                        </span>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(av.Comentario))
+                                    {
+                                        <p class="review-comment">@av.Comentario</p>
+                                    }
+
+                                    <span class="review-date">
+                                        @((av.DataAtualizacao ?? av.DataCriacao).ToString("dd/MM/yyyy"))
+                                    </span>
+
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p style="color:var(--text2)">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
+                        }
+
+                    </div>
+
+                    <div class="pagination-public" id="avaliacoesPaginacao"></div>
+
+                </div>
+
+            </div>
+
+            <!-- FAQ — reduz a fricção de quem está na dúvida de agendar -->
+            <div style="margin-top:2.5rem;">
+                <div class="section-title" style="margin-bottom:1rem;">Perguntas frequentes</div>
+
+                <div id="faqList">
+                    <div class="faq-item">
+                        <button type="button" class="faq-q">
+                            Preciso pagar algo para reservar o horário?
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="faq-a">Não. O agendamento é gratuito — o pagamento é combinado com a empresa e feito no atendimento.</div>
+                    </div>
+                    <div class="faq-item">
+                        <button type="button" class="faq-q">
+                            Posso remarcar ou cancelar?
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="faq-a">Sim — acesse "Meus Agendamentos" no seu painel de cliente pra remarcar ou cancelar, dentro do prazo definido pela empresa.</div>
+                    </div>
+                    <div class="faq-item">
+                        <button type="button" class="faq-q">
+                            Preciso me cadastrar para agendar?
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="faq-a">Não é obrigatório — dá pra agendar só com nome e telefone. Ter conta ajuda a acompanhar o histórico dos seus agendamentos.</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <aside class="sidebar">
+
+            @if (temLocalizacao)
+            {
+                <!-- Localização -->
+                <div class="sidebar-section" id="contato">
+                    <h3><i class="bi bi-geo-alt"></i> Localização</h3>
+
+                    <div class="location-row">
+                        <p>
+                            @if (!string.IsNullOrWhiteSpace(linhaRua))
+                            {
+                                @linhaRua
+                                <br />
+                            }
+                            @linhaEndereco
+                        </p>
+
+                        <a href="@mapsUrl"
+                           target="_blank"
+                           class="map-btn"
+                           title="Ver no mapa">
+                            <i class="bi bi-map"></i>
+                        </a>
+                    </div>
+                </div>
+            }
+
+            @if (linhasHorario.Any())
+            {
+                <div class="sidebar-section">
+                    <h3><i class="bi bi-clock"></i> Horário</h3>
+                    @foreach (var linha in linhasHorario)
+                    {
+                        <p class="mb-1">@linha</p>
+                    }
+                </div>
+            }
+
+            <!-- Formas de Pagamento -->
             <div class="sidebar-section">
-                <h3>🕐 Horário</h3>
-                @foreach (var linha in linhasHorario)
-                {
-                    <p class="mb-1">@linha</p>
-                }
+                <h3><i class="bi bi-credit-card"></i> Formas de pagamento</h3>
+
+                <div class="payment-tags">
+
+                    @if (empresa.AceitaDinheiro)
+                    {
+                        <span class="payment-tag"><i class="bi bi-cash"></i> Dinheiro</span>
+                    }
+
+                    @if (empresa.AceitaPix)
+                    {
+                        <span class="payment-tag"><i class="bi bi-qr-code"></i> Pix</span>
+                    }
+
+                    @if (empresa.AceitaCartaoDebito)
+                    {
+                        <span class="payment-tag"><i class="bi bi-credit-card"></i> Débito</span>
+                    }
+
+                    @if (empresa.AceitaCartaoCredito)
+                    {
+                        <span class="payment-tag"><i class="bi bi-credit-card-2-front"></i> Crédito</span>
+                    }
+
+                    @if (empresa.ParcelamentoMaximo != null && empresa.ParcelamentoMaximo > 1)
+                    {
+                        <span class="payment-tag"><i class="bi bi-arrow-repeat"></i> Em até @empresa.ParcelamentoMaximo x</span>
+                    }
+
+                </div>
             </div>
-        }
 
-        <!-- Formas de Pagamento -->
-        <div class="sidebar-section">
-            <h3>💳 Formas de pagamento</h3>
+            <!-- Redes Sociais -->
+            <div class="sidebar-section">
+                <h3><i class="bi bi-share"></i> Redes Sociais</h3>
 
-            <div class="payment-tags">
+                <div class="social-row">
 
-                @if (empresa.AceitaDinheiro)
-                {
-                    <span class="payment-tag">💵 Dinheiro</span>
-                }
+                    @if (whatsappLink != null)
+                    {
+                        <a href="@whatsappLink" target="_blank" class="social-btn" title="WhatsApp">
+                            <i class="bi bi-whatsapp"></i>
+                        </a>
+                    }
 
-                @if (empresa.AceitaPix)
-                {
-                    <span class="payment-tag">📱 Pix</span>
-                }
+                    @if (!string.IsNullOrEmpty(empresa.Instagram))
+                    {
+                        var insta = empresa.Instagram.StartsWith("http")
+                        ? empresa.Instagram
+                        : $"https://instagram.com/{empresa.Instagram.Replace("@", "")}";
 
-                @if (empresa.AceitaCartaoDebito)
-                {
-                    <span class="payment-tag">💳 Débito</span>
-                }
+                        <a href="@insta" target="_blank" class="social-btn" title="Instagram">
+                            <i class="bi bi-instagram"></i>
+                        </a>
+                    }
 
-                @if (empresa.AceitaCartaoCredito)
-                {
-                    <span class="payment-tag">💳 Crédito</span>
-                }
+                    @if (!string.IsNullOrEmpty(empresa.Facebook))
+                    {
+                        var fb = empresa.Facebook.StartsWith("http")
+                        ? empresa.Facebook
+                        : $"https://facebook.com/{empresa.Facebook}";
 
-                @if (empresa.ParcelamentoMaximo != null && empresa.ParcelamentoMaximo > 1)
-                {
-                    <span class="payment-tag">🔄 Em até @empresa.ParcelamentoMaximo x</span>
-                }
+                        <a href="@fb" target="_blank" class="social-btn" title="Facebook">
+                            <i class="bi bi-facebook"></i>
+                        </a>
+                    }
 
+                    @if (!string.IsNullOrEmpty(empresa.Site))
+                    {
+                        var site = empresa.Site.StartsWith("http")
+                        ? empresa.Site
+                        : $"https://{empresa.Site}";
+
+                        <a href="@site" target="_blank" class="social-btn" title="Site oficial">
+                            <i class="bi bi-globe2"></i>
+                        </a>
+                    }
+
+                </div>
             </div>
-        </div>
 
-        <!-- Redes Sociais -->
-        <!-- Redes Sociais -->
-        <div class="sidebar-section">
-            <h3>🌐 Redes Sociais</h3>
+            <!-- Contato -->
+            <div class="sidebar-section">
+                <h3><i class="bi bi-telephone"></i> Contato</h3>
 
-            <div class="social-row">
+                <div class="contact-items">
 
-                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
-                {
-                    var whatsappLink = empresa.WhatsApp.StartsWith("http")
-                    ? empresa.WhatsApp
-                    : $"https://wa.me/{empresa.WhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "")}";
-
-                    <a href="@whatsappLink" target="_blank" class="social-btn" title="WhatsApp">
-                        <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
-                            <path d="M19.11 17.47c-.29-.15-1.72-.85-1.99-.95-.27-.1-.47-.15-.67.15-.2.29-.77.95-.94 1.14-.17.2-.35.22-.64.07-.29-.15-1.23-.45-2.34-1.43-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.6.13-.13.29-.35.44-.53.15-.17.2-.29.29-.48.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.29-1.04 1.02-1.04 2.49s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.07 4.48.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.08 1.72-.7 1.97-1.37.24-.67.24-1.24.17-1.37-.07-.12-.27-.2-.56-.35z" />
-                            <path d="M16 3C9.37 3 4 8.37 4 15c0 2.11.55 4.17 1.6 6L4 29l8.3-1.55C14.06 28.46 15.02 28.6 16 28.6c6.63 0 12-5.37 12-12S22.63 3 16 3zm0 22.6c-1.05 0-2.08-.17-3.06-.51l-.44-.15-4.93.92.95-4.81-.18-.46C7.31 19.25 6.6 17.15 6.6 15 6.6 9.76 10.76 5.6 16 5.6S25.4 9.76 25.4 15 21.24 25.6 16 25.6z" />
-                        </svg>
-                    </a>
-                }
-
-                @if (!string.IsNullOrEmpty(empresa.Instagram))
-                {
-                    var insta = empresa.Instagram.StartsWith("http")
-                    ? empresa.Instagram
-                    : $"https://instagram.com/{empresa.Instagram.Replace("@", "")}";
-
-                    <a href="@insta" target="_blank" class="social-btn" title="Instagram">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path d="M7 2C4.24 2 2 4.24 2 7v10c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5H7zm10 2c1.65 0 3 1.35 3 3v10c0 1.65-1.35 3-3 3H7c-1.65 0-3-1.35-3-3V7c0-1.65 1.35-3 3-3h10z" />
-                            <path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6z" />
-                            <circle cx="17.5" cy="6.5" r="1.2" />
-                        </svg>
-                    </a>
-                }
-
-                @if (!string.IsNullOrEmpty(empresa.Facebook))
-                {
-                    var fb = empresa.Facebook.StartsWith("http")
-                    ? empresa.Facebook
-                    : $"https://facebook.com/{empresa.Facebook}";
-
-                    <a href="@fb" target="_blank" class="social-btn" title="Facebook">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path d="M22 12a10 10 0 10-11.5 9.95v-7.05H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.75-1.6 1.5v1.8H17l-.4 2.9h-2.4V22A10 10 0 0022 12z" />
-                        </svg>
-                    </a>
-                }
-
-                @if (!string.IsNullOrEmpty(empresa.Site))
-                {
-                    var site = empresa.Site.StartsWith("http")
-                    ? empresa.Site
-                    : $"https://{empresa.Site}";
-
-                    <a href="@site" target="_blank" class="social-btn" title="Site oficial">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18c-1.3 0-3.2-2.8-3.6-7H15.6c-.4 4.2-2.3 7-3.6 7zm-3.7-9c.3-4.2 2.2-7 3.7-7s3.4 2.8 3.7 7H8.3zM4.1 13H2.1a8 8 0 011.5-6h2.2c-.9 1.8-1.5 3.8-1.7 6zm15.8 0c-.2-2.2-.8-4.2-1.7-6h2.2a8 8 0 011.5 6h-2zM5.9 15c.4 2.3 1.2 4.2 2.3 5.5A8 8 0 014.1 15h1.8zm10.2 0h1.8a8 8 0 01-4.1 5.5c1.1-1.3 1.9-3.2 2.3-5.5z" />
-                        </svg>
-                    </a>
-                }
-
-            </div>
-        </div>
-
-        <!-- Contato -->
-        <div class="sidebar-section">
-            <h3>📞 Contato</h3>
-
-            <div class="contact-items">
-
-                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
-                {
-                    <div class="contact-item" onclick="copyText('@empresa.WhatsApp', this)">
-                        <div class="left">
-                            <div class="icon-wrap">📲</div>
-                            <span class="val">@empresa.WhatsApp</span>
+                    @if (!string.IsNullOrEmpty(empresa.WhatsApp))
+                    {
+                        <div class="contact-item" onclick="copyText('@empresa.WhatsApp', this)">
+                            <div class="left">
+                                <div class="icon-wrap"><i class="bi bi-whatsapp"></i></div>
+                                <span class="val">@empresa.WhatsApp</span>
+                            </div>
+                            <span class="copy-icon"><i class="bi bi-clipboard"></i></span>
                         </div>
-                        <span class="copy-icon">⧉</span>
-                    </div>
-                }
+                    }
 
-                @if (!string.IsNullOrEmpty(empresa.Telefone))
-                {
-                    <div class="contact-item" onclick="copyText('@empresa.Telefone', this)">
-                        <div class="left">
-                            <div class="icon-wrap">📞</div>
-                            <span class="val">@empresa.Telefone</span>
+                    @if (!string.IsNullOrEmpty(empresa.Telefone))
+                    {
+                        <div class="contact-item" onclick="copyText('@empresa.Telefone', this)">
+                            <div class="left">
+                                <div class="icon-wrap"><i class="bi bi-telephone"></i></div>
+                                <span class="val">@empresa.Telefone</span>
+                            </div>
+                            <span class="copy-icon"><i class="bi bi-clipboard"></i></span>
                         </div>
-                        <span class="copy-icon">⧉</span>
-                    </div>
-                }
+                    }
 
-                @if (!string.IsNullOrEmpty(empresa.Email))
-                {
-                    <div class="contact-item" onclick="copyText('@empresa.Email', this)">
-                        <div class="left">
-                            <div class="icon-wrap">✉️</div>
-                            <span class="val">@empresa.Email</span>
+                    @if (!string.IsNullOrEmpty(empresa.Email))
+                    {
+                        <div class="contact-item" onclick="copyText('@empresa.Email', this)">
+                            <div class="left">
+                                <div class="icon-wrap"><i class="bi bi-envelope"></i></div>
+                                <span class="val">@empresa.Email</span>
+                            </div>
+                            <span class="copy-icon"><i class="bi bi-clipboard"></i></span>
                         </div>
-                        <span class="copy-icon">⧉</span>
-                    </div>
-                }
+                    }
 
+                </div>
             </div>
-        </div>
 
-    </aside>
+        </aside>
 
+    </div>
 </div>
 
 @section Footer {
+    <div class="footer-inner">
+        <div>
+            <div class="nav-logo" style="margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+                <img src="@empresa.LogoUrl" style="width:28px;height:28px;border-radius:50%;object-fit:cover;" />
+                @nome
+            </div>
+            @if (!string.IsNullOrWhiteSpace(empresa.Descricao))
+            {
+                <p class="footer-desc">@(empresa.Descricao.Length > 160 ? empresa.Descricao.Substring(0, 160) + "…" : empresa.Descricao)</p>
+            }
+            <div class="footer-social">
+                @if (whatsappLink != null)
+                {
+                    <a class="social-btn" href="@whatsappLink" target="_blank" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
+                }
+                @if (!string.IsNullOrEmpty(empresa.Instagram))
+                {
+                    <a class="social-btn" href="#" title="Instagram"><i class="bi bi-instagram"></i></a>
+                }
+                @if (!string.IsNullOrEmpty(empresa.Facebook))
+                {
+                    <a class="social-btn" href="#" title="Facebook"><i class="bi bi-facebook"></i></a>
+                }
+            </div>
+        </div>
+        <div>
+            <h4>Navegação</h4>
+            <ul>
+                <li><a href="#servicos">Serviços</a></li>
+                @if (fotosDestaque.Any())
+                {
+                    <li><a href="#galeria-preview">Galeria</a></li>
+                }
+                @if (depoimentosDestaque.Any())
+                {
+                    <li><a href="#avaliacoes-preview">Avaliações</a></li>
+                }
+                <li><a href="#contato">Localização</a></li>
+            </ul>
+        </div>
+        <div>
+            <h4>Horário</h4>
+            <ul>
+                @if (linhasHorarioResumo.Any())
+                {
+                    foreach (var linha in linhasHorarioResumo)
+                    {
+                        <li><a href="#">@linha</a></li>
+                    }
+                }
+                else
+                {
+                    <li><a href="#">Não informado</a></li>
+                }
+            </ul>
+        </div>
+        <div>
+            <h4>Contato</h4>
+            <ul>
+                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
+                {
+                    <li><a href="@whatsappLink" target="_blank"><i class="bi bi-whatsapp"></i> @empresa.WhatsApp</a></li>
+                }
+                @if (!string.IsNullOrEmpty(empresa.Email))
+                {
+                    <li><a href="mailto:@empresa.Email"><i class="bi bi-envelope"></i> @empresa.Email</a></li>
+                }
+                @if (temLocalizacao)
+                {
+                    <li><a href="@mapsUrl" target="_blank"><i class="bi bi-geo-alt"></i> @(string.IsNullOrWhiteSpace(empresa.Cidade) ? "Ver no mapa" : $"{empresa.Cidade}/{empresa.UF}")</a></li>
+                }
+            </ul>
+        </div>
+    </div>
+
     <div class="footer-bottom">
         <span>© @DateTime.Now.Year @nome</span>
         <span class="footer-powered">Desenvolvido por <strong>Simpli Time</strong> — sistemas de agendamento online</span>
     </div>
 }
+
+@if (whatsappLink != null)
+{
+    <a class="fab-wpp" href="@whatsappLink" target="_blank" rel="noopener" title="Falar no WhatsApp">
+        <i class="bi bi-whatsapp"></i>
+    </a>
+}
+
+<div class="mobile-cta-bar">
+    @if (whatsappLink != null)
+    {
+        <a class="btn-wpp" href="@whatsappLink" target="_blank" rel="noopener"><i class="bi bi-whatsapp"></i> WhatsApp</a>
+    }
+    <button class="btn-agendar" onclick="document.getElementById('servicos').scrollIntoView({behavior:'smooth',block:'start'})">
+        <i class="bi bi-calendar-check"></i> Agendar
+    </button>
+</div>
 
 <div class="modal fade"
      id="agendamentoModal"
@@ -1128,27 +1391,45 @@
         // ABAS (SERVIÇOS / GALERIA / AVALIAÇÕES)
         // ==========================================
 
+        function abrirAba(tabId) {
+
+            const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if (!btn) return;
+
+            document.querySelectorAll(".tab-btn")
+                .forEach(b => b.classList.remove("active"));
+
+            btn.classList.add("active");
+
+            document.querySelectorAll(".tab-pane-publico")
+                .forEach(p => p.style.display = "none");
+
+            document.getElementById(tabId).style.display = "";
+        }
+
         document.querySelectorAll(".tab-btn").forEach(btn => {
+            btn.addEventListener("click", () => abrirAba(btn.dataset.tab));
+        });
+
+        // "Ver todas" nas prévias de galeria/avaliações — abre a aba
+        // correspondente e rola até ela, sem duplicar a lista.
+        document.querySelectorAll("[data-abrir-aba]").forEach(btn => {
 
             btn.addEventListener("click", () => {
 
-                document.querySelectorAll(".tab-btn")
-                    .forEach(b => b.classList.remove("active"));
+                abrirAba(btn.dataset.abrirAba);
 
-                btn.classList.add("active");
-
-                document.querySelectorAll(".tab-pane-publico")
-                    .forEach(p => p.style.display = "none");
-
-                document.getElementById(btn.dataset.tab).style.display = "";
+                document.getElementById("servicos")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
             });
         });
 
         // ==========================================
         // GALERIA — ABRE O CARROSSEL NA FOTO CLICADA
+        // (prévia acima das abas E a aba Galeria usam o mesmo modal)
         // ==========================================
 
-        document.querySelectorAll("#tabGaleria [data-foto-index]").forEach(el => {
+        document.querySelectorAll("[data-foto-index]").forEach(el => {
 
             el.addEventListener("click", () => {
 
@@ -1159,6 +1440,24 @@
                 );
 
                 carousel.to(indice);
+            });
+        });
+
+        // ==========================================
+        // FAQ (accordion simples)
+        // ==========================================
+
+        document.querySelectorAll(".faq-q").forEach(q => {
+
+            q.addEventListener("click", () => {
+
+                const item = q.closest(".faq-item");
+                const jaAberto = item.classList.contains("open");
+
+                document.querySelectorAll(".faq-item")
+                    .forEach(i => i.classList.remove("open"));
+
+                if (!jaAberto) item.classList.add("open");
             });
         });
 
@@ -1644,7 +1943,7 @@
                         class="btn-cta dropdown-toggle"
                         data-bs-toggle="dropdown">
 
-                        👤 ${cliente.nome}
+                        <i class="bi bi-person-circle"></i> ${cliente.nome}
                     </button>
 
                     <ul class="dropdown-menu">
@@ -1653,7 +1952,7 @@
                             <a class="dropdown-item"
                                href="/Cliente/Agendamentos">
 
-                                Meus Agendamentos
+                                <i class="bi bi-calendar-check"></i> Meus Agendamentos
                             </a>
                         </li>
 
@@ -1661,7 +1960,7 @@
                             <form method="post" action="/cliente/logout" class="px-3">
                                 <input type="hidden" name="__RequestVerificationToken" value="@csrfTokenLogout" />
                                 <button type="submit" class="dropdown-item text-danger px-0">
-                                    Sair
+                                    <i class="bi bi-box-arrow-right"></i> Sair
                                 </button>
                             </form>
                         </li>
@@ -1703,7 +2002,7 @@
         // AGENDAR AGORA (HERO) — ROLA ATÉ OS SERVIÇOS
         // ==========================================
 
-        document.querySelector(".btn-agendar")
+        document.querySelector(".hero .btn-agendar")
             ?.addEventListener("click", () => {
 
                 document.getElementById("servicos")
@@ -2021,7 +2320,10 @@
             const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
 
             document.getElementById("avisoModalMensagem").textContent = mensagem;
-            document.getElementById("avisoModalIcone").textContent = sucesso ? "✅" : "⚠️";
+
+            document.getElementById("avisoModalIcone").innerHTML = sucesso
+                ? '<i class="bi bi-check-circle-fill" style="color:var(--green)"></i>'
+                : '<i class="bi bi-exclamation-triangle-fill" style="color:#e0a500"></i>';
 
             modal.show();
 

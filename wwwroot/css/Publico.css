@@ -59,7 +59,7 @@ body {
 }
 
 h1, h2, h3, h4 {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     letter-spacing: -0.02em;
 }
 
@@ -98,7 +98,7 @@ nav {
     }
 
     .nav-logo span {
-        font-family: 'Syne', sans-serif;
+        font-family: 'Plus Jakarta Sans', sans-serif;
         font-weight: 700;
         font-size: 17px;
     }
@@ -121,7 +121,7 @@ nav {
 .btn-cta {
     background: var(--accent);
     color: var(--accent-contrast);
-    font-family: 'Syne', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 700;
     font-size: 13px;
     padding: 8px 20px;
@@ -171,7 +171,10 @@ nav {
         object-fit: contain;
         padding: 6px;
         border: 3px solid transparent;
-        background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, var(--accent), #7a5c2e) border-box;
+        /* var(--accent2), não o #7a5c2e fixo de antes — a secundária da
+           empresa aparece aqui (com marca própria); sem secundária,
+           --accent2 já cai num tom derivado da primária (CorMarcaHelper). */
+        background: linear-gradient(#fff, #fff) padding-box, linear-gradient(135deg, var(--accent), var(--accent2)) border-box;
     }
 
 @media (max-width: 576px) {
@@ -187,7 +190,7 @@ nav {
     right: -4px;
     background: var(--accent);
     color: var(--accent-contrast);
-    font-family: 'Syne', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 700;
     font-size: 9px;
     padding: 2px 5px;
@@ -204,7 +207,10 @@ nav {
 
 .hero-name .segment {
     font-size: 12px;
-    color: var(--accent);
+    /* --accent2 (secundária), não --accent — dá um papel visível o tempo
+       todo pra secundária (sem depender de hover, que nem existe no
+       celular) em vez de ela só aparecer nos estados :hover dos botões. */
+    color: var(--accent2);
     font-weight: 500;
     letter-spacing: .06em;
     text-transform: uppercase;
@@ -256,7 +262,7 @@ nav {
 .btn-agendar {
     background: var(--accent);
     color: var(--accent-contrast);
-    font-family: 'Syne', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 700;
     font-size: 14px;
     padding: 10px 24px;
@@ -315,7 +321,7 @@ nav {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-family: 'Syne', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-weight: 700;
     font-size: 14px;
     cursor: pointer;
@@ -363,13 +369,20 @@ nav {
     }
 
 /* ── MAIN LAYOUT ── */
-.layout {
+/* Sem max-width/margin/padding horizontal próprios — .layout agora sempre
+   vive dentro de .wrap (ver seção do layout novo, mais abaixo), que já dá
+   esse gutter; manter os dois duplicava a margem lateral. */
+.wrap {
     max-width: 1100px;
     margin: 0 auto;
+    padding: 0 1.5rem;
+}
+
+.layout {
     display: grid;
     grid-template-columns: 1fr 380px;
     gap: 2rem;
-    padding: 0 1.5rem 4rem;
+    padding-bottom: 4rem;
     align-items: start;
 }
 
@@ -859,7 +872,7 @@ footer {
 }
 
 footer h4 {
-    font-family: 'Syne', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 15px;
     margin-bottom: 1rem;
 }
@@ -1221,4 +1234,506 @@ body.light-theme {
     font-size: 12px;
     color: var(--text3);
     margin: 10px 0 0;
+}
+
+/* ==========================================================
+   Views/Publico/Index.cshtml — layout novo (capa, selo de nota,
+   status "aberto agora", info rápida, prévias de galeria/avaliações,
+   FAQ, CTA fixo no mobile). O antigo fica em _Index.cshtml.
+
+   Ícone = SEMPRE var(--accent) daqui pra baixo (bi bi-*, fonte, não
+   emoji) — emoji tem cor própria fixa do SO e ignora tema de marca;
+   com a empresa customizando cor primária/secundária, ícone emoji ao
+   lado de ícone de fonte tematizado ficava com paleta batendo de
+   frente. Cor de marca fica só nisso — nunca em --whatsapp (ver
+   abaixo): esse verde é a cor universal do WhatsApp, reconhecível
+   mesmo com o tema da empresa em outra cor, igual ao card do modal de
+   login que também fica sempre neutro por design.
+   ========================================================== */
+
+:root {
+    --whatsapp: #25D366;
+}
+
+/* ── HERO: capa + selo de nota (usa .rating-badge já existente) ──
+   .hero vira só um wrapper full-bleed pra capa poder ir de ponta a ponta —
+   o conteúdo (.hero-header, que agora também leva a classe .hero-body)
+   é quem recebe o max-width/padding que .hero tinha antes. */
+.hero {
+    padding: 0;
+    max-width: none;
+    margin: 0;
+}
+
+.hero-body {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1.5rem;
+    /* position:relative + z-index — sem isso, .hero-body (position:static)
+       pintava ATRÁS de .hero-cover-wrap (position:relative), mesmo vindo
+       depois no HTML: elemento posicionado sempre pinta por cima de
+       elemento não-posicionado, não importa a ordem no documento. Nome da
+       empresa, avaliação e selo de status ficavam escondidos atrás da capa. */
+    position: relative;
+    z-index: 1;
+}
+
+.hero-cover-wrap {
+    position: relative;
+    height: 220px;
+    overflow: hidden;
+}
+
+    .hero-cover-wrap img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        filter: saturate(1.05) brightness(.55);
+        display: block;
+    }
+
+    .hero-cover-wrap.sem-capa {
+        /* Sem foto de capa, é aqui — só nessa faixa, não na página inteira —
+           que a cor primária aparece com mais força: um wash sutil no
+           degradê, em vez do fundo neutro puro. Dá "cara de marca" na
+           identidade sem arriscar legibilidade no resto do site. */
+        background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 20%, var(--bg3)), var(--bg2));
+    }
+
+.hero-cover-fade {
+    position: absolute;
+    inset: 0;
+    /* Escurece desde o topo (não só a partir da metade) — o nome da
+       empresa (.hero-name h1) fica de pé bem em cima da capa, com
+       margin-top negativo (.hero-body.com-capa), então precisa de
+       contraste garantido mesmo numa foto clara logo no topo, não só
+       perto da base onde o degradê já vira --bg. */
+    background: linear-gradient(180deg, rgba(0,0,0,.35) 0%, rgba(0,0,0,.55) 60%, var(--bg) 100%);
+}
+
+.hero-body.com-capa {
+    margin-top: -64px;
+}
+
+/* Legibilidade em cima da foto de capa (.com-capa) — achado testando com
+   uma empresa de tema claro de verdade: --text/--accent são calculados pra
+   contrastar com --bg (o fundo SÓLIDO da página, que nessa empresa é claro
+   — daí --text sair preto). O herói às vezes senta numa FOTO escurecida
+   pelo degradê acima, não no --bg sólido; texto preto em cima de foto
+   escurecida ficava invisível, sombra nenhuma resolve isso porque o
+   problema é a cor do texto, não a falta de sombra. Sem capa, essas regras
+   nem entram em jogo — o texto continua nas variáveis de tema normalmente,
+   que aí sim contrastam certo (ver .hero-cover-wrap.sem-capa, que usa
+   bg2/bg3, sempre da mesma família tonal de --text). */
+.hero-body.com-capa .hero-name h1,
+.hero-body.com-capa .hero-name .segment,
+.hero-body.com-capa .hero-name p,
+.hero-body.com-capa .hero-name .review-count {
+    color: #ffffff;
+    text-shadow: 0 1px 3px rgba(0,0,0,.7), 0 2px 14px rgba(0,0,0,.5);
+}
+
+.hero-body.com-capa .hero-name .stars .star {
+    /* Dourado fixo, não var(--accent) — mesma razão: a cor de detalhe da
+       empresa pode ser clara e sumir na foto escurecida. Estrela dourada é
+       convenção universal, não identidade de marca (mesmo raciocínio do
+       verde fixo do WhatsApp, ver --whatsapp). */
+    color: #f5c86a;
+    text-shadow: 0 1px 3px rgba(0,0,0,.7);
+}
+
+@media (max-width: 576px) {
+    .hero-cover-wrap {
+        height: 150px;
+    }
+
+    .hero-body.com-capa {
+        margin-top: -48px;
+    }
+}
+
+/* ── STATUS "aberto agora" ── */
+.status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-size: 12.5px;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+    .status-chip.aberto {
+        background: rgba(76,175,125,.15);
+        color: var(--green);
+    }
+
+    .status-chip.fechado {
+        background: var(--bg3);
+        color: var(--text2);
+        border: 1px solid var(--border2);
+    }
+
+/* Em cima da foto de capa os dois fundos acima são translúcidos ou usam
+   bg3/text2 (calculados pro fundo sólido da página, não pra foto) — mesmo
+   problema do .hero-name acima, aqui pro selo de status. Vira pílula opaca
+   com cor fixa, sem depender de --green/--text2. */
+.hero-body.com-capa .status-chip.aberto {
+    background: rgba(22,101,52,.92);
+    color: #eafff2;
+}
+
+.hero-body.com-capa .status-chip.fechado {
+    background: rgba(0,0,0,.5);
+    color: #ffffff;
+    border-color: rgba(255,255,255,.3);
+}
+
+    .status-chip .pulse {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: currentColor;
+        box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
+    }
+
+/* ── FAIXA DE INFO RÁPIDA (endereço/horário/pagamento visíveis sem
+     rolar — hoje isso só existia na sidebar, que no mobile vai pro
+     final da página) ── */
+.quickinfo {
+    display: grid;
+    /* auto-fit em vez de um número fixo de colunas — a quantidade de blocos
+       varia (endereço/pagamento somem se a empresa não preencheu), então um
+       grid de 4 colunas fixas deixava célula vazia quando só 3 apareciam. */
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin: 1.5rem 0;
+}
+
+.qi-item {
+    background: var(--bg2);
+    padding: 14px 10px;
+    text-align: center;
+}
+
+    .qi-item.link {
+        cursor: pointer;
+        transition: background .2s;
+    }
+
+        .qi-item.link:hover {
+            background: var(--bg3);
+        }
+
+    .qi-item i {
+        font-size: 19px;
+        color: var(--accent);
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    .qi-item .lbl {
+        font-size: 11px;
+        color: var(--text2);
+        line-height: 1.35;
+    }
+
+    .qi-item .val {
+        font-size: 12.5px;
+        font-weight: 600;
+        margin-top: 2px;
+        color: var(--text);
+    }
+
+@media (max-width: 700px) {
+    .quickinfo {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ── PROVA SOCIAL EM NÚMEROS ── */
+.trustbar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1.25rem;
+    margin: 2rem 0;
+    text-align: center;
+}
+
+    .trust-stat .n {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--accent);
+    }
+
+    .trust-stat .l {
+        font-size: 12px;
+        color: var(--text2);
+        margin-top: 2px;
+    }
+
+/* ── PRÉVIA DE SEÇÃO (galeria/avaliações em destaque, fora da aba) ── */
+.preview-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+    .preview-head h2 {
+        font-size: 1.25rem;
+        font-weight: 800;
+    }
+
+    .preview-head .ver-todas {
+        font-size: 13px;
+        color: var(--accent);
+        font-weight: 600;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+        .preview-head .ver-todas:hover {
+            text-decoration: underline;
+        }
+
+.testi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 1rem;
+}
+
+.testi-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+}
+
+    .testi-card .stars-display {
+        margin-bottom: 8px;
+    }
+
+    .testi-card p {
+        font-size: 13.5px;
+        color: var(--text2);
+        line-height: 1.6;
+        margin-bottom: 12px;
+    }
+
+.testi-who {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.testi-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--accent-contrast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.testi-who .name {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.testi-who .when {
+    font-size: 11.5px;
+    color: var(--text3);
+}
+
+/* ── FAQ ── */
+.faq-item {
+    border-bottom: 1px solid var(--border);
+}
+
+.faq-q {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 2px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    color: var(--text);
+    font-family: inherit;
+}
+
+    .faq-q i {
+        color: var(--accent);
+        transition: transform .25s;
+        flex-shrink: 0;
+    }
+
+.faq-item.open .faq-q i {
+    transform: rotate(180deg);
+}
+
+.faq-a {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+    font-size: 13.5px;
+    color: var(--text2);
+    line-height: 1.65;
+}
+
+.faq-item.open .faq-a {
+    max-height: 240px;
+    padding: 0 2px 16px;
+}
+
+/* ── WHATSAPP (botão + flutuante + barra fixa mobile) ── */
+.btn-wpp {
+    background: var(--whatsapp);
+    color: #04210f;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    font-size: 13.5px;
+    padding: 10px 20px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: filter .2s, transform .15s;
+}
+
+    .btn-wpp:hover {
+        filter: brightness(1.08);
+        transform: scale(1.03);
+        color: #04210f;
+    }
+
+    .btn-wpp i {
+        font-size: 16px;
+    }
+
+.fab-wpp {
+    position: fixed;
+    right: 20px;
+    /* 90px, não 24px — o botão de tema (🌙/☀️, de _LayoutPublico.cshtml)
+       já mora em bottom:20px;right:20px com z-index:9999, fixo pra toda
+       página pública. Empilha os dois em vez de sobrepor. */
+    bottom: 90px;
+    z-index: 180;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: var(--whatsapp);
+    color: #04210f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,.35);
+    font-size: 24px;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+    .fab-wpp:hover {
+        transform: scale(1.06);
+    }
+
+.mobile-cta-bar {
+    display: none;
+}
+
+@media (max-width: 700px) {
+    .fab-wpp {
+        display: none;
+    }
+
+    .mobile-cta-bar {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 190;
+        background: var(--nav-bg);
+        backdrop-filter: blur(10px);
+        border-top: 1px solid var(--border2);
+        padding: 10px 12px;
+        gap: 8px;
+    }
+
+        .mobile-cta-bar .btn-agendar, .mobile-cta-bar .btn-wpp {
+            flex: 1;
+            justify-content: center;
+            padding: 13px 10px;
+            font-size: 13px;
+        }
+
+    body {
+        padding-bottom: 72px;
+    }
+
+    /* Botão de tema (🌙/☀️, de _LayoutPublico.cshtml) fica fixo no mesmo
+       canto — sem isso ele ficava embaixo da barra nova, sobrepondo os
+       botões de WhatsApp/Agendar. */
+    .theme-toggle {
+        bottom: 84px;
+    }
+}
+
+/* ── ícones que eram emoji (comodidades, sidebar, contato) ── */
+.amenity .icon {
+    color: var(--accent);
+}
+
+.side-icon, .sidebar-section h3 i {
+    color: var(--accent);
+    margin-right: 6px;
+}
+
+.contact-item .icon-wrap i {
+    color: var(--accent);
+}
+
+.map-btn i {
+    color: var(--text);
+}
+
+.search-box i {
+    color: var(--text3);
+    flex-shrink: 0;
+}
+
+.social-btn i {
+    font-size: 17px;
+    color: var(--text);
+    transition: color .2s, transform .15s;
+}
+
+.social-btn:hover i {
+    color: var(--accent);
+    transform: scale(1.1);
 }

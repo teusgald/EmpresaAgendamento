@@ -118,5 +118,70 @@ namespace EmpresaAgendamento.Helpers
         }
 
         private static string Fmt(TimeSpan t) => t.ToString(@"hh\:mm");
+
+        // Só o intervalo de hoje ("09:00 às 18:00" / "Fechado"), pro bloco de
+        // info rápida da página pública — null quando o dia nem está
+        // cadastrado (evita mostrar "Fechado" sem ter certeza).
+        public static string? HorarioDeHoje(IEnumerable<EmpresaHorario> horarios, DateTime agora)
+        {
+            var horario = horarios.FirstOrDefault(h => h.DiaSemana == agora.DayOfWeek);
+
+            if (horario == null)
+                return null;
+
+            return horario.TrabalhaNoDia ? FormatarIntervalo(horario) : "Fechado";
+        }
+
+        // "Aberto agora / fecha às.../ abre amanhã às..." pro selo da página
+        // pública. `agora` entra por fora (em vez de DateTime.Now aqui dentro)
+        // só pra dar pra testar com um horário fixo — a comparação em si é
+        // sempre contra o relógio do servidor, sem fuso por empresa (esse
+        // projeto não tem esse conceito, diferente de outros sistemas do
+        // grupo). Texto vazio = sem horário cadastrado; a view decide não
+        // mostrar o selo nesse caso, em vez de arriscar dizer "Fechado" errado.
+        public static (bool Aberto, string Texto) ObterStatusAtual(IEnumerable<EmpresaHorario> horarios, DateTime agora)
+        {
+            var porDia = horarios.ToDictionary(h => h.DiaSemana);
+
+            if (porDia.Count == 0)
+                return (false, "");
+
+            var hoje = agora.DayOfWeek;
+
+            if (!porDia.TryGetValue(hoje, out var horarioHoje) || !horarioHoje.TrabalhaNoDia)
+                return (false, DescreverProximaAbertura(porDia, hoje));
+
+            var agoraHora = agora.TimeOfDay;
+
+            if (horarioHoje.InicioIntervalo.HasValue && horarioHoje.FimIntervalo.HasValue &&
+                agoraHora >= horarioHoje.InicioIntervalo.Value && agoraHora < horarioHoje.FimIntervalo.Value)
+            {
+                return (false, $"Em pausa · volta às {Fmt(horarioHoje.FimIntervalo.Value)}");
+            }
+
+            if (agoraHora >= horarioHoje.HoraInicio && agoraHora < horarioHoje.HoraFim)
+                return (true, $"Aberto agora · fecha às {Fmt(horarioHoje.HoraFim)}");
+
+            if (agoraHora < horarioHoje.HoraInicio)
+                return (false, $"Fechado · abre hoje às {Fmt(horarioHoje.HoraInicio)}");
+
+            return (false, DescreverProximaAbertura(porDia, hoje));
+        }
+
+        private static string DescreverProximaAbertura(Dictionary<DayOfWeek, EmpresaHorario> porDia, DayOfWeek hoje)
+        {
+            for (var i = 1; i <= 7; i++)
+            {
+                var dia = (DayOfWeek)(((int)hoje + i) % 7);
+
+                if (!porDia.TryGetValue(dia, out var horario) || !horario.TrabalhaNoDia)
+                    continue;
+
+                var rotulo = i == 1 ? "amanhã" : NomeCompleto[dia].ToLowerInvariant();
+                return $"Fechado · abre {rotulo} às {Fmt(horario.HoraInicio)}";
+            }
+
+            return "Fechado";
+        }
     }
 }

@@ -1,0 +1,2196 @@
+﻿@*
+    Layout anterior da página pública, mantido só como backup pra voltar
+    rápido se o novo (Index.cshtml) der problema em produção. O prefixo "_"
+    tira do convention-based routing do MVC — "return View()" no
+    PublicoController nunca resolve pra este arquivo sozinho, só se alguém
+    chamar View("_Index") explicitamente. Sem uso ativo: se o novo ficar
+    validado em produção por um tempo, pode apagar este arquivo.
+*@
+@model EmpresaAgendamento.ViewModels.EmpresaPublicaViewModel
+@using EmpresaAgendamento.Helpers
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+
+@{
+
+    var empresa = Model.Empresa;
+    string nome = empresa.NomeFantasia ?? empresa.Nome;
+
+    ViewData["Title"] = nome;
+
+    // Usado pelo botão "Sair" do dropdown do cliente logado — ele monta o
+    // menu via JS (innerHTML), então precisa do token pronto pra montar um
+    // <form> de verdade em vez de um link GET pra uma rota que só aceita POST.
+    var csrfTokenLogout = Antiforgery.GetAndStoreTokens(Context).RequestToken;
+
+    // Só entra na linha quem realmente tem valor — sem isso, endereço
+    // incompleto sobrava vírgula/traço solto ("Rua X, , Bairro").
+    var linhaRua = string.Join(", ", new[] { empresa.Endereco, empresa.Numero, empresa.Complemento }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    var linhaBairroCidade = string.Join(" - ", new[]
+        {
+            empresa.Bairro,
+            string.Join("/", new[] { empresa.Cidade, empresa.UF }.Where(p => !string.IsNullOrWhiteSpace(p)))
+        }
+        .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+    // CEP entra na mesma linha do bairro/cidade, sem cor diferenciada —
+    // igual ao layout original — e só aparece se realmente tiver valor.
+    var linhaEndereco = linhaBairroCidade;
+
+    if (!string.IsNullOrWhiteSpace(empresa.CEP))
+    {
+        linhaEndereco = string.IsNullOrWhiteSpace(linhaEndereco)
+            ? $"CEP {empresa.CEP}"
+            : $"{linhaEndereco} — CEP {empresa.CEP}";
+    }
+
+    var temLocalizacao = !string.IsNullOrWhiteSpace(linhaRua) || !string.IsNullOrWhiteSpace(linhaEndereco);
+
+    var queryMaps = Uri.EscapeDataString(
+        string.Join(", ", new[] { empresa.Endereco, empresa.Numero, empresa.Bairro, empresa.Cidade, empresa.UF, empresa.CEP }
+            .Where(p => !string.IsNullOrWhiteSpace(p))));
+
+    var mapsUrl = $"https://www.google.com/maps/search/?api=1&query={queryMaps}";
+
+    var linhasHorario = HorarioFormatHelper.FormatarPorDia(empresa.Horarios);
+
+    // Cor de marca da empresa (opcional) — sobrescreve as variáveis de cor
+    // só nesta página (renderização por request, nunca vaza pra outra
+    // empresa). Sem cor configurada, mantém o padrão do Simpli Time.
+    //
+    // A ideia é literal: a página usa SÓ as duas cores escolhidas — a
+    // PRIMÁRIA é o fundo dominante do layout inteiro (não uma versão
+    // "escurecida" dela por cima do tema padrão — é a cor em si), e a
+    // SECUNDÁRIA cuida dos detalhes (botões, links, destaques). Branco,
+    // preto etc. só entram como base neutra de texto/contraste — nunca
+    // substituindo a cor escolhida por outra coisa.
+    static bool EhHexValido(string? hex) =>
+        !string.IsNullOrWhiteSpace(hex) && System.Text.RegularExpressions.Regex.IsMatch(hex, "^#[0-9A-Fa-f]{6}$");
+
+    static (int R, int G, int B) HexParaRgb(string hex) => (
+        Convert.ToInt32(hex.Substring(1, 2), 16),
+        Convert.ToInt32(hex.Substring(3, 2), 16),
+        Convert.ToInt32(hex.Substring(5, 2), 16));
+
+    // Mistura linear simples de duas cores (mesmo resultado do color-mix()
+    // do CSS em srgb) — usada só pra criar variação de profundidade (cards
+    // um pouco mais claros/escuros que o fundo) sem inventar uma cor nova:
+    // é sempre a própria cor da empresa misturada com o neutro de contraste.
+    static string Misturar(string hexA, string hexB, double pctA)
+    {
+        var (ar, ag, ab) = HexParaRgb(hexA);
+        var (br, bg, bb) = HexParaRgb(hexB);
+        var p = Math.Clamp(pctA, 0, 100) / 100.0;
+
+        int r = (int)Math.Round(ar * p + br * (1 - p));
+        int g = (int)Math.Round(ag * p + bg * (1 - p));
+        int b = (int)Math.Round(ab * p + bb * (1 - p));
+
+        return $"#{r:X2}{g:X2}{b:X2}";
+    }
+
+    static string ComAlpha(string hex, double alpha)
+    {
+        var (r, g, b) = HexParaRgb(hex);
+        return $"rgba({r},{g},{b},{alpha.ToString(System.Globalization.CultureInfo.InvariantCulture)})";
+    }
+
+    // Luminância relativa — decide se o texto/contraste em cima de uma cor
+    // fica preto ou branco, pra manter legível com qualquer cor escolhida
+    // (inclusive branco ou preto puro).
+    static string CorContraste(string hex)
+    {
+        var (r, g, b) = HexParaRgb(hex);
+        var luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+        return luminancia > 0.6 ? "#111111" : "#ffffff";
+    }
+
+    var temPrimaria = EhHexValido(empresa.CorPrimaria);
+    var temSecundaria = EhHexValido(empresa.CorSecundaria);
+
+    var corMarcaCss = "";
+    var corMarcaLoginCss = "";
+
+    if (temPrimaria)
+    {
+        var primaria = empresa.CorPrimaria!;
+        var textoBase = CorContraste(primaria);
+
+        // Fundo = a própria cor primária, sem alteração nenhuma. bg2/3/4 são
+        // só um leve degradê de profundidade (cards, inputs) misturando a
+        // mesma cor com o neutro de contraste — nunca uma cor diferente.
+        var bg2 = Misturar(primaria, textoBase, 92);
+        var bg3 = Misturar(primaria, textoBase, 84);
+        var bg4 = Misturar(primaria, textoBase, 76);
+
+        var texto2 = Misturar(textoBase, primaria, 65);
+        var texto3 = Misturar(textoBase, primaria, 40);
+
+        // Secundária = detalhes (botões, links, seleção, ícones). Sem
+        // secundária configurada, os detalhes usam um tom do neutro de
+        // contraste misturado na própria primária — continua sendo "só as
+        // duas cores da empresa" (aqui, só a primária existe mesmo).
+        var detalhe = temSecundaria ? empresa.CorSecundaria! : Misturar(primaria, textoBase, 75);
+        var detalhe2 = Misturar(detalhe, textoBase, 85);
+        var detalheContraste = CorContraste(detalhe);
+
+        corMarcaCss =
+            $"--bg:{primaria};" +
+            $"--bg2:{bg2};--bg3:{bg3};--bg4:{bg4};" +
+            $"--text:{textoBase};--text2:{texto2};--text3:{texto3};" +
+            $"--border:{ComAlpha(textoBase, 0.10)};--border2:{ComAlpha(textoBase, 0.18)};" +
+            $"--footer-bg:{bg2};--nav-bg:{ComAlpha(primaria, 0.92)};" +
+            $"--accent:{detalhe};--accent2:{detalhe2};--accent-contrast:{detalheContraste};";
+
+        corMarcaLoginCss =
+            $"--login-btn:{detalhe};--login-btn-hover:{detalhe2};" +
+            $"--login-btn-contrast:{detalheContraste};--login-accent-soft:{detalhe}22;";
+    }
+}
+
+@section Styles {
+    <style>
+        /* Estilo do formulário de login/registro/recuperação carregado dentro
+           do modal público. Escopado em #clienteLoginContent de propósito —
+           as telas originais (/cliente/login, /registro, /forgot) têm seu
+           próprio <style> com regras de "body"/página cheia que NÃO podem
+           ser copiadas para cá (vazariam para o fundo do site). */
+        #clienteLoginModal .modal-content {
+            background: #ffffff;
+        }
+
+        #clienteLoginContent .login-card,
+        #clienteLoginContent .auth-card {
+            background: transparent;
+            box-shadow: none;
+            padding: 0;
+            border: none;
+        }
+
+        #clienteLoginContent h3,
+        #clienteLoginContent h4,
+        #clienteLoginContent p,
+        #clienteLoginContent label,
+        #clienteLoginContent .text-muted {
+            color: #212529;
+        }
+
+        #clienteLoginContent {
+            /* Padrão do sistema (sem cor de marca configurada pela empresa)
+               — mantém o azul original em vez de herdar o dourado padrão do
+               resto da página pública, que é um elemento visual diferente. */
+            --login-btn: #2563eb;
+            --login-btn-hover: #1e40af;
+            --login-btn-contrast: #ffffff;
+            --login-accent-soft: #eff6ff;
+        }
+
+        /* Ícone e título — existiam em site.css (Home/telas do portal), mas
+           a página pública não carrega site.css, então ficavam sem nenhum
+           estilo (círculo, tamanho, cor). */
+        #clienteLoginContent .auth-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--login-accent-soft);
+            color: var(--login-btn);
+            font-size: 1.5rem;
+            margin-bottom: .75rem;
+        }
+
+        #clienteLoginContent .auth-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #212529;
+            margin-bottom: .25rem;
+        }
+
+        #clienteLoginContent .form-control,
+        #clienteLoginContent .form-select {
+            border-radius: 10px;
+            border: 1px solid #E5E7EB;
+        }
+
+        #clienteLoginContent .form-control:focus,
+        #clienteLoginContent .form-select:focus {
+            border-color: var(--login-btn);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--login-btn) 15%, transparent);
+        }
+
+        #clienteLoginContent .form-check-input:checked {
+            background-color: var(--login-btn);
+            border-color: var(--login-btn);
+        }
+
+        #clienteLoginContent .btn-primary,
+        #clienteLoginContent .btn-dark {
+            border-radius: 10px;
+            background: var(--login-btn);
+            color: var(--login-btn-contrast);
+            border: none;
+        }
+
+        #clienteLoginContent .btn-primary:hover,
+        #clienteLoginContent .btn-dark:hover {
+            background: var(--login-btn-hover);
+        }
+
+        #clienteLoginContent a {
+            color: #6B7280;
+        }
+
+        #clienteLoginContent a:hover {
+            color: var(--login-btn);
+        }
+    </style>
+
+    @if (!string.IsNullOrEmpty(corMarcaCss))
+    {
+        <style>
+            /* Mesma regra pro tema escuro (:root) e pro claro
+               (body.light-theme, ativado pelo botão 🌙/☀️) — com cor de
+               marca configurada, a página usa sempre a mesma cor da
+               empresa, o alternador de tema não "revela" o preto/branco
+               padrão por baixo. */
+            :root, body.light-theme {
+                @Html.Raw(corMarcaCss)
+            }
+        </style>
+    }
+
+    @if (!string.IsNullOrEmpty(corMarcaLoginCss))
+    {
+        <style>#clienteLoginContent{@Html.Raw(corMarcaLoginCss)}</style>
+    }
+}
+
+@section Navbar {
+    <a class="navbar-brand d-flex align-items-center" href="/">
+        <img id="logoSite"
+             src="~/img/logocliente.png"
+             alt="Logo"
+             class="navbar-logo me-2" />
+    </a>
+
+
+
+    <div class="nav-links">
+        <a href="#">Início</a>
+        <a href="#servicos">Serviços</a>
+        <a href="#contato">Contato</a>
+        <a href="/empresas">Encontrar empresas</a>
+    </div>
+
+    <div id="areaClienteNavbar">
+
+        <button class="btn-cta"
+                id="btnEntrarCliente"
+                data-bs-toggle="modal"
+                data-bs-target="#clienteLoginModal"
+                data-cliente-mode="login">
+            Entrar
+        </button>
+
+    </div>
+}
+
+<div class="hero">
+
+    <div class="hero-header">
+
+        <div class="hero-identity">
+            <div class="logo-ring">
+                <img src="@empresa.LogoUrl" />
+            </div>
+
+            <div class="hero-name">
+                <h1>@nome</h1>
+
+                <div class="segment">
+                    @empresa.SegmentoAtuacao
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-actions">
+            <button class="btn-agendar">Agendar agora</button>
+        </div>
+
+    </div>
+
+</div>
+
+<div class="layout">
+    <input type="hidden"
+           id="EmpresaId"
+           value="@Model.Empresa.Id" />
+
+    <div class="left-col">
+
+        <p class="desc-text" id="desc">
+            @empresa.Descricao
+        </p>
+
+        <button class="toggle-desc" onclick="toggleDesc()">Ver mais</button>
+
+        <!-- Comodidades -->
+        <!-- Comodidades -->
+        <div>
+            <div class="section-title">Comodidades</div>
+            <div class="section-sub">Clique no item para obter informações</div>
+
+            <div class="amenities-grid">
+
+                <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
+                     title="Wi-Fi gratuito disponível">
+                    <div class="icon">📶</div>
+                    <div class="label">Wi-Fi</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
+                     title="Estacionamento disponível">
+                    <div class="icon">🚗</div>
+                    <div class="label">Estacionamento</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemAcessibilidade ? "" : "off")"
+                     title="Acessibilidade no local">
+                    <div class="icon">♿</div>
+                    <div class="label">Acessibilidade</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemArCondicionado ? "" : "off")"
+                     title="Ambiente climatizado">
+                    <div class="icon">❄️</div>
+                    <div class="label">Ar-condicionado</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.AtendimentoOnline ? "" : "off")"
+                     title="Atendimento online disponível">
+                    <div class="icon">💻</div>
+                    <div class="label">Atendimento online</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemWifi ? "" : "off")"
+                     title="Ambiente com conexão disponível">
+                    <div class="icon">☕</div>
+                    <div class="label">Café / Wi-Fi</div>
+                </div>
+
+                <div class="amenity @(Model.Empresa.TemEstacionamento ? "" : "off")"
+                     title="Ambiente seguro e estruturado">
+                    <div class="icon">🔒</div>
+                    <div class="label">Segurança</div>
+                </div>
+
+                <div class="amenity @(string.IsNullOrEmpty(Model.Empresa.ComodidadesExtras) ? "off" : "")"
+                     title="@Model.Empresa.ComodidadesExtras">
+                    <div class="icon">➕</div>
+                    <div class="label">Extras</div>
+                </div>
+
+            </div>
+        </div>
+
+        <div id="servicos">
+
+            <div class="tabs-wrapper">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="tabServicos">Serviços</button>
+                    @if (Model.TemProdutos)
+                    {
+                        <button class="tab-btn" data-tab="tabProdutos">Produtos</button>
+                    }
+                    @if (Model.PlanosServico != null && Model.PlanosServico.Any())
+                    {
+                        <button class="tab-btn" data-tab="tabPlanos">Planos</button>
+                    }
+                    <button class="tab-btn" data-tab="tabGaleria">Galeria</button>
+                    <button class="tab-btn" data-tab="tabAvaliacoes">Avaliações (@Model.TotalAvaliacoes)</button>
+                </div>
+            </div>
+
+            <!-- ===================== SERVIÇOS ===================== -->
+            <div id="tabServicos" class="tab-pane-publico">
+
+                <div class="search-box">
+                    <input type="search"
+                           placeholder="Pesquisar serviço"
+                           id="searchInput"
+                           oninput="filterServices()" />
+                </div>
+
+                <div class="services-list">
+
+                    @if (Model.Servicos != null && Model.Servicos.Any())
+                    {
+                        foreach (var s in Model.Servicos)
+                        {
+                            <div class="service-item" data-name="@s.Nome.ToLower()">
+
+                                <div class="service-img">💇</div>
+
+                                <div class="service-info">
+                                    <div class="name">@s.Nome</div>
+
+                                    @if (!string.IsNullOrEmpty(s.Descricao))
+                                    {
+                                        <div class="desc">@s.Descricao</div>
+                                    }
+
+                                    <div class="meta">
+                                        <span class="price">@(s.Preco > 0 ? $"R$ {s.Preco:F2}" : "Grátis")</span>
+                                        <span class="duration">🕐 @s.DuracaoMinutos min</span>
+                                    </div>
+                                </div>
+
+                                <button class="btn-schedule"
+                                        data-servico="@s.Id"
+                                        data-servico-nome="@s.Nome">
+                                    Agendar
+                                </button>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p style="color:var(--text2)">
+                            Nenhum serviço disponível.
+                        </p>
+                    }
+
+                </div>
+
+                <div class="pagination-public" id="servicosPaginacao"></div>
+
+            </div>
+
+            @if (Model.TemProdutos)
+            {
+                <!-- ===================== PRODUTOS ===================== -->
+                <div id="tabProdutos" class="tab-pane-publico" style="display:none">
+
+                    <div class="services-list">
+
+                        @foreach (var p in Model.Produtos)
+                        {
+                            <div class="service-item">
+
+                                @if (!string.IsNullOrWhiteSpace(p.FotoUrl))
+                                {
+                                    <img src="@p.FotoUrl" alt="@p.Nome" class="service-img" style="object-fit:cover;" />
+                                }
+                                else
+                                {
+                                    <div class="service-img">🧴</div>
+                                }
+
+                                <div class="service-info">
+                                    <div class="name">@p.Nome</div>
+
+                                    @if (!string.IsNullOrEmpty(p.Descricao))
+                                    {
+                                        <div class="desc">@p.Descricao</div>
+                                    }
+
+                                    <div class="meta">
+                                        <span class="price">R$ @p.Preco.ToString("F2")</span>
+                                    </div>
+                                </div>
+
+                            </div>
+                        }
+
+                    </div>
+
+                    <p class="small mt-2" style="color:var(--text2)">
+                        Produtos disponíveis para consumo durante o atendimento — não são vendidos separadamente por aqui.
+                    </p>
+
+                </div>
+            }
+
+            @if (Model.PlanosServico != null && Model.PlanosServico.Any())
+            {
+                <!-- ===================== PLANOS ===================== -->
+                <div id="tabPlanos" class="tab-pane-publico" style="display:none">
+
+                    <div class="plans-grid">
+
+                        @foreach (var plano in Model.PlanosServico)
+                        {
+                            <div class="plan-card">
+
+                                <div class="plan-card-header">
+                                    <h4>@plano.Nome</h4>
+                                    <span class="plan-periodicidade">
+                                        @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "Semanal" : "Mensal")
+                                    </span>
+                                </div>
+
+                                @if (plano.ValorReferencia.HasValue)
+                                {
+                                    <div class="plan-price">
+                                        @if (plano.ValorReferencia.Value > 0)
+                                        {
+                                            @($"R$ {plano.ValorReferencia.Value:F2}")
+                                            <span>/ @(plano.Periodicidade == EmpresaAgendamento.Models.Enums.PeriodicidadePlanoServico.Semanal ? "semana" : "mês")</span>
+                                        }
+                                        else
+                                        {
+                                            @:Grátis
+                                        }
+                                    </div>
+                                }
+
+                                <div class="plan-usos">
+                                    @plano.QuantidadeUsos sessões por período
+                                </div>
+
+                                @if (plano.Servicos.Any())
+                                {
+                                    <ul class="plan-servicos">
+                                        @foreach (var item in plano.Servicos)
+                                        {
+                                            <li>@item.Servico.Nome</li>
+                                        }
+                                    </ul>
+                                }
+
+                                <button class="btn-agendar btn-contratar-plano" data-plano-id="@plano.Id" style="margin-top:10px;">
+                                    Contratar plano
+                                </button>
+
+                                <p class="plan-contato-nota">
+                                    A empresa confirma o pagamento com você e libera os créditos.
+                                </p>
+
+                            </div>
+                        }
+
+                    </div>
+
+                    <div class="pagination-public" id="planosPaginacao"></div>
+
+                </div>
+            }
+
+            <!-- ===================== GALERIA ===================== -->
+            <div id="tabGaleria" class="tab-pane-publico" style="display:none">
+
+                @if (Model.Fotos != null && Model.Fotos.Any())
+                {
+                    <div class="gallery">
+
+                        <div class="gallery-main" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="0">
+                            <img src="@Model.Fotos[0].Url" alt="Foto 1" />
+                        </div>
+
+                        @if (Model.Fotos.Count > 1)
+                        {
+                            <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="1">
+                                <img src="@Model.Fotos[1].Url" alt="Foto 2" />
+                            </div>
+                        }
+
+                        @if (Model.Fotos.Count > 2)
+                        {
+                            <div class="gallery-thumb" data-bs-toggle="modal" data-bs-target="#galeriaModal" data-foto-index="2">
+                                <img src="@Model.Fotos[2].Url" alt="Foto 3" />
+
+                                @if (Model.Fotos.Count > 3)
+                                {
+                                    <div class="gallery-more">
+                                        +@(Model.Fotos.Count - 3) fotos
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                    </div>
+                }
+                else
+                {
+                    <p style="color:var(--text2)">Nenhuma foto adicionada ainda.</p>
+                }
+
+            </div>
+
+            <!-- ===================== AVALIAÇÕES ===================== -->
+            <div id="tabAvaliacoes" class="tab-pane-publico" style="display:none">
+
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+
+                    <div>
+                        @if (Model.NotaMedia.HasValue)
+                        {
+                            <span class="stars-display">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <span class="star">@(i <= Math.Round(Model.NotaMedia.Value) ? "★" : "☆")</span>
+                                }
+                            </span>
+                            <strong>@Model.NotaMedia.Value.ToString("F1")</strong>
+                            <span class="review-count">(@Model.TotalAvaliacoes avaliações)</span>
+                        }
+                        else
+                        {
+                            <span class="review-count">Ainda sem avaliações — seja o primeiro!</span>
+                        }
+                    </div>
+
+                    <button class="btn-agendar" id="btnAbrirAvaliacao" style="padding:8px 18px;font-size:13px;">
+                        Deixar avaliação
+                    </button>
+
+                </div>
+
+                <div id="formAvaliacao" style="display:none" class="mb-4">
+
+                    <div class="star-picker" id="starPicker">
+                        <span class="star-pick" data-valor="1">★</span>
+                        <span class="star-pick" data-valor="2">★</span>
+                        <span class="star-pick" data-valor="3">★</span>
+                        <span class="star-pick" data-valor="4">★</span>
+                        <span class="star-pick" data-valor="5">★</span>
+                    </div>
+
+                    <textarea id="comentarioAvaliacao"
+                              class="form-control mt-2"
+                              rows="3"
+                              placeholder="Conte como foi sua experiência (opcional)"></textarea>
+
+                    <button class="btn-agendar mt-2" id="btnEnviarAvaliacao" style="padding:8px 18px;font-size:13px;">
+                        Enviar
+                    </button>
+
+                    <div id="avaliacaoAlert" class="mt-2"></div>
+
+                </div>
+
+                <div class="reviews-list">
+
+                    @if (Model.Avaliacoes != null && Model.Avaliacoes.Any())
+                    {
+                        foreach (var av in Model.Avaliacoes)
+                        {
+                            <div class="review-item">
+
+                                <div class="review-header">
+                                    <strong>@(av.Cliente?.Nome ?? "Cliente")</strong>
+
+                                    <span class="stars-display">
+                                        @for (int i = 1; i <= 5; i++)
+                                        {
+                                            <span class="star">@(i <= av.Nota ? "★" : "☆")</span>
+                                        }
+                                    </span>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(av.Comentario))
+                                {
+                                    <p class="review-comment">@av.Comentario</p>
+                                }
+
+                                <span class="review-date">
+                                    @((av.DataAtualizacao ?? av.DataCriacao).ToString("dd/MM/yyyy"))
+                                </span>
+
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p style="color:var(--text2)">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
+                    }
+
+                </div>
+
+                <div class="pagination-public" id="avaliacoesPaginacao"></div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <aside class="sidebar">
+
+        @if (temLocalizacao)
+        {
+            <!-- Localização -->
+            <div class="sidebar-section" id="contato">
+                <h3>📍 Localização</h3>
+
+                <div class="location-row">
+                    <p>
+                        @if (!string.IsNullOrWhiteSpace(linhaRua))
+                        {
+                            @linhaRua
+                            <br />
+                        }
+                        @linhaEndereco
+                    </p>
+
+                    <a href="@mapsUrl"
+                       target="_blank"
+                       class="map-btn"
+                       title="Ver no mapa">
+                        🗺️
+                    </a>
+                </div>
+            </div>
+        }
+
+        @if (linhasHorario.Any())
+        {
+            <div class="sidebar-section">
+                <h3>🕐 Horário</h3>
+                @foreach (var linha in linhasHorario)
+                {
+                    <p class="mb-1">@linha</p>
+                }
+            </div>
+        }
+
+        <!-- Formas de Pagamento -->
+        <div class="sidebar-section">
+            <h3>💳 Formas de pagamento</h3>
+
+            <div class="payment-tags">
+
+                @if (empresa.AceitaDinheiro)
+                {
+                    <span class="payment-tag">💵 Dinheiro</span>
+                }
+
+                @if (empresa.AceitaPix)
+                {
+                    <span class="payment-tag">📱 Pix</span>
+                }
+
+                @if (empresa.AceitaCartaoDebito)
+                {
+                    <span class="payment-tag">💳 Débito</span>
+                }
+
+                @if (empresa.AceitaCartaoCredito)
+                {
+                    <span class="payment-tag">💳 Crédito</span>
+                }
+
+                @if (empresa.ParcelamentoMaximo != null && empresa.ParcelamentoMaximo > 1)
+                {
+                    <span class="payment-tag">🔄 Em até @empresa.ParcelamentoMaximo x</span>
+                }
+
+            </div>
+        </div>
+
+        <!-- Redes Sociais -->
+        <!-- Redes Sociais -->
+        <div class="sidebar-section">
+            <h3>🌐 Redes Sociais</h3>
+
+            <div class="social-row">
+
+                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
+                {
+                    var whatsappLink = empresa.WhatsApp.StartsWith("http")
+                    ? empresa.WhatsApp
+                    : $"https://wa.me/{empresa.WhatsApp.Replace("(", "").Replace(")", "").Replace(" ", "").Replace("-", "")}";
+
+                    <a href="@whatsappLink" target="_blank" class="social-btn" title="WhatsApp">
+                        <svg viewBox="0 0 32 32" width="18" height="18" fill="currentColor">
+                            <path d="M19.11 17.47c-.29-.15-1.72-.85-1.99-.95-.27-.1-.47-.15-.67.15-.2.29-.77.95-.94 1.14-.17.2-.35.22-.64.07-.29-.15-1.23-.45-2.34-1.43-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.6.13-.13.29-.35.44-.53.15-.17.2-.29.29-.48.1-.2.05-.37-.02-.52-.07-.15-.67-1.61-.92-2.21-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.29-1.04 1.02-1.04 2.49s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.07 4.48.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.08 1.72-.7 1.97-1.37.24-.67.24-1.24.17-1.37-.07-.12-.27-.2-.56-.35z" />
+                            <path d="M16 3C9.37 3 4 8.37 4 15c0 2.11.55 4.17 1.6 6L4 29l8.3-1.55C14.06 28.46 15.02 28.6 16 28.6c6.63 0 12-5.37 12-12S22.63 3 16 3zm0 22.6c-1.05 0-2.08-.17-3.06-.51l-.44-.15-4.93.92.95-4.81-.18-.46C7.31 19.25 6.6 17.15 6.6 15 6.6 9.76 10.76 5.6 16 5.6S25.4 9.76 25.4 15 21.24 25.6 16 25.6z" />
+                        </svg>
+                    </a>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Instagram))
+                {
+                    var insta = empresa.Instagram.StartsWith("http")
+                    ? empresa.Instagram
+                    : $"https://instagram.com/{empresa.Instagram.Replace("@", "")}";
+
+                    <a href="@insta" target="_blank" class="social-btn" title="Instagram">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M7 2C4.24 2 2 4.24 2 7v10c0 2.76 2.24 5 5 5h10c2.76 0 5-2.24 5-5V7c0-2.76-2.24-5-5-5H7zm10 2c1.65 0 3 1.35 3 3v10c0 1.65-1.35 3-3 3H7c-1.65 0-3-1.35-3-3V7c0-1.65 1.35-3 3-3h10z" />
+                            <path d="M12 7a5 5 0 100 10 5 5 0 000-10zm0 8a3 3 0 110-6 3 3 0 010 6z" />
+                            <circle cx="17.5" cy="6.5" r="1.2" />
+                        </svg>
+                    </a>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Facebook))
+                {
+                    var fb = empresa.Facebook.StartsWith("http")
+                    ? empresa.Facebook
+                    : $"https://facebook.com/{empresa.Facebook}";
+
+                    <a href="@fb" target="_blank" class="social-btn" title="Facebook">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M22 12a10 10 0 10-11.5 9.95v-7.05H8v-2.9h2.5V9.8c0-2.5 1.5-3.9 3.8-3.9 1.1 0 2.2.2 2.2.2v2.4h-1.2c-1.2 0-1.6.75-1.6 1.5v1.8H17l-.4 2.9h-2.4V22A10 10 0 0022 12z" />
+                        </svg>
+                    </a>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Site))
+                {
+                    var site = empresa.Site.StartsWith("http")
+                    ? empresa.Site
+                    : $"https://{empresa.Site}";
+
+                    <a href="@site" target="_blank" class="social-btn" title="Site oficial">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 18c-1.3 0-3.2-2.8-3.6-7H15.6c-.4 4.2-2.3 7-3.6 7zm-3.7-9c.3-4.2 2.2-7 3.7-7s3.4 2.8 3.7 7H8.3zM4.1 13H2.1a8 8 0 011.5-6h2.2c-.9 1.8-1.5 3.8-1.7 6zm15.8 0c-.2-2.2-.8-4.2-1.7-6h2.2a8 8 0 011.5 6h-2zM5.9 15c.4 2.3 1.2 4.2 2.3 5.5A8 8 0 014.1 15h1.8zm10.2 0h1.8a8 8 0 01-4.1 5.5c1.1-1.3 1.9-3.2 2.3-5.5z" />
+                        </svg>
+                    </a>
+                }
+
+            </div>
+        </div>
+
+        <!-- Contato -->
+        <div class="sidebar-section">
+            <h3>📞 Contato</h3>
+
+            <div class="contact-items">
+
+                @if (!string.IsNullOrEmpty(empresa.WhatsApp))
+                {
+                    <div class="contact-item" onclick="copyText('@empresa.WhatsApp', this)">
+                        <div class="left">
+                            <div class="icon-wrap">📲</div>
+                            <span class="val">@empresa.WhatsApp</span>
+                        </div>
+                        <span class="copy-icon">⧉</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Telefone))
+                {
+                    <div class="contact-item" onclick="copyText('@empresa.Telefone', this)">
+                        <div class="left">
+                            <div class="icon-wrap">📞</div>
+                            <span class="val">@empresa.Telefone</span>
+                        </div>
+                        <span class="copy-icon">⧉</span>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(empresa.Email))
+                {
+                    <div class="contact-item" onclick="copyText('@empresa.Email', this)">
+                        <div class="left">
+                            <div class="icon-wrap">✉️</div>
+                            <span class="val">@empresa.Email</span>
+                        </div>
+                        <span class="copy-icon">⧉</span>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+    </aside>
+
+</div>
+
+@section Footer {
+    <div class="footer-bottom">
+        <span>© @DateTime.Now.Year @nome</span>
+        <span class="footer-powered">Desenvolvido por <strong>Simpli Time</strong> — sistemas de agendamento online</span>
+    </div>
+}
+
+<div class="modal fade"
+     id="agendamentoModal"
+     tabindex="-1">
+
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5>Agendar Serviço</h5>
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+
+                <div id="agendamentoAlert"></div>
+
+                <input type="hidden" id="ServicoId" />
+
+                <input type="hidden" id="ClienteId" />
+
+                <div id="blocoDadosCliente">
+
+                    <div class="mb-3">
+                        <label>Nome</label>
+                        <input id="NomeCliente"
+                               class="form-control">
+                    </div>
+
+                    <div class="mb-3">
+                        <label>Telefone</label>
+                        <input id="TelefoneCliente"
+                               class="form-control">
+                    </div>
+                </div>
+
+                <div class="mb-3" id="profissionalWrap" hidden>
+                    <label>Profissional</label>
+
+                    <select id="FuncionarioId"
+                            class="form-select">
+                        <option value="">
+                            Qualquer profissional
+                        </option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label>Data</label>
+
+                    <input type="date"
+                           id="DataAgendamento"
+                           class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label>Horário</label>
+
+                    <select id="Horario"
+                            class="form-select">
+                    </select>
+                </div>
+
+                <div id="blocoLoginCadastro">
+
+                    <hr />
+
+                    <div class="text-center">
+
+                        <small>
+                            Possui cadastro?
+                        </small>
+
+                        <br />
+
+                        <a href="#"
+                           id="abrirLoginCliente">
+                            Entrar
+                        </a>
+
+                        |
+
+                        <a href="#"
+                           data-bs-toggle="modal"
+                           data-bs-target="#clienteLoginModal"
+                           data-cliente-mode="register">
+                            Criar Conta
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-primary"
+                        id="btnConfirmarAgendamento">
+                    Confirmar Agendamento
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="galeriaModal" tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark">
+
+            <div class="modal-header border-0">
+                <h5 class="text-white">Fotos</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-0">
+
+                <div id="galeriaCarousel" class="carousel slide">
+
+                    <div class="carousel-inner">
+
+                        @if (Model.Fotos != null)
+                        {
+                            for (var i = 0; i < Model.Fotos.Count; i++)
+                            {
+                                <div class="carousel-item @(i == 0 ? "active" : "")" style="height:min(70vh, 520px);">
+                                    <img src="@Model.Fotos[i].Url"
+                                         style="width:100%;height:100%;object-fit:contain;" />
+                                </div>
+                            }
+                        }
+
+                    </div>
+
+                    @if (Model.Fotos != null && Model.Fotos.Count > 1)
+                    {
+                        <button class="carousel-control-prev" type="button" data-bs-target="#galeriaCarousel" data-bs-slide="prev">
+                            <span class="carousel-control-prev-icon"></span>
+                        </button>
+
+                        <button class="carousel-control-next" type="button" data-bs-target="#galeriaCarousel" data-bs-slide="next">
+                            <span class="carousel-control-next-icon"></span>
+                        </button>
+                    }
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade" id="avisoModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content p-4 text-center">
+
+            <div class="d-flex justify-content-end">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div id="avisoModalIcone" class="mb-2" style="font-size:2.5rem;"></div>
+
+            <p id="avisoModalMensagem" class="mb-0"></p>
+
+        </div>
+    </div>
+
+</div>
+
+<div class="modal fade"
+     id="clienteLoginModal"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <div class="modal-content p-4">
+
+            <div class="d-flex justify-content-end align-items-center mb-3">
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+
+            </div>
+
+            <div id="clienteLoginAlert"></div>
+
+            <div id="clienteLoginContent"></div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+@section Scripts {
+
+    <script>
+
+        // ==========================================
+        // MODO LOGIN / REGISTRO / RECUPERAR SENHA
+        // ==========================================
+
+        let modoCliente = "login";
+
+        // ==========================================
+        // DESCRIÇÃO EMPRESA
+        // ==========================================
+
+        function toggleDesc() {
+
+            document.getElementById("desc")
+                ?.classList.toggle("expanded");
+        }
+
+        // ==========================================
+        // ABAS (SERVIÇOS / GALERIA / AVALIAÇÕES)
+        // ==========================================
+
+        document.querySelectorAll(".tab-btn").forEach(btn => {
+
+            btn.addEventListener("click", () => {
+
+                document.querySelectorAll(".tab-btn")
+                    .forEach(b => b.classList.remove("active"));
+
+                btn.classList.add("active");
+
+                document.querySelectorAll(".tab-pane-publico")
+                    .forEach(p => p.style.display = "none");
+
+                document.getElementById(btn.dataset.tab).style.display = "";
+            });
+        });
+
+        // ==========================================
+        // GALERIA — ABRE O CARROSSEL NA FOTO CLICADA
+        // ==========================================
+
+        document.querySelectorAll("#tabGaleria [data-foto-index]").forEach(el => {
+
+            el.addEventListener("click", () => {
+
+                const indice = parseInt(el.dataset.fotoIndex);
+
+                const carousel = bootstrap.Carousel.getOrCreateInstance(
+                    document.getElementById("galeriaCarousel")
+                );
+
+                carousel.to(indice);
+            });
+        });
+
+        // ==========================================
+        // PAGINAÇÃO (5 por página) — Serviços, Planos e Avaliações
+        // ==========================================
+        // Cada lista tem seu próprio contador de página e seu próprio
+        // seletor ESCOPADO à aba (ex.: "#tabServicos .service-item") — sem
+        // isso, a paginação de Serviços pegava também os itens da aba
+        // Produtos (que reaproveita a mesma classe .service-item mas não
+        // tem data-name), quebrando com erro de JS pra empresa que cadastra
+        // produto.
+
+        const ITENS_POR_PAGINA = 5;
+
+        function criarPaginador(itemSelector, navId, filtroFn) {
+
+            let paginaAtual = 1;
+
+            function itensFiltrados() {
+                const todos = Array.from(document.querySelectorAll(itemSelector));
+                return filtroFn ? todos.filter(filtroFn) : todos;
+            }
+
+            function render() {
+
+                const itens = itensFiltrados();
+                const totalPaginas = Math.max(1, Math.ceil(itens.length / ITENS_POR_PAGINA));
+
+                if (paginaAtual > totalPaginas) {
+                    paginaAtual = totalPaginas;
+                }
+
+                document.querySelectorAll(itemSelector)
+                    .forEach(item => item.style.display = "none");
+
+                itens
+                    .slice(
+                        (paginaAtual - 1) * ITENS_POR_PAGINA,
+                        paginaAtual * ITENS_POR_PAGINA
+                    )
+                    .forEach(item => item.style.display = "");
+
+                const nav = document.getElementById(navId);
+
+                if (!nav) return;
+
+                nav.innerHTML = "";
+
+                if (totalPaginas <= 1) return;
+
+                for (let i = 1; i <= totalPaginas; i++) {
+
+                    const btn = document.createElement("button");
+
+                    btn.type = "button";
+                    btn.textContent = i;
+                    btn.className = "page-btn" + (i === paginaAtual ? " active" : "");
+
+                    btn.addEventListener("click", () => {
+                        paginaAtual = i;
+                        render();
+                    });
+
+                    nav.appendChild(btn);
+                }
+            }
+
+            return {
+                render,
+                resetPagina() {
+                    paginaAtual = 1;
+                    render();
+                }
+            };
+        }
+
+        const paginadorServicos = criarPaginador(
+            "#tabServicos .service-item",
+            "servicosPaginacao",
+            item => {
+                const q = document.getElementById("searchInput")?.value.toLowerCase() || "";
+                return (item.dataset.name || "").includes(q);
+            }
+        );
+
+        const paginadorPlanos = criarPaginador("#tabPlanos .plan-card", "planosPaginacao");
+        const paginadorAvaliacoes = criarPaginador("#tabAvaliacoes .review-item", "avaliacoesPaginacao");
+
+        function renderPaginacaoServicos() {
+            paginadorServicos.render();
+            paginadorPlanos.render();
+            paginadorAvaliacoes.render();
+        }
+
+        function filterServices() {
+            paginadorServicos.resetPagina();
+        }
+
+        // ==========================================
+        // EMPRESA
+        // ==========================================
+
+        const empresaId =
+            document.getElementById("EmpresaId").value;
+
+        // ==========================================
+        // CARREGA LOGIN / REGISTRO / FORGOT
+        // ==========================================
+
+        function mostrarAlertaCliente(mensagem, tipo = "danger") {
+
+            const alerta =
+                document.getElementById("clienteLoginAlert");
+
+            if (!alerta)
+                return;
+
+            alerta.innerHTML = mensagem
+                ? `<div class="alert alert-${tipo} py-2 mb-3">${mensagem}</div>`
+                : "";
+        }
+
+        function loadClienteLogin(mode = "login") {
+
+            modoCliente = mode;
+
+            mostrarAlertaCliente("");
+
+            let url = "/cliente/login";
+
+            if (mode === "register")
+                url = "/cliente/registro";
+
+            if (mode === "forgot")
+                url = "/cliente/forgot";
+
+            const container =
+                document.getElementById("clienteLoginContent");
+
+            container.innerHTML =
+                '<p class="text-center text-muted my-4">Carregando...</p>';
+
+            fetch(url)
+                .then(res => {
+
+                    if (!res.ok) {
+                        throw new Error(`HTTP ${res.status}`);
+                    }
+
+                    return res.text();
+                })
+                .then(html => {
+
+                    const doc =
+                        new DOMParser()
+                            .parseFromString(html, "text/html");
+
+                    const content =
+                        doc.querySelector(".auth-card")
+                        || doc.querySelector(".login-card")
+                        || doc.body;
+
+                    container.innerHTML =
+                        content.outerHTML;
+
+                    const form =
+                        document.querySelector(
+                            "#clienteLoginContent form"
+                        );
+
+                    if (
+                        form &&
+                        !form.querySelector(
+                            'input[name="Origem"]'
+                        )
+                    ) {
+
+                        form.insertAdjacentHTML(
+                            "beforeend",
+                            `
+                            <input type="hidden"
+                                   name="Origem"
+                                   value="publico" />
+                            `
+                        );
+                    }
+                })
+                .catch(err => {
+
+                    console.error(
+                        "Erro ao carregar tela de cliente:",
+                        err
+                    );
+
+                    container.innerHTML =
+                        '<p class="text-danger text-center my-4">' +
+                        'Não foi possível carregar esta tela agora. Tente novamente.' +
+                        '</p>';
+                });
+        }
+
+        // ==========================================
+        // TROCAR TELA LOGIN / REGISTRO / FORGOT
+        // ==========================================
+
+        document.addEventListener(
+            "click",
+            function (e) {
+
+                const btn =
+                    e.target.closest(".switch-mode");
+
+                if (!btn)
+                    return;
+
+                e.preventDefault();
+
+                const mode =
+                    btn.dataset.mode;
+
+                loadClienteLogin(mode);
+            }
+        );
+
+        // ==========================================
+        // ABRIR MODAL LOGIN
+        // ==========================================
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            () => {
+
+                const loginModal =
+                    document.getElementById(
+                        "clienteLoginModal"
+                    );
+
+                if (!loginModal)
+                    return;
+
+                loginModal.addEventListener(
+                    "shown.bs.modal",
+                    (event) => loadClienteLogin(
+                        event.relatedTarget?.dataset.clienteMode || "login"
+                    )
+                );
+            }
+        );
+
+        // ==========================================
+        // SUBMIT LOGIN / REGISTRO / FORGOT
+        // ==========================================
+
+        document.body.addEventListener(
+            "submit",
+            async function (e) {
+
+                const form = e.target;
+
+                if (
+                    !form.closest(
+                        "#clienteLoginContent"
+                    )
+                )
+                    return;
+
+                e.preventDefault();
+
+                mostrarAlertaCliente("");
+
+                const urlsPorTipo = {
+                    "cliente-login": "/cliente/login",
+                    "cliente-register": "/cliente/registro",
+                    "cliente-forgot": "/cliente/forgot",
+                    "cliente-reset": "/cliente/resetpassword"
+                };
+
+                const url =
+                    urlsPorTipo[form.dataset.type]
+                    || form.action;
+
+                const formData =
+                    new FormData(form);
+
+                try {
+
+                    const response =
+                        await fetch(
+                            url,
+                            {
+                                method: "POST",
+                                body: formData
+                            });
+
+                    const contentType =
+                        response.headers.get(
+                            "content-type"
+                        );
+
+                    if (
+                        contentType &&
+                        contentType.includes(
+                            "application/json"
+                        )
+                    ) {
+
+                        const data =
+                            await response.json();
+
+                        if (data.success) {
+
+                            if (data.reload) {
+
+                                bootstrap.Modal
+                                    .getInstance(
+                                        document.getElementById(
+                                            "clienteLoginModal"
+                                        )
+                                    )
+                                    ?.hide();
+
+                                location.reload();
+
+                                return;
+                            }
+
+                            if (data.redirect) {
+
+                                window.location.href =
+                                    data.redirect;
+
+                                return;
+                            }
+
+                            if (data.message) {
+
+                                mostrarAlertaCliente(
+                                    data.message,
+                                    "success"
+                                );
+
+                                setTimeout(
+                                    () => location.reload(),
+                                    2500
+                                );
+
+                                return;
+                            }
+
+                            location.reload();
+
+                            return;
+                        }
+
+                        mostrarAlertaCliente(
+                            data.error ||
+                            "Erro ao processar."
+                        );
+
+                        return;
+                    }
+
+                    const html =
+                        await response.text();
+
+                    const doc =
+                        new DOMParser()
+                            .parseFromString(
+                                html,
+                                "text/html"
+                            );
+
+                    const content =
+                        doc.querySelector(".auth-card")
+                        || doc.querySelector(".login-card")
+                        || doc.body;
+
+                    document.getElementById(
+                        "clienteLoginContent"
+                    ).innerHTML =
+                        content.outerHTML;
+                }
+                catch (err) {
+
+                    console.error(err);
+
+                    mostrarAlertaCliente(
+                        "Erro ao processar a solicitação."
+                    );
+                }
+            }
+        );
+
+        // ==========================================
+        // VERIFICA CLIENTE LOGADO
+        // ==========================================
+
+        async function verificarClienteLogado() {
+
+            const bloco =
+                document.getElementById(
+                    "blocoDadosCliente"
+                );
+
+            const blocoLogin =
+                document.getElementById(
+                    "blocoLoginCadastro"
+                );
+
+            const clienteId =
+                document.getElementById(
+                    "ClienteId"
+                );
+
+            const nome =
+                document.getElementById(
+                    "NomeCliente"
+                );
+
+            const telefone =
+                document.getElementById(
+                    "TelefoneCliente"
+                );
+
+            if (clienteId)
+                clienteId.value = "";
+
+            if (nome)
+                nome.value = "";
+
+            if (telefone)
+                telefone.value = "";
+
+            if (bloco)
+                bloco.style.display = "block";
+
+            if (blocoLogin)
+                blocoLogin.style.display = "block";
+
+            try {
+
+                const response =
+                    await fetch(
+                        "/cliente/me"
+                    );
+
+                if (!response.ok)
+                    return false;
+
+                const cliente =
+                    await response.json();
+
+                if (!cliente.autenticado)
+                    return false;
+
+                clienteId.value =
+                    cliente.clienteId;
+
+                nome.value =
+                    cliente.nome;
+
+                telefone.value =
+                    cliente.telefone;
+
+                bloco.style.display =
+                    "none";
+
+                if (blocoLogin)
+                    blocoLogin.style.display = "none";
+
+                            const areaNavbar =
+            document.getElementById(
+                "areaClienteNavbar"
+            );
+
+        if (areaNavbar)
+        {
+            areaNavbar.innerHTML = `
+                <div class="dropdown">
+
+                    <button
+                        class="btn-cta dropdown-toggle"
+                        data-bs-toggle="dropdown">
+
+                        👤 ${cliente.nome}
+                    </button>
+
+                    <ul class="dropdown-menu">
+
+                        <li>
+                            <a class="dropdown-item"
+                               href="/Cliente/Agendamentos">
+
+                                Meus Agendamentos
+                            </a>
+                        </li>
+
+                        <li>
+                            <form method="post" action="/cliente/logout" class="px-3">
+                                <input type="hidden" name="__RequestVerificationToken" value="@csrfTokenLogout" />
+                                <button type="submit" class="dropdown-item text-danger px-0">
+                                    Sair
+                                </button>
+                            </form>
+                        </li>
+
+                    </ul>
+
+                </div>
+            `;
+        }
+                return true;
+            }
+            catch {
+
+                bloco.style.display =
+                    "block";
+
+                return false;
+            }
+        }
+
+        // ==========================================
+        // MENSAGENS NO MODAL DE AGENDAMENTO
+        // ==========================================
+
+        function mostrarAlertaAgendamento(mensagem, tipo = "danger") {
+
+            const alerta =
+                document.getElementById("agendamentoAlert");
+
+            if (!alerta)
+                return;
+
+            alerta.innerHTML = mensagem
+                ? `<div class="alert alert-${tipo} py-2 mb-3">${mensagem}</div>`
+                : "";
+        }
+
+        // ==========================================
+        // AGENDAR AGORA (HERO) — ROLA ATÉ OS SERVIÇOS
+        // ==========================================
+
+        document.querySelector(".btn-agendar")
+            ?.addEventListener("click", () => {
+
+                document.getElementById("servicos")
+                    ?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                    });
+            });
+
+        // ==========================================
+        // ABRIR MODAL AGENDAMENTO
+        // ==========================================
+
+        document
+            .querySelectorAll(".btn-schedule")
+            .forEach(btn => {
+
+                btn.addEventListener(
+                    "click",
+                    async function () {
+
+                        const servicoId =
+                            this.dataset.servico;
+
+                        mostrarAlertaAgendamento("");
+
+                        document.getElementById(
+                            "ServicoId"
+                        ).value =
+                            servicoId;
+
+                        const response =
+                            await fetch(
+                                `/Publico/Funcionarios/${empresaId}`
+                            );
+
+                        const funcionarios =
+                            await response.json();
+
+                        const select =
+                            document.getElementById(
+                                "FuncionarioId"
+                            );
+
+                        select.innerHTML =
+                            '<option value="">Qualquer profissional</option>';
+
+                        funcionarios.forEach(f => {
+
+                            select.innerHTML += `
+                                <option value="${f.id}">
+                                    ${f.nome}
+                                </option>
+                            `;
+                        });
+
+                        // Só faz sentido escolher profissional quando há
+                        // mais de um pra escolher — com 0 ou 1, o backend já
+                        // resolve sozinho (sorteia o único ativo, ou agenda
+                        // direto na empresa se não tiver nenhum).
+                        const profissionalWrap =
+                            document.getElementById(
+                                "profissionalWrap"
+                            );
+
+                        if (funcionarios.length > 1) {
+                            profissionalWrap.hidden = false;
+                        } else {
+                            profissionalWrap.hidden = true;
+                            select.value = "";
+                        }
+
+                        await verificarClienteLogado();
+
+                        new bootstrap.Modal(
+                            document.getElementById(
+                                "agendamentoModal"
+                            )
+                        ).show();
+                    }
+                );
+            });
+
+        // ==========================================
+        // HORÁRIOS
+        // ==========================================
+
+        async function carregarHorarios() {
+
+            const funcionarioId =
+                document.getElementById(
+                    "FuncionarioId"
+                ).value;
+
+            const servicoId =
+                document.getElementById(
+                    "ServicoId"
+                ).value;
+
+            const data =
+                document.getElementById(
+                    "DataAgendamento"
+                ).value;
+
+            if (!data)
+                return;
+
+            const response =
+                await fetch(
+                    `/Publico/HorariosDisponiveis?empresaId=${empresaId}&servicoId=${servicoId}&funcionarioId=${funcionarioId}&data=${data}`
+                );
+
+            const horarios =
+                await response.json();
+
+            const select =
+                document.getElementById(
+                    "Horario"
+                );
+
+            select.innerHTML = "";
+
+            horarios.forEach(h => {
+
+                select.innerHTML += `
+                    <option value="${h}">
+                        ${h}
+                    </option>
+                `;
+            });
+        }
+
+        document.getElementById("FuncionarioId")
+            ?.addEventListener(
+                "change",
+                carregarHorarios
+            );
+
+        document.getElementById("DataAgendamento")
+            ?.addEventListener(
+                "change",
+                carregarHorarios
+            );
+
+        // ==========================================
+        // CONFIRMAR AGENDAMENTO
+        // ==========================================
+
+        document.getElementById(
+            "btnConfirmarAgendamento"
+        )
+        ?.addEventListener(
+            "click",
+            async () => {
+
+                const data =
+                    document.getElementById(
+                        "DataAgendamento"
+                    ).value;
+
+                const hora =
+                    document.getElementById(
+                        "Horario"
+                    ).value;
+
+                if (!data || !hora) {
+
+                    mostrarAlertaAgendamento(
+                        "Selecione data e horário.",
+                        "warning"
+                    );
+
+                    return;
+                }
+
+                mostrarAlertaAgendamento("");
+
+                const payload = {
+
+                    empresaId:
+                        parseInt(
+                            document.getElementById(
+                                "EmpresaId"
+                            ).value
+                        ),
+
+                    servicoId:
+                        parseInt(
+                            document.getElementById(
+                                "ServicoId"
+                            ).value
+                        ),
+
+                    funcionarioId:
+                        document.getElementById(
+                            "FuncionarioId"
+                        ).value
+                            ? parseInt(
+                                document.getElementById(
+                                    "FuncionarioId"
+                                ).value
+                            )
+                            : null,
+
+                    clienteId:
+                        document.getElementById(
+                            "ClienteId"
+                        ).value
+                            ? parseInt(
+                                document.getElementById(
+                                    "ClienteId"
+                                ).value
+                            )
+                            : null,
+
+                    nome:
+                        document.getElementById(
+                            "NomeCliente"
+                        ).value,
+
+                    telefone:
+                        document.getElementById(
+                            "TelefoneCliente"
+                        ).value,
+
+                    dataHora:
+                        `${data}T${hora}:00`
+                };
+
+                const response =
+                    await fetch(
+                        "/Publico/Agendar",
+                        {
+                            method: "POST",
+                            headers: {
+                                "Content-Type":
+                                    "application/json"
+                            },
+                            body:
+                                JSON.stringify(
+                                    payload
+                                )
+                        });
+
+                const result =
+                    await response.json();
+
+                if (result.sucesso) {
+
+                    mostrarAlertaAgendamento(
+                        result.mensagem,
+                        "success"
+                    );
+
+                    setTimeout(() => {
+                        location.reload();
+                    }, 1500);
+                }
+                else {
+
+                    mostrarAlertaAgendamento(
+                        result.mensagem ||
+                        "Erro ao realizar agendamento."
+                    );
+                }
+            }
+        );
+
+        // ==========================================
+        // ABRIR LOGIN A PARTIR AGENDAMENTO
+        // ==========================================
+
+        document.getElementById(
+            "abrirLoginCliente"
+        )
+        ?.addEventListener(
+            "click",
+            function (e) {
+
+                e.preventDefault();
+
+                bootstrap.Modal
+                    .getInstance(
+                        document.getElementById(
+                            "agendamentoModal"
+                        )
+                    )
+                    ?.hide();
+
+                new bootstrap.Modal(
+                    document.getElementById(
+                        "clienteLoginModal"
+                    )
+                ).show();
+            }
+        );
+            document.addEventListener(
+        "DOMContentLoaded",
+        async () => {
+
+            renderPaginacaoServicos();
+
+            await verificarClienteLogado();
+        });
+
+        // ==========================================
+        // AVISO (MODAL) — fecha em 10s ou se o cliente fechar
+        // ==========================================
+
+        let avisoModalTimeout = null;
+
+        function mostrarAviso(mensagem, sucesso = true) {
+
+            const modalEl = document.getElementById("avisoModal");
+            const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+
+            document.getElementById("avisoModalMensagem").textContent = mensagem;
+            document.getElementById("avisoModalIcone").textContent = sucesso ? "✅" : "⚠️";
+
+            modal.show();
+
+            if (avisoModalTimeout) {
+                clearTimeout(avisoModalTimeout);
+            }
+
+            avisoModalTimeout = setTimeout(() => modal.hide(), 10000);
+
+            modalEl.addEventListener("hidden.bs.modal", () => {
+                if (avisoModalTimeout) {
+                    clearTimeout(avisoModalTimeout);
+                    avisoModalTimeout = null;
+                }
+            }, { once: true });
+        }
+
+        // ==========================================
+        // PLANOS — CONTRATAR
+        // ==========================================
+
+        document.querySelectorAll(".btn-contratar-plano").forEach(btn => {
+
+            btn.addEventListener("click", async () => {
+
+                const clienteIdInput = document.getElementById("ClienteId");
+
+                if (!clienteIdInput.value) {
+                    new bootstrap.Modal(
+                        document.getElementById("clienteLoginModal")
+                    ).show();
+                    return;
+                }
+
+                btn.disabled = true;
+
+                try {
+                    const resp = await fetch("/Publico/SolicitarPlano", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            planoServicoId: parseInt(btn.dataset.planoId)
+                        })
+                    });
+
+                    const data = await resp.json();
+
+                    mostrarAviso(data.mensagem, data.sucesso);
+
+                    if (!data.sucesso) {
+                        btn.disabled = false;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    mostrarAviso("Erro ao enviar solicitação.", false);
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        // ==========================================
+        // AVALIAÇÕES — ESTRELAS + ENVIO
+        // ==========================================
+
+        let notaSelecionada = 0;
+
+        function selecionarEstrelas(valor) {
+
+            notaSelecionada = valor;
+
+            document.querySelectorAll("#starPicker .star-pick")
+                .forEach(el => {
+                    el.classList.toggle(
+                        "selected",
+                        parseInt(el.dataset.valor) <= valor
+                    );
+                });
+        }
+
+        document.querySelectorAll("#starPicker .star-pick")
+            .forEach(el => {
+                el.addEventListener("click", () =>
+                    selecionarEstrelas(parseInt(el.dataset.valor))
+                );
+            });
+
+        document.getElementById("btnAbrirAvaliacao")
+            ?.addEventListener("click", async () => {
+
+                const clienteIdInput = document.getElementById("ClienteId");
+
+                if (!clienteIdInput.value) {
+                    new bootstrap.Modal(
+                        document.getElementById("clienteLoginModal")
+                    ).show();
+                    return;
+                }
+
+                const formDiv = document.getElementById("formAvaliacao");
+                const abrindo = formDiv.style.display === "none";
+
+                formDiv.style.display = abrindo ? "" : "none";
+
+                if (abrindo) {
+
+                    try {
+                        const resp = await fetch(
+                            `/Publico/MinhaAvaliacao?empresaId=${empresaId}`
+                        );
+
+                        const data = await resp.json();
+
+                        if (data.avaliado) {
+                            selecionarEstrelas(data.nota);
+                            document.getElementById("comentarioAvaliacao").value =
+                                data.comentario || "";
+                        }
+                    } catch (err) {
+                        console.error("Erro ao carregar avaliação:", err);
+                    }
+                }
+            });
+
+        document.getElementById("btnEnviarAvaliacao")
+            ?.addEventListener("click", async () => {
+
+                const alerta = document.getElementById("avaliacaoAlert");
+
+                if (!notaSelecionada) {
+                    alerta.innerHTML =
+                        '<div class="alert alert-warning py-2 mb-0">Escolha de 1 a 5 estrelas.</div>';
+                    return;
+                }
+
+                try {
+                    const resp = await fetch("/Publico/Avaliar", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            empresaId: parseInt(empresaId),
+                            nota: notaSelecionada,
+                            comentario: document.getElementById("comentarioAvaliacao").value
+                        })
+                    });
+
+                    const data = await resp.json();
+
+                    if (data.sucesso) {
+                        alerta.innerHTML =
+                            `<div class="alert alert-success py-2 mb-0">${data.mensagem}</div>`;
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        alerta.innerHTML =
+                            `<div class="alert alert-danger py-2 mb-0">${data.mensagem}</div>`;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alerta.innerHTML =
+                        '<div class="alert alert-danger py-2 mb-0">Erro ao enviar avaliação.</div>';
+                }
+            });
+    </script>
+
+}
