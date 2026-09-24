@@ -27,51 +27,119 @@
     }
     else
     {
-        <div class="card shadow-sm">
-            <div class="card-body">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
+        <div class="card-body">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome</th>
+                        <th>Status</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
                         <tr>
-                            <th>Nome</th>
-                            <th>Status</th>
-                            <th class="text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Model)
-                        {
-                            <tr>
-                                <td>@item.Nome</td>
-                                <td>
+                            <td>@item.Nome</td>
+                            <td>
+                                @if (item.Ativo)
+                                {
+                                    <span class="badge bg-success">Ativo</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">Inativo</span>
+                                }
+                            </td>
+                            <td class="text-end">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+
+                                <form asp-action="ToggleAtivo" asp-route-id="@item.Id" method="post" class="d-inline">
+                                    @Html.AntiForgeryToken()
                                     @if (item.Ativo)
                                     {
-                                        <span class="badge bg-success">Ativo</span>
+                                        <button type="submit" class="btn btn-sm btn-outline-warning">Desativar</button>
                                     }
                                     else
                                     {
-                                        <span class="badge bg-secondary">Inativo</span>
+                                        <button type="submit" class="btn btn-sm btn-success">Ativar</button>
                                     }
-                                </td>
-                                <td class="text-end">
-                                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Editar</a>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-                                    <form asp-action="ToggleAtivo" asp-route-id="@item.Id" method="post" class="d-inline">
-                                        @Html.AntiForgeryToken()
-                                        @if (item.Ativo)
-                                        {
-                                            <button type="submit" class="btn btn-sm btn-outline-warning">Desativar</button>
-                                        }
-                                        else
-                                        {
-                                            <button type="submit" class="btn btn-sm btn-success">Ativar</button>
-                                        }
-                                    </form>
-                                </td>
-                            </tr>
+    <!-- MOBILE -->
+    <div class="d-lg-none">
+
+        @foreach (var item in Model)
+        {
+            <div class="card mobile-card mb-3">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">@item.Nome</h6>
+
+                        @if (item.Ativo)
+                        {
+                            <span class="badge bg-success">Ativo</span>
                         }
-                    </tbody>
-                </table>
+                        else
+                        {
+                            <span class="badge bg-secondary">Inativo</span>
+                        }
+                    </div>
+
+                    <div class="mobile-actions">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-primary">Editar</a>
+
+                        <form asp-action="ToggleAtivo" asp-route-id="@item.Id" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()
+                            @if (item.Ativo)
+                            {
+                                <button type="submit" class="btn btn-outline-warning">Desativar</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-success">Ativar</button>
+                            }
+                        </form>
+                    </div>
+
+                </div>
             </div>
+        }
+
+    </div>
+
+    }
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage - 1)">Anterior</a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@(ViewBag.CurrentPage + 1)">Próximo</a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     }
 

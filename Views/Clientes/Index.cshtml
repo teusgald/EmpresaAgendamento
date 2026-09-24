@@ -8,9 +8,12 @@
             <p class="page-subtitle">Base de clientes da sua empresa.</p>
         </div>
 
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Novo Cliente
-        </a>
+        @if (ViewBag.PodeCriarModulo == true)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Novo Cliente
+            </a>
+        }
     </div>
 
     @if (!Model.Any())
@@ -19,7 +22,10 @@
             <div class="empty-state">
                 <i class="bi bi-people"></i>
                 <p>Nenhum cliente cadastrado ainda.</p>
-                <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Cadastrar o primeiro cliente</a>
+                @if (ViewBag.PodeCriarModulo == true)
+                {
+                    <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Cadastrar o primeiro cliente</a>
+                }
             </div>
         </div>
     }
@@ -114,7 +120,7 @@
 
                             <td class="text-end">
 
-                                @if (!item.TemContaPropria)
+                                @if (!item.TemContaPropria && ViewBag.PodeEditarModulo == true)
                                 {
                                     <a asp-action="Edit"
                                        asp-route-id="@item.Id"
@@ -123,32 +129,35 @@
                                     </a>
                                 }
 
-                                <form asp-action="ToggleAtivo"
-                                      method="post"
-                                      class="d-inline">
+                                @if (ViewBag.PodeExcluirModulo == true)
+                                {
+                                    <form asp-action="ToggleAtivo"
+                                          method="post"
+                                          class="d-inline">
 
-                                    @Html.AntiForgeryToken()
+                                        @Html.AntiForgeryToken()
 
-                                    <input type="hidden"
-                                           name="id"
-                                           value="@item.Id" />
+                                        <input type="hidden"
+                                               name="id"
+                                               value="@item.Id" />
 
-                                    @if (item.Ativo)
-                                    {
-                                        <button type="submit"
-                                                class="btn btn-sm btn-outline-warning">
-                                            Inativar
-                                        </button>
-                                    }
-                                    else
-                                    {
-                                        <button type="submit"
-                                                class="btn btn-sm btn-success">
-                                            Ativar
-                                        </button>
-                                    }
+                                        @if (item.Ativo)
+                                        {
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-warning">
+                                                Inativar
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-success">
+                                                Ativar
+                                            </button>
+                                        }
 
-                                </form>
+                                    </form>
+                                }
 
                             </td>
 
@@ -228,7 +237,7 @@
                         <span>@item.GastoTotal.ToString("C")</span>
                     </div>
 
-                    @if (!item.TemContaPropria)
+                    @if (!item.TemContaPropria && ViewBag.PodeEditarModulo == true)
                     {
                         <div class="mobile-actions">
 

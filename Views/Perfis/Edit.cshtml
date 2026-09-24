@@ -28,8 +28,10 @@
         </div>
 
         <div class="alert alert-light border small">
-            O campo <b>Escopo</b> já fica salvo, mas hoje nenhuma tela aplica essa regra ainda — pode deixar
-            "Todos" por enquanto. É a próxima entrega.
+            O campo <b>Escopo</b> hoje tem efeito em três módulos, sempre no mesmo sentido ("Próprios" = só o
+            que é dele; "Todos" = vê da empresa inteira): <b>Agendamentos</b> (só os agendamentos dele),
+            <b>Serviços</b> (só os que ele está marcado pra realizar, no cadastro do funcionário) e
+            <b>Clientes</b> (só clientes que ele já atendeu). Nos demais módulos fica salvo, mas ainda sem efeito.
         </div>
 
         <div class="card shadow-sm">
@@ -52,6 +54,10 @@
                                 <tr>
                                     <td class="fw-semibold">
                                         @Model.Permissoes[i].ModuloLabel
+                                        @if (Model.Permissoes[i].Modulo == "Agendamentos")
+                                        {
+                                            <br /><small class="text-muted fw-normal">Tela sempre liberada — só o Escopo importa aqui</small>
+                                        }
                                         <input type="hidden" asp-for="Permissoes[i].Modulo" />
                                         <input type="hidden" asp-for="Permissoes[i].ModuloLabel" />
                                     </td>

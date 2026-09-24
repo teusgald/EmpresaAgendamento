@@ -8,9 +8,12 @@
             <p class="page-subtitle">O que sua empresa oferece pros clientes agendarem.</p>
         </div>
 
-        <a asp-action="Create" class="btn btn-primary">
-            <i class="bi bi-plus-lg me-1"></i>Novo Serviço
-        </a>
+        @if (ViewBag.PodeCriarModulo == true)
+        {
+            <a asp-action="Create" class="btn btn-primary">
+                <i class="bi bi-plus-lg me-1"></i>Novo Serviço
+            </a>
+        }
     </div>
 
     @if (!Model.Any())
@@ -19,7 +22,10 @@
             <div class="empty-state">
                 <i class="bi bi-scissors"></i>
                 <p>Nenhum serviço cadastrado ainda.</p>
-                <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Cadastrar o primeiro serviço</a>
+                @if (ViewBag.PodeCriarModulo == true)
+                {
+                    <a asp-action="Create" class="btn btn-dark btn-sm mt-2">Cadastrar o primeiro serviço</a>
+                }
             </div>
         </div>
     }
@@ -55,38 +61,55 @@
 
                             <td class="text-end">
 
-                                <a asp-action="Edit"
-                                   asp-route-id="@item.Id"
-                                   class="btn btn-sm btn-outline-primary">
-                                    Editar
-                                </a>
+                                @if (ViewBag.PodeEditarModulo == true)
+                                {
+                                    <a asp-action="Edit"
+                                       asp-route-id="@item.Id"
+                                       class="btn btn-sm btn-outline-primary">
+                                        Editar
+                                    </a>
+                                }
 
-                                <form asp-action="ToggleAtivo"
-                                      method="post"
-                                      class="d-inline">
+                                @if (ViewBag.PodeExcluirModulo == true)
+                                {
+                                    <form asp-action="ToggleAtivo"
+                                          method="post"
+                                          class="d-inline">
 
-                                    @Html.AntiForgeryToken()
+                                        @Html.AntiForgeryToken()
 
-                                    <input type="hidden"
-                                           name="id"
-                                           value="@item.Id" />
+                                        <input type="hidden"
+                                               name="id"
+                                               value="@item.Id" />
 
+                                        @if (item.Ativo)
+                                        {
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-success">
+                                                Ativo
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-secondary">
+                                                Inativo
+                                            </button>
+                                        }
+
+                                    </form>
+                                }
+                                else
+                                {
                                     @if (item.Ativo)
                                     {
-                                        <button type="submit"
-                                                class="btn btn-sm btn-success">
-                                            Ativo
-                                        </button>
+                                        <span class="badge bg-success">Ativo</span>
                                     }
                                     else
                                     {
-                                        <button type="submit"
-                                                class="btn btn-sm btn-outline-secondary">
-                                            Inativo
-                                        </button>
+                                        <span class="badge bg-secondary">Inativo</span>
                                     }
-
-                                </form>
+                                }
 
                             </td>
 
@@ -140,15 +163,18 @@
                         <span>@item.DuracaoMinutos min</span>
                     </div>
 
-                    <div class="mobile-actions">
+                    @if (ViewBag.PodeEditarModulo == true)
+                    {
+                        <div class="mobile-actions">
 
-                        <a asp-action="Edit"
-                           asp-route-id="@item.Id"
-                           class="btn btn-outline-primary">
-                            Editar
-                        </a>
+                            <a asp-action="Edit"
+                               asp-route-id="@item.Id"
+                               class="btn btn-outline-primary">
+                                Editar
+                            </a>
 
-                    </div>
+                        </div>
+                    }
 
                 </div>
 

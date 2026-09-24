@@ -16,7 +16,6 @@ namespace EmpresaAgendamento.Controllers
 {
     [Route("financeiro")]
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     [TypeFilter(typeof(RequerPlanoFinanceiroFilter))]
     public class FinanceiroController : Controller
     {
@@ -51,6 +50,7 @@ namespace EmpresaAgendamento.Controllers
         // DASHBOARD FINANCEIRO
         // =========================
         [HttpGet("dashboard")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> Dashboard(DateTime? dataInicial, DateTime? dataFinal)
         {
             try
@@ -130,6 +130,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("sincronizar-agendamentos")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Editar" })]
         public async Task<IActionResult> SincronizarAgendamentos()
         {
             try
@@ -180,6 +181,7 @@ namespace EmpresaAgendamento.Controllers
         // CAIXA (EXTRATO)
         // =========================
         [HttpGet("caixa")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> Caixa(
             DateTime? dataInicial,
             DateTime? dataFinal,
@@ -256,6 +258,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
 
         [HttpGet("importar-extrato")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> ImportarExtrato()
         {
             try
@@ -279,6 +282,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("importar-extrato")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> ImportarExtrato(IFormFile arquivo)
         {
             try
@@ -436,6 +440,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("confirmar-importacao")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Criar" })]
         public async Task<IActionResult> ConfirmarImportacao(List<ImportacaoExtratoItemViewModel> itens)
         {
             try
@@ -558,6 +563,7 @@ namespace EmpresaAgendamento.Controllers
         // RELATÓRIOS BÁSICOS
         // =========================
         [HttpGet("relatorios")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> Relatorios(DateTime? dataInicial, DateTime? dataFinal)
         {
             try
@@ -802,6 +808,7 @@ namespace EmpresaAgendamento.Controllers
         // decidir gerar a versão para impressão. Usa a mesma query/projeção de
         // RelatorioDetalhadoImpressao via MontarRelatorioDetalhadoAsync.
         [HttpGet("relatorios/detalhado")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> RelatorioDetalhado(
             DateTime? dataInicial,
             DateTime? dataFinal,
@@ -840,6 +847,7 @@ namespace EmpresaAgendamento.Controllers
         // preenche o formulário de novo. Query/projeção idênticas à tela normal,
         // via MontarRelatorioDetalhadoAsync.
         [HttpGet("relatorios/detalhado/impressao")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Financeiro", "Visualizar" })]
         public async Task<IActionResult> RelatorioDetalhadoImpressao(
             DateTime? dataInicial,
             DateTime? dataFinal,

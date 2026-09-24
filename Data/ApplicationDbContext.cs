@@ -683,15 +683,6 @@ namespace EmpresaAgendamento.Data
 
             #endregion
 
-            #region Funcionario
-
-            builder.Entity<Funcionario>()
-                .Property(x => x.NivelAcesso)
-                .HasConversion<string>()
-                .HasMaxLength(20)
-                .IsRequired();
-
-            #endregion
 
             #region Fidelidade
 

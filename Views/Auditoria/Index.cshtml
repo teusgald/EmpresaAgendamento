@@ -29,47 +29,98 @@
     }
     else
     {
-        <div class="card shadow-sm">
-            <div class="card-body">
 
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+    <!-- DESKTOP -->
+    <div class="card shadow-sm d-none d-lg-block">
+        <div class="card-body">
+
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Quando</th>
+                        <th>Quem</th>
+                        <th>O quê</th>
+                        <th>Ação</th>
+                        <th>Detalhe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
                         <tr>
-                            <th>Quando</th>
-                            <th>Quem</th>
-                            <th>O quê</th>
-                            <th>Ação</th>
-                            <th>Detalhe</th>
+                            <td>@item.CriadoEm.ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>@(item.UsuarioNome ?? "—")</td>
+                            <td>@item.Entidade #@item.EntidadeId</td>
+                            <td>
+                                @{
+                                    var badgeClass = item.Acao switch
+                                    {
+                                        "Criado" => "bg-success",
+                                        "Editado" => "bg-info text-dark",
+                                        "Desativado" => "bg-secondary",
+                                        "Reativado" => "bg-success",
+                                        _ => "bg-light text-dark"
+                                    };
+                                }
+                                <span class="badge @badgeClass">@item.Acao</span>
+                            </td>
+                            <td class="text-muted small">@(item.Detalhe ?? "—")</td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var item in Model)
-                        {
-                            <tr>
-                                <td>@item.CriadoEm.ToString("dd/MM/yyyy HH:mm")</td>
-                                <td>@(item.UsuarioNome ?? "—")</td>
-                                <td>@item.Entidade #@item.EntidadeId</td>
-                                <td>
-                                    @{
-                                        var badgeClass = item.Acao switch
-                                        {
-                                            "Criado" => "bg-success",
-                                            "Editado" => "bg-info text-dark",
-                                            "Desativado" => "bg-secondary",
-                                            "Reativado" => "bg-success",
-                                            _ => "bg-light text-dark"
-                                        };
-                                    }
-                                    <span class="badge @badgeClass">@item.Acao</span>
-                                </td>
-                                <td class="text-muted small">@(item.Detalhe ?? "—")</td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                    }
+                </tbody>
+            </table>
 
-            </div>
         </div>
+    </div>
+
+    <!-- MOBILE -->
+    <div class="d-lg-none">
+
+        @foreach (var item in Model)
+        {
+            <div class="card mobile-card mb-3">
+                <div class="card-body">
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold mb-0">@item.Entidade #@item.EntidadeId</h6>
+
+                        @{
+                            var badgeClassMobile = item.Acao switch
+                            {
+                                "Criado" => "bg-success",
+                                "Editado" => "bg-info text-dark",
+                                "Desativado" => "bg-secondary",
+                                "Reativado" => "bg-success",
+                                _ => "bg-light text-dark"
+                            };
+                        }
+                        <span class="badge @badgeClassMobile">@item.Acao</span>
+                    </div>
+
+                    <div class="mobile-info">
+                        <label>Quando</label>
+                        <span>@item.CriadoEm.ToString("dd/MM/yyyy HH:mm")</span>
+                    </div>
+
+                    <div class="mobile-info">
+                        <label>Quem</label>
+                        <span>@(item.UsuarioNome ?? "—")</span>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(item.Detalhe))
+                    {
+                        <div class="mobile-info">
+                            <label>Detalhe</label>
+                            <span>@item.Detalhe</span>
+                        </div>
+                    }
+
+                </div>
+            </div>
+        }
+
+    </div>
+
     }
 
     @if (ViewBag.TotalPages > 1)

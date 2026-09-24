@@ -49,6 +49,11 @@ namespace EmpresaAgendamento.Controllers
         // Não nulo só quando quem está logado é um Funcionário (não a Empresa
         // dona) — usado pra restringir a que só veja/mexa nos agendamentos
         // dele, sem afetar os colegas.
+        // Retorna o Id do funcionário logado pra restringir a query aos
+        // agendamentos dele — ou null quando não deve restringir (dono da
+        // empresa, ou funcionário cujo Perfil tem Escopo "Todos" em
+        // Agendamentos). Default (sem perfil, ou perfil sem linha pro
+        // módulo) é restringir — mesma falha fechada do RequerPermissaoFilter.
         private async Task<int?> GetFuncionarioIdAsync()
         {
             if (!User.IsInRole("Funcionario"))
@@ -59,10 +64,26 @@ namespace EmpresaAgendamento.Controllers
             if (user == null)
                 return null;
 
-            return await _context.Funcionarios
+            var funcionario = await _context.Funcionarios
                 .Where(f => f.UserId == user.Id)
-                .Select(f => (int?)f.Id)
+                .Select(f => new { f.Id, f.PerfilId })
                 .FirstOrDefaultAsync();
+
+            if (funcionario == null)
+                return null;
+
+            if (funcionario.PerfilId != null)
+            {
+                var escopo = await _context.PerfilPermissoes
+                    .Where(p => p.PerfilId == funcionario.PerfilId && p.Modulo == "Agendamentos")
+                    .Select(p => (EscopoDadosPerfil?)p.EscopoDados)
+                    .FirstOrDefaultAsync();
+
+                if (escopo == EscopoDadosPerfil.Todos)
+                    return null;
+            }
+
+            return funcionario.Id;
         }
 
         // =========================

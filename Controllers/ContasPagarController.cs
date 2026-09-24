@@ -14,7 +14,6 @@ namespace EmpresaAgendamento.Controllers
 {
     [Route("financeiro/contas-a-pagar")]
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     [TypeFilter(typeof(RequerPlanoFinanceiroFilter))]
     public class ContasPagarController : Controller
     {
@@ -136,6 +135,7 @@ namespace EmpresaAgendamento.Controllers
 
         // Contas a Pagar = em aberto (Pendente/Parcial)
         [HttpGet("")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "ContasPagar", "Visualizar" })]
         public Task<IActionResult> Index(
             StatusConta? status,
             DateTime? dataInicial,
@@ -147,6 +147,7 @@ namespace EmpresaAgendamento.Controllers
 
         // Despesas = histórico completo (todos os status)
         [HttpGet("/financeiro/despesas")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "ContasPagar", "Visualizar" })]
         public Task<IActionResult> Despesas(
             StatusConta? status,
             DateTime? dataInicial,
@@ -160,6 +161,7 @@ namespace EmpresaAgendamento.Controllers
         // CREATE (despesa avulsa) GET
         // =========================
         [HttpGet("nova")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "ContasPagar", "Criar" })]
         public async Task<IActionResult> Create()
         {
             try
@@ -191,6 +193,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("nova")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "ContasPagar", "Criar" })]
         public async Task<IActionResult> Create(ContaPagar conta)
         {
             try
@@ -265,6 +268,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("pagar")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "ContasPagar", "Editar" })]
         public async Task<IActionResult> RegistrarPagamento(
             int id,
             decimal valor,
@@ -309,6 +313,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("cancelar")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "ContasPagar", "Excluir" })]
         public async Task<IActionResult> Cancelar(int id, string motivo, string? origem)
         {
             try

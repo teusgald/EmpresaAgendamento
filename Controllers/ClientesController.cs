@@ -39,6 +39,47 @@ public class ClientesController : Controller
         return user?.EmpresaId;
     }
 
+    // Quando o Perfil do funcionário tem Escopo "Próprios" em Clientes,
+    // devolve os Ids dos clientes que já têm algum agendamento com ele —
+    // a lista mostra só quem ele já atendeu (ou tem atendimento marcado).
+    // Retorna null quando não deve restringir (dono da empresa, Escopo
+    // "Todos", ou funcionário sem perfil — esse já nem chega aqui, o
+    // RequerPermissaoFilter barra antes).
+    private async Task<List<int>?> GetClienteIdsRestritosAsync(int empresaId)
+    {
+        if (!User.IsInRole("Funcionario"))
+            return null;
+
+        var user = await _userManager.GetUserAsync(User);
+        if (user == null) return null;
+
+        var funcionario = await _context.Funcionarios
+            .Where(f => f.UserId == user.Id)
+            .Select(f => new { f.Id, f.PerfilId })
+            .FirstOrDefaultAsync();
+
+        if (funcionario?.PerfilId == null)
+            return null;
+
+        var escopo = await _context.PerfilPermissoes
+            .Where(p => p.PerfilId == funcionario.PerfilId && p.Modulo == "Clientes")
+            .Select(p => (EscopoDadosPerfil?)p.EscopoDados)
+            .FirstOrDefaultAsync();
+
+        if (escopo != EscopoDadosPerfil.Proprios)
+            return null;
+
+        return await _context.Agendamentos
+            .Where(a =>
+                a.EmpresaId == empresaId &&
+                a.Ativo &&
+                a.FuncionarioId == funcionario.Id &&
+                a.ClienteId != null)
+            .Select(a => a.ClienteId!.Value)
+            .Distinct()
+            .ToListAsync();
+    }
+
     // =========================
     // INDEX
     // =========================
@@ -63,8 +104,11 @@ public class ClientesController : Controller
 
             int pageSize = 10;
 
+            var clienteIdsRestritos = await GetClienteIdsRestritosAsync(empresaId.Value);
+
             var query = _context.Clientes
                 .Where(c => c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId))
+                .Where(c => clienteIdsRestritos == null || clienteIdsRestritos.Contains(c.Id))
                 .OrderBy(c => c.Nome);
 
             var totalItems = await query.CountAsync();
@@ -278,6 +322,14 @@ public class ClientesController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            var clienteIdsRestritos = await GetClienteIdsRestritosAsync(empresaId.Value);
+
+            if (clienteIdsRestritos != null && !clienteIdsRestritos.Contains(cliente.Id))
+            {
+                ToastHelper.Error(TempData, "Cliente não encontrado.");
+                return RedirectToAction(nameof(Index));
+            }
+
             // Cliente já tem conta própria (se cadastrou/ativou sozinho) —
             // os dados passam a ser dele, a empresa só visualiza.
             if (cliente.UserId != null)
@@ -333,6 +385,14 @@ public class ClientesController : Controller
                     c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId));
 
             if (existente == null)
+            {
+                ToastHelper.Error(TempData, "Cliente não encontrado.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var clienteIdsRestritos = await GetClienteIdsRestritosAsync(empresaId.Value);
+
+            if (clienteIdsRestritos != null && !clienteIdsRestritos.Contains(existente.Id))
             {
                 ToastHelper.Error(TempData, "Cliente não encontrado.");
                 return RedirectToAction(nameof(Index));
@@ -407,6 +467,14 @@ public class ClientesController : Controller
                     c.EmpresaClientes.Any(ec => ec.EmpresaId == empresaId));
 
             if (cliente == null)
+            {
+                ToastHelper.Error(TempData, "Cliente não encontrado.");
+                return RedirectToAction(nameof(Index));
+            }
+
+            var clienteIdsRestritos = await GetClienteIdsRestritosAsync(empresaId.Value);
+
+            if (clienteIdsRestritos != null && !clienteIdsRestritos.Contains(cliente.Id))
             {
                 ToastHelper.Error(TempData, "Cliente não encontrado.");
                 return RedirectToAction(nameof(Index));

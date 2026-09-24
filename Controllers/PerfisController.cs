@@ -15,12 +15,9 @@ namespace EmpresaAgendamento.Controllers
     [Authorize(Roles = "Empresa")]
     public class PerfisController : Controller
     {
-        // Módulo que ainda não tem RequerPermissaoFilter aplicado no
-        // controller real (ver plano Fase 2) continua funcionando como
-        // antes — cadastrar permissão aqui não tem efeito até o controller
-        // daquele módulo ser migrado do RequerGerenteFilter.
         private static readonly (string Chave, string Label)[] Modulos =
         {
+            ("Agendamentos", "Agendamentos"),
             ("Clientes", "Clientes"),
             ("Servicos", "Serviços"),
             ("Produtos", "Produtos"),
@@ -29,7 +26,8 @@ namespace EmpresaAgendamento.Controllers
             ("ContasReceber", "Contas a Receber"),
             ("ContasPagar", "Contas a Pagar"),
             ("Comissoes", "Comissões"),
-            ("CategoriasFinanceiras", "Categorias Financeiras")
+            ("CategoriasFinanceiras", "Categorias Financeiras"),
+            ("Auditoria", "Auditoria")
         };
 
         private readonly ApplicationDbContext _context;
@@ -48,7 +46,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("")]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(int page = 1)
         {
             var empresaId = await GetEmpresaId();
 
@@ -58,10 +56,21 @@ namespace EmpresaAgendamento.Controllers
                 return RedirectToAction("Login", "Account");
             }
 
-            var perfis = await _context.Perfis
+            const int pageSize = 10;
+
+            var query = _context.Perfis
                 .Where(p => p.EmpresaId == empresaId)
-                .OrderBy(p => p.Nome)
+                .OrderBy(p => p.Nome);
+
+            var totalItems = await query.CountAsync();
+
+            var perfis = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
+
+            ViewBag.CurrentPage = page;
+            ViewBag.TotalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
             return View(perfis);
         }

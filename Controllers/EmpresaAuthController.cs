@@ -73,7 +73,7 @@ namespace EmpresaAgendamento.Controllers
                     return Json(new
                     {
                         success = true,
-                        redirect = "/Agendamentos/Index"
+                        redirect = Url.Action("Index", "Agendamentos")
                     });
                 }
 

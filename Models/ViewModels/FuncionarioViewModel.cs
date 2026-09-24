@@ -1,5 +1,4 @@
 ﻿using EmpresaAgendamento.Models;
-using EmpresaAgendamento.Models.Enums;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using System.ComponentModel.DataAnnotations;
 
@@ -8,8 +7,6 @@ namespace EmpresaAgendamento.ViewModels
     public class FuncionarioViewModel
     {
         public int Id { get; set; }
-
-        public NivelAcessoFuncionario NivelAcesso { get; set; } = NivelAcessoFuncionario.Padrao;
 
         public int? PerfilId { get; set; }
 

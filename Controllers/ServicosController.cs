@@ -2,6 +2,7 @@
 using EmpresaAgendamento.Filters;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
+using EmpresaAgendamento.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 namespace EmpresaAgendamento.Controllers
 {
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     public class ServicosController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -40,10 +40,47 @@ namespace EmpresaAgendamento.Controllers
             }
         }
 
+        // Quando o Perfil do funcionário tem Escopo "Próprios" em Serviços,
+        // devolve os Ids dos serviços que ele está vinculado a realizar
+        // (FuncionarioServico) — a lista some no menos de Serviços que ele
+        // não faz. Retorna null quando não deve restringir (dono da empresa,
+        // Escopo "Todos", ou funcionário sem perfil — esse último já nem
+        // chega aqui, o RequerPermissaoFilter barra antes).
+        private async Task<List<int>?> GetServicoIdsRestritosAsync()
+        {
+            if (!User.IsInRole("Funcionario"))
+                return null;
+
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return null;
+
+            var funcionario = await _context.Funcionarios
+                .Where(f => f.UserId == user.Id)
+                .Select(f => new { f.Id, f.PerfilId })
+                .FirstOrDefaultAsync();
+
+            if (funcionario?.PerfilId == null)
+                return null;
+
+            var escopo = await _context.PerfilPermissoes
+                .Where(p => p.PerfilId == funcionario.PerfilId && p.Modulo == "Servicos")
+                .Select(p => (EscopoDadosPerfil?)p.EscopoDados)
+                .FirstOrDefaultAsync();
+
+            if (escopo != EscopoDadosPerfil.Proprios)
+                return null;
+
+            return await _context.FuncionariosServicos
+                .Where(fs => fs.FuncionarioId == funcionario.Id)
+                .Select(fs => fs.ServicoId)
+                .ToListAsync();
+        }
+
         // =========================
         // INDEX
         // =========================
         [HttpGet("/Servicos")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Servicos", "Visualizar" })]
         public async Task<IActionResult> Index(int page = 1)
         {
             try
@@ -58,8 +95,11 @@ namespace EmpresaAgendamento.Controllers
 
                 int pageSize = 10;
 
+                var servicoIdsRestritos = await GetServicoIdsRestritosAsync();
+
                 var query = _context.Servicos
                     .Where(s => s.EmpresaId == empresaId)
+                    .Where(s => servicoIdsRestritos == null || servicoIdsRestritos.Contains(s.Id))
                     .OrderBy(s => s.Nome);
 
                 var totalItems = await query.CountAsync();
@@ -86,6 +126,7 @@ namespace EmpresaAgendamento.Controllers
         // CREATE GET
         // =========================
         [HttpGet]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Servicos", "Criar" })]
         public IActionResult Create()
         {
             try
@@ -105,6 +146,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Servicos", "Criar" })]
         public async Task<IActionResult> Create(Servico servico)
         {
             try
@@ -147,6 +189,7 @@ namespace EmpresaAgendamento.Controllers
         // EDIT GET
         // =========================
         [HttpGet]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Servicos", "Editar" })]
         public async Task<IActionResult> Edit(int id)
         {
             try
@@ -170,6 +213,14 @@ namespace EmpresaAgendamento.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                var servicoIdsRestritos = await GetServicoIdsRestritosAsync();
+
+                if (servicoIdsRestritos != null && !servicoIdsRestritos.Contains(servico.Id))
+                {
+                    ToastHelper.Error(TempData, "Serviço não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
                 return View(servico);
             }
             catch (Exception ex)
@@ -185,6 +236,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Servicos", "Editar" })]
         public async Task<IActionResult> Edit(int id, Servico servico)
         {
             try
@@ -222,6 +274,14 @@ namespace EmpresaAgendamento.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                var servicoIdsRestritos = await GetServicoIdsRestritosAsync();
+
+                if (servicoIdsRestritos != null && !servicoIdsRestritos.Contains(existente.Id))
+                {
+                    ToastHelper.Error(TempData, "Serviço não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
                 existente.Nome = servico.Nome;
                 existente.Preco = servico.Preco;
                 existente.DuracaoMinutos = servico.DuracaoMinutos;
@@ -245,6 +305,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Servicos", "Excluir" })]
         public async Task<IActionResult> ToggleAtivo(int id)
         {
             try
@@ -263,6 +324,14 @@ namespace EmpresaAgendamento.Controllers
                         s.EmpresaId == empresaId);
 
                 if (servico == null)
+                {
+                    ToastHelper.Error(TempData, "Serviço não encontrado.");
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var servicoIdsRestritos = await GetServicoIdsRestritosAsync();
+
+                if (servicoIdsRestritos != null && !servicoIdsRestritos.Contains(servico.Id))
                 {
                     ToastHelper.Error(TempData, "Serviço não encontrado.");
                     return RedirectToAction(nameof(Index));

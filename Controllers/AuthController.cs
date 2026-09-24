@@ -16,7 +16,6 @@ namespace EmpresaAgendamento.Controllers
             // Precisa checar a role ANTES de deslogar — depois do SignOutAsync
             // o User já não carrega mais nenhuma claim/role.
             var ehCliente = User.IsInRole("Cliente");
-            var ehFuncionario = User.IsInRole("Funcionario");
 
             try
             {
@@ -27,11 +26,8 @@ namespace EmpresaAgendamento.Controllers
                 logger.LogError(ex, "Falha ao encerrar sessão.");
             }
 
-            if (ehFuncionario)
-            {
-                return Redirect("/funcionario/login");
-            }
-
+            // Funcionário também usa o modal de login da home (mesmo formulário
+            // já atende Empresa e Funcionário) — não a tela dedicada /funcionario/login.
             return Redirect(ehCliente ? "/?login=true&type=cliente" : "/?login=true&type=empresa");
         }
     }

@@ -111,7 +111,9 @@ namespace EmpresaAgendamento.Controllers
                 _logger.LogError(ex, "Falha ao encerrar sessão de funcionário.");
             }
 
-            return RedirectToAction(nameof(Login));
+            // Mesmo modal de login da home usado pelo resto do sistema — não a
+            // tela dedicada /funcionario/login.
+            return Redirect("/?login=true&type=empresa");
         }
 
         // ======================================

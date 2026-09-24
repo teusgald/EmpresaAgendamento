@@ -12,7 +12,6 @@ namespace EmpresaAgendamento.Controllers
 {
     [Route("financeiro/categorias")]
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     [TypeFilter(typeof(RequerPlanoFinanceiroFilter))]
     public class CategoriasFinanceirasController : Controller
     {
@@ -44,6 +43,7 @@ namespace EmpresaAgendamento.Controllers
         // INDEX
         // =========================
         [HttpGet("")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "CategoriasFinanceiras", "Visualizar" })]
         public async Task<IActionResult> Index()
         {
             try
@@ -75,6 +75,7 @@ namespace EmpresaAgendamento.Controllers
         // CREATE GET
         // =========================
         [HttpGet("nova")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "CategoriasFinanceiras", "Criar" })]
         public IActionResult Create() => View();
 
         // =========================
@@ -82,6 +83,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("nova")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "CategoriasFinanceiras", "Criar" })]
         public async Task<IActionResult> Create(CategoriaFinanceira categoria)
         {
             try
@@ -138,6 +140,7 @@ namespace EmpresaAgendamento.Controllers
         // EDIT GET
         // =========================
         [HttpGet("editar/{id}")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "CategoriasFinanceiras", "Editar" })]
         public async Task<IActionResult> Edit(int id)
         {
             try
@@ -173,6 +176,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("editar/{id}")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "CategoriasFinanceiras", "Editar" })]
         public async Task<IActionResult> Edit(int id, CategoriaFinanceira categoria)
         {
             try
@@ -235,6 +239,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("toggle-ativo")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "CategoriasFinanceiras", "Excluir" })]
         public async Task<IActionResult> ToggleAtivo(int id)
         {
             try

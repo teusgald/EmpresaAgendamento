@@ -11,7 +11,6 @@ namespace EmpresaAgendamento.Controllers
 {
     [Route("auditoria")]
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     public class AuditoriaController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -30,6 +29,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Auditoria", "Visualizar" })]
         public async Task<IActionResult> Index(string? busca, int page = 1)
         {
             var empresaId = await GetEmpresaId();

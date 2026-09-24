@@ -13,7 +13,6 @@ namespace EmpresaAgendamento.Controllers
 {
     [Route("Fidelidade")]
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     public class FidelidadeController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -41,6 +40,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Visualizar" })]
         public async Task<IActionResult> Index()
         {
             try
@@ -104,6 +104,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("Create")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Criar" })]
         public async Task<IActionResult> Create()
         {
             try
@@ -131,6 +132,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("Create")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Criar" })]
         public async Task<IActionResult> Create(ProgramaFidelidadeViewModel vm)
         {
             try
@@ -188,6 +190,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("Edit/{id}")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Editar" })]
         public async Task<IActionResult> Edit(int id)
         {
             try
@@ -230,6 +233,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("Edit/{id}")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Editar" })]
         public async Task<IActionResult> Edit(int id, ProgramaFidelidadeViewModel vm)
         {
             try
@@ -292,6 +296,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("Delete/{id}")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Excluir" })]
         public async Task<IActionResult> Delete(int id)
         {
             try
@@ -324,6 +329,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("MarcarDescontoUsado")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Fidelidade", "Editar" })]
         public async Task<IActionResult> MarcarDescontoUsado(int programaFidelidadeId, int clienteId)
         {
             try

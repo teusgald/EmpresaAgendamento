@@ -939,7 +939,7 @@
                     </div>
                 </div>
 
-                <div class="mb-3">
+                <div class="mb-3" id="profissionalWrap" hidden>
                     <label>Profissional</label>
 
                     <select id="FuncionarioId"
@@ -1759,6 +1759,22 @@
                                 </option>
                             `;
                         });
+
+                        // Só faz sentido escolher profissional quando há
+                        // mais de um pra escolher — com 0 ou 1, o backend já
+                        // resolve sozinho (sorteia o único ativo, ou agenda
+                        // direto na empresa se não tiver nenhum).
+                        const profissionalWrap =
+                            document.getElementById(
+                                "profissionalWrap"
+                            );
+
+                        if (funcionarios.length > 1) {
+                            profissionalWrap.hidden = false;
+                        } else {
+                            profissionalWrap.hidden = true;
+                            select.value = "";
+                        }
 
                         await verificarClienteLogado();
 

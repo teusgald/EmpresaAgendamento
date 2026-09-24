@@ -15,7 +15,6 @@ namespace EmpresaAgendamento.Controllers
 {
     [Route("financeiro/comissoes")]
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     [TypeFilter(typeof(RequerPlanoFinanceiroFilter))]
     public class ComissoesController : Controller
     {
@@ -47,6 +46,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Comissoes", "Visualizar" })]
         public async Task<IActionResult> Index(
             int? funcionarioId,
             bool somentePendentes = true,
@@ -149,6 +149,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost("pagar")]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Comissoes", "Editar" })]
         public async Task<IActionResult> Pagar(
             int funcionarioId,
             DateTime? dataInicial,

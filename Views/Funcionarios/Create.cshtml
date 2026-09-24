@@ -1,5 +1,4 @@
 ﻿@model EmpresaAgendamento.ViewModels.FuncionarioViewModel
-@using EmpresaAgendamento.Models.Enums
 
 <div class="container-fluid mt-4">
 
@@ -62,24 +61,14 @@
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label">Nível de acesso</label>
-                                <select asp-for="NivelAcesso" class="form-select"
-                                        asp-items="Html.GetEnumSelectList<NivelAcessoFuncionario>()">
-                                </select>
-                                <small class="text-muted">
-                                    Gerente também acessa Serviços, Fidelidade e o módulo Financeiro.
-                                </small>
-                            </div>
-
-                            <div class="col-md-6">
                                 <label class="form-label">Perfil de acesso</label>
                                 <select asp-for="PerfilId" class="form-select" asp-items="Model.PerfisDisponiveis">
                                     <option value="">Nenhum</option>
                                 </select>
                                 <small class="text-muted">
-                                    Controla o acesso nas telas já migradas pro novo sistema de perfis
-                                    (hoje: Clientes) — sem um perfil escolhido, o funcionário não acessa essas
-                                    telas, mesmo com Nível de acesso Gerente.
+                                    Controla o que o funcionário pode ver e fazer no sistema — sem um perfil
+                                    escolhido, ele não acessa nenhuma tela além de Calendário, Agendamentos e
+                                    Atendimento.
                                     <a asp-controller="Perfis" asp-action="Index" target="_blank">Gerenciar perfis</a>.
                                 </small>
                             </div>

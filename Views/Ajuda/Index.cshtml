@@ -14,24 +14,18 @@
     Layout = ehCliente ? "_LayoutCliente" : "_Layout";
 
     var ehFuncionario = User.IsInRole("Funcionario");
-    var ehGerente = false;
 
-    if (ehFuncionario)
-    {
-        var userId = UserManager.GetUserId(User);
+    // Mesmo critério do menu lateral: cada tela gated por Perfil só mostra a
+    // pergunta correspondente pro Funcionário se o Perfil dele permitir ver
+    // aquele módulo — dono da empresa (role Empresa) sempre vê tudo.
+    var modulosVisiveisFuncionario = ehFuncionario
+        ? await _context.PerfilPermissoes
+            .Where(p => p.PodeVisualizar && p.Perfil.Funcionarios.Any(f => f.UserId == UserManager.GetUserId(User)))
+            .Select(p => p.Modulo)
+            .ToListAsync()
+        : new System.Collections.Generic.List<string>();
 
-        var nivelAcesso = await _context.Funcionarios
-            .Where(f => f.UserId == userId)
-            .Select(f => (EmpresaAgendamento.Models.Enums.NivelAcessoFuncionario?)f.NivelAcesso)
-            .FirstOrDefaultAsync();
-
-        ehGerente = nivelAcesso == EmpresaAgendamento.Models.Enums.NivelAcessoFuncionario.Gerente;
-    }
-
-    // Dono da empresa (role "Empresa") ou Funcionário Gerente — mesmo
-    // critério usado no menu lateral pra liberar Serviços/Produtos/
-    // Fidelidade/Financeiro.
-    var podeVerModuloGerente = !ehFuncionario || ehGerente;
+    bool PodeVer(string modulo) => !ehFuncionario || modulosVisiveisFuncionario.Contains(modulo);
 
     // Cada pergunta usa um id de collapse próprio (faq1, faq2...), gerado em
     // sequência conforme a página é montada.
@@ -196,7 +190,7 @@
             </div>
         </div>
 
-        @if (podeVerModuloGerente)
+        @if (PodeVer("Servicos"))
         {
             <h5 class="fw-bold mt-4 mb-2">Serviços</h5>
 
@@ -212,7 +206,10 @@
                     </div>
                 </div>
             </div>
+        }
 
+        @if (PodeVer("Produtos"))
+        {
             <h5 class="fw-bold mt-4 mb-2">Produtos</h5>
 
             <div class="card mb-2 faq-item">
@@ -235,16 +232,13 @@
 
             <div class="card mb-2 faq-item">
                 <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
-                    <span class="fw-semibold">Como cadastro um funcionário e defino o nível de acesso?</span>
+                    <span class="fw-semibold">Como cadastro um funcionário e defino o que ele pode acessar?</span>
                     <i class="bi bi-chevron-down small faq-chevron"></i>
                 </a>
                 <div class="collapse" id="faq@(contador)">
                     <div class="card-body pt-0 text-muted">
-                        <p>Em <strong>Funcionários &gt; Novo funcionário</strong>, informe nome, e-mail, telefone, cargo, comissão (percentual padrão ou valor fixo por atendimento) e quais serviços ele realiza. Existem dois <strong>níveis de acesso</strong>:</p>
-                        <ul>
-                            <li><strong>Padrão</strong> — só enxerga Calendário, Agendamentos, Clientes e Atendimento, e só mexe nos próprios agendamentos.</li>
-                            <li><strong>Gerente</strong> — além disso, também enxerga Serviços, Produtos, Fidelidade e o módulo Financeiro completo (nunca enxerga Funcionários, Planos, Horário de Funcionamento, Empresa ou Assinatura — isso é exclusivo do dono).</li>
-                        </ul>
+                        <p>Em <strong>Configurações &gt; Funcionários &gt; Novo funcionário</strong>, informe nome, e-mail, telefone, cargo, comissão (percentual padrão ou valor fixo por atendimento), quais serviços ele realiza e o <strong>Perfil de acesso</strong> (veja a pergunta abaixo).</p>
+                        <p>Sem nenhum perfil escolhido, o funcionário só enxerga Calendário, Agendamentos e Atendimento, e só mexe nos próprios agendamentos — todo o resto (Clientes, Serviços, Produtos, Fidelidade, Financeiro, Auditoria e o que mais existir) depende do perfil atribuído.</p>
                         <p>Seu plano de assinatura do sistema limita quantos funcionários ativos você pode ter — o cadastro bloqueia ao atingir o limite.</p>
                         <p class="mb-0">Depois de cadastrado, use <strong>Criar acesso</strong> pra o funcionário poder logar sozinho (o sistema manda um e-mail pra ele definir a própria senha) — sem isso ele só existe como registro interno, sem login. <strong>Reenviar acesso</strong> manda um novo link de senha se ele perder o primeiro e-mail.</p>
                     </div>
@@ -258,9 +252,9 @@
                 </a>
                 <div class="collapse" id="faq@(contador)">
                     <div class="card-body pt-0 text-muted">
-                        <p>Em <strong>Perfis de acesso</strong> você cria perfis próprios (ex.: "Recepção", "Financeiro Jr") e escolhe, tela por tela, se aquele perfil pode <strong>ver</strong>, <strong>criar</strong>, <strong>editar</strong> e/ou <strong>excluir</strong> — é mais fino que o Nível de acesso (Padrão/Gerente) sozinho.</p>
-                        <p>No cadastro do funcionário, atribua o perfil no campo <strong>Perfil de acesso</strong>. Hoje o perfil já controla a tela de <strong>Clientes</strong> (as demais telas ainda seguem só pelo Nível de acesso, e vão migrar aos poucos).</p>
-                        <p class="mb-0"><strong>Atenção:</strong> funcionário sem nenhum perfil atribuído não acessa as telas já migradas, mesmo sendo Gerente — se um funcionário perder acesso a Clientes depois de criado, confira se ele tem um perfil escolhido.</p>
+                        <p>Em <strong>Configurações &gt; Perfis de acesso</strong> você cria perfis próprios (ex.: "Recepção", "Financeiro Jr", "Gerente") e escolhe, tela por tela, se aquele perfil pode <strong>ver</strong>, <strong>criar</strong>, <strong>editar</strong> e/ou <strong>excluir</strong> — é essa a única forma de controlar o que cada funcionário acessa no sistema.</p>
+                        <p>No cadastro do funcionário, atribua o perfil no campo <strong>Perfil de acesso</strong>. O menu lateral e a Ajuda mostram só o que o perfil do funcionário libera.</p>
+                        <p class="mb-0"><strong>Atenção:</strong> funcionário sem nenhum perfil atribuído não acessa nenhuma tela além de Calendário, Agendamentos e Atendimento — se um funcionário perder acesso a alguma tela depois de criado, confira se ele tem um perfil escolhido.</p>
                     </div>
                 </div>
             </div>
@@ -282,7 +276,7 @@
                 </div>
             </div>
 
-            <h5 class="fw-bold mt-4 mb-2">Horário de Funcionamento</h5>
+            <h5 class="fw-bold mt-4 mb-2">Horários</h5>
 
             <div class="card mb-2 faq-item">
                 <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
@@ -291,14 +285,14 @@
                 </a>
                 <div class="collapse" id="faq@(contador)">
                     <div class="card-body pt-0 text-muted">
-                        <p>Em <strong>Horário de Funcionamento</strong>, defina dia a dia se a empresa abre, o horário de início/fim e um intervalo (almoço), se houver. É esse horário que aparece como disponível pros clientes no agendamento público.</p>
-                        <p class="mb-0">Cada funcionário também pode ter o próprio expediente (tela de <strong>Horários</strong> dentro do cadastro dele, em Funcionários) — mas o expediente dele precisa caber dentro do horário de funcionamento da empresa naquele dia; o sistema bloqueia se não couber.</p>
+                        <p>Em <strong>Configurações &gt; Horários</strong>, defina dia a dia se a empresa abre, o horário de início/fim e um intervalo (almoço), se houver. É esse horário que aparece como disponível pros clientes no agendamento público.</p>
+                        <p class="mb-0">Cada funcionário também pode ter o próprio expediente (tela de <strong>Horários</strong> dentro do cadastro dele, em Configurações &gt; Funcionários) — mas o expediente dele precisa caber dentro do horário de funcionamento da empresa naquele dia; o sistema bloqueia se não couber.</p>
                     </div>
                 </div>
             </div>
         }
 
-        @if (podeVerModuloGerente)
+        @if (PodeVer("Fidelidade"))
         {
             <h5 class="fw-bold mt-4 mb-2">Fidelidade</h5>
 
@@ -315,7 +309,10 @@
                     </div>
                 </div>
             </div>
+        }
 
+        @if (PodeVer("Financeiro") || PodeVer("ContasReceber") || PodeVer("ContasPagar") || PodeVer("Comissoes") || PodeVer("CategoriasFinanceiras"))
+        {
             <h5 class="fw-bold mt-4 mb-2">Financeiro</h5>
 
             <div class="card mb-2 faq-item">
@@ -336,7 +333,10 @@
                     </div>
                 </div>
             </div>
+        }
 
+        @if (PodeVer("Auditoria"))
+        {
             <h5 class="fw-bold mt-4 mb-2">Auditoria</h5>
 
             <div class="card mb-2 faq-item">
@@ -346,7 +346,7 @@
                 </a>
                 <div class="collapse" id="faq@(contador)">
                     <div class="card-body pt-0 text-muted">
-                        <p class="mb-0">Toda vez que um cliente é <strong>criado</strong>, <strong>editado</strong> ou <strong>ativado/desativado</strong>, o sistema registra quem fez, quando e o que mudou (ex.: "Telefone: (11) 9999-... → (11) 8888-..."). A tela <strong>Auditoria</strong> lista e permite buscar esse histórico — importante pra rastrear alteração em dado de cliente, inclusive pra fins de LGPD.</p>
+                        <p class="mb-0">Toda vez que um cliente é <strong>criado</strong>, <strong>editado</strong> ou <strong>ativado/desativado</strong>, o sistema registra quem fez, quando e o que mudou (ex.: "Telefone: (11) 9999-... → (11) 8888-..."). A tela <strong>Configurações &gt; Auditoria</strong> lista e permite buscar esse histórico — importante pra rastrear alteração em dado de cliente, inclusive pra fins de LGPD.</p>
                     </div>
                 </div>
             </div>
@@ -363,7 +363,7 @@
                 </a>
                 <div class="collapse" id="faq@(contador)">
                     <div class="card-body pt-0 text-muted">
-                        <p>Em <strong>Empresas</strong> ficam todos os dados que aparecem na sua página pública: identidade (nome, slogan, descrição, segmento), logo (upload de imagem, até 2 MB), endereço, contato, redes sociais (Instagram, Facebook, TikTok, YouTube, site), formas de pagamento aceitas e comodidades (Wi-Fi, estacionamento, acessibilidade etc.).</p>
+                        <p>Em <strong>Configurações &gt; Empresa</strong> ficam todos os dados que aparecem na sua página pública: identidade (nome, slogan, descrição, segmento), logo (upload de imagem, até 2 MB), endereço, contato, redes sociais (Instagram, Facebook, TikTok, YouTube, site), formas de pagamento aceitas e comodidades (Wi-Fi, estacionamento, acessibilidade etc.).</p>
                         <p class="mb-0">A <strong>galeria de fotos</strong> aceita até 5 imagens — pra trocar, remova uma antiga antes de enviar outra no lugar.</p>
                     </div>
                 </div>

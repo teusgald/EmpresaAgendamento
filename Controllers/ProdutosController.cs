@@ -10,7 +10,6 @@ using Microsoft.EntityFrameworkCore;
 namespace EmpresaAgendamento.Controllers
 {
     [Authorize(Roles = "Empresa,Funcionario")]
-    [TypeFilter(typeof(RequerGerenteFilter))]
     public class ProdutosController : Controller
     {
         // Mesmo padrão de validação/salvamento usado no logo da empresa
@@ -103,6 +102,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet("/Produtos")]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Produtos", "Visualizar" })]
         public async Task<IActionResult> Index(int page = 1)
         {
             try
@@ -142,10 +142,12 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Produtos", "Criar" })]
         public IActionResult Create() => View();
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Produtos", "Criar" })]
         public async Task<IActionResult> Create(Produto produto, IFormFile? fotoFile)
         {
             try
@@ -203,6 +205,7 @@ namespace EmpresaAgendamento.Controllers
         }
 
         [HttpGet]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Produtos", "Editar" })]
         public async Task<IActionResult> Edit(int id)
         {
             try
@@ -236,6 +239,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Produtos", "Editar" })]
         public async Task<IActionResult> Edit(int id, Produto produto, IFormFile? fotoFile)
         {
             try
@@ -317,6 +321,7 @@ namespace EmpresaAgendamento.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
+        [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Produtos", "Excluir" })]
         public async Task<IActionResult> ToggleAtivo(int id)
         {
             try
