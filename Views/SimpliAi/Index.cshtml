@@ -1,0 +1,131 @@
+@model List<EmpresaAgendamento.Models.InteracaoIA>
+@{
+    ViewData["Title"] = "Simpli AI";
+    ViewData["OcultarSimpliAiBolha"] = true;
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Simpli AI <span class="badge bg-dark">beta</span></h3>
+            <p class="page-subtitle">Pergunte sobre o seu negócio ou peça ajuda com conteúdo.</p>
+        </div>
+    </div>
+
+    <div class="simpli-ai-page">
+
+        <div class="simpli-ai-page-mensagens" id="simpliAiPageMensagens">
+
+            @if (!Model.Any())
+            {
+                <div class="simpli-ai-boas-vindas">
+                    <i class="bi bi-stars"></i>
+                    <h4>Como posso te ajudar hoje?</h4>
+                    <p>Escolha um exemplo ou digite sua pergunta.</p>
+
+                    <div class="simpli-ai-sugestoes">
+                        <button type="button" class="simpli-ai-sugestao" data-texto="Me dá um relatório semanal: total de agendamentos, faturamento e os serviços mais agendados dos últimos 7 dias.">
+                            <i class="bi bi-bar-chart"></i>
+                            <span><b>Relatório semanal</b>Agendamentos e faturamento dos últimos 7 dias</span>
+                        </button>
+                        <button type="button" class="simpli-ai-sugestao" data-texto="Escreva uma legenda curta e chamativa pra postar no Instagram divulgando um horário livre hoje.">
+                            <i class="bi bi-instagram"></i>
+                            <span><b>Texto para post</b>Legenda pronta pra rede social</span>
+                        </button>
+                        <button type="button" class="simpli-ai-sugestao" data-texto="Crie uma imagem pra postar nas redes sociais divulgando uma promoção.">
+                            <i class="bi bi-image"></i>
+                            <span><b>Imagem para post</b>Arte pronta pra divulgação</span>
+                        </button>
+                        <button type="button" class="simpli-ai-sugestao" data-texto="Quantos clientes ativos eu tenho e quais voltaram nos últimos 30 dias?">
+                            <i class="bi bi-people"></i>
+                            <span><b>Clientes ativos</b>Quem voltou no último mês</span>
+                        </button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                foreach (var item in Model)
+                {
+                    <div class="simpli-ai-msg @(item.Role == "user" ? "user" : "model")">@item.Mensagem</div>
+                }
+            }
+
+        </div>
+
+        <form id="simpliAiPageForm" class="simpli-ai-page-form">
+            @Html.AntiForgeryToken()
+            <input type="text" id="simpliAiPageInput" placeholder="Pergunte algo ao Simpli AI..." autocomplete="off" />
+            <button type="submit"><i class="bi bi-send"></i></button>
+        </form>
+
+    </div>
+
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const mensagens = document.getElementById('simpliAiPageMensagens');
+            const form = document.getElementById('simpliAiPageForm');
+            const input = document.getElementById('simpliAiPageInput');
+
+            function scrollParaFim() {
+                mensagens.scrollTop = mensagens.scrollHeight;
+            }
+
+            function adicionarMensagem(texto, role) {
+                const boasVindas = mensagens.querySelector('.simpli-ai-boas-vindas');
+                if (boasVindas) boasVindas.remove();
+
+                const div = document.createElement('div');
+                div.className = 'simpli-ai-msg ' + role;
+                div.textContent = texto;
+                mensagens.appendChild(div);
+                scrollParaFim();
+            }
+
+            function enviar(texto) {
+                if (!texto) return;
+
+                adicionarMensagem(texto, 'user');
+                input.value = '';
+
+                const token = form.querySelector('input[name="__RequestVerificationToken"]').value;
+
+                fetch('/simpli-ai/mensagem', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'RequestVerificationToken': token
+                    },
+                    body: JSON.stringify({ mensagem: texto })
+                })
+                    .then(async response => {
+                        const data = await response.json().catch(() => ({}));
+
+                        if (!response.ok) {
+                            adicionarMensagem(data.erro || 'Não consegui responder agora.', 'model');
+                            return;
+                        }
+
+                        adicionarMensagem(data.resposta, 'model');
+                    })
+                    .catch(() => adicionarMensagem('Não consegui falar com o Simpli AI agora.', 'model'));
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                enviar(input.value.trim());
+            });
+
+            mensagens.addEventListener('click', function (e) {
+                const botao = e.target.closest('.simpli-ai-sugestao');
+                if (botao) enviar(botao.dataset.texto);
+            });
+
+            scrollParaFim();
+        })();
+    </script>
+}

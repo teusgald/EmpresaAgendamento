@@ -3,9 +3,12 @@ using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace EmpresaAgendamento.Controllers
 {
@@ -116,6 +119,104 @@ namespace EmpresaAgendamento.Controllers
             var result = await _signInManager.PasswordSignInAsync(funcionario, password, true, true);
 
             return result.Succeeded;
+        }
+
+        // =========================
+        // 🔥 LOGIN COM GOOGLE
+        // =========================
+        [HttpGet("login/google")]
+        public IActionResult LoginGoogle()
+        {
+            var redirectUrl = Url.Action(nameof(GoogleCallback), "EmpresaAuth");
+            var properties = _signInManager.ConfigureExternalAuthenticationProperties("GoogleEmpresa", redirectUrl);
+            return Challenge(properties, "GoogleEmpresa");
+        }
+
+        [HttpGet("login/google-callback")]
+        public async Task<IActionResult> GoogleCallback()
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+
+            if (info == null)
+            {
+                ToastHelper.Error(TempData, "Não foi possível entrar com o Google. Tente novamente.");
+                return RedirectToAction("Index", "Home");
+            }
+
+            // Login repetido — conta já linkada ao Google.
+            var signInResult = await _signInManager.ExternalLoginSignInAsync(
+                info.LoginProvider, info.ProviderKey, isPersistent: true, bypassTwoFactor: true);
+
+            if (signInResult.Succeeded)
+            {
+                return RedirectToAction("Dashboard", "Empresas");
+            }
+
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            var emailVerificado = info.Principal.FindFirstValue("email_verified");
+            var nome = info.Principal.FindFirstValue(ClaimTypes.Name);
+
+            if (string.IsNullOrWhiteSpace(email) || emailVerificado == "false")
+            {
+                ToastHelper.Error(TempData, "Não conseguimos confirmar seu e-mail do Google. Tente novamente.");
+                return RedirectToAction("Index", "Home");
+            }
+
+            // Já existe conta local (senha) com esse e-mail — só linka o Google a ela.
+            var usuarioExistente = await _userManager.Users
+                .FirstOrDefaultAsync(u => u.Email == email && u.EmpresaId != null);
+
+            if (usuarioExistente != null)
+            {
+                await _userManager.AddLoginAsync(usuarioExistente, info);
+                await _signInManager.SignInAsync(usuarioExistente, isPersistent: true);
+                return RedirectToAction("Dashboard", "Empresas");
+            }
+
+            // Primeiro acesso — cria Empresa igual EmpresaService.RegisterAsync,
+            // só que sem senha (login é só via Google) e já com e-mail confirmado
+            // (o Google já provou a posse da caixa de entrada).
+            var novoUsuario = new ApplicationUser
+            {
+                UserName = $"empresa-{Guid.NewGuid()}",
+                Email = email,
+                NomeCompleto = nome,
+                EmailConfirmed = true
+            };
+
+            var criarResult = await _userManager.CreateAsync(novoUsuario);
+
+            if (!criarResult.Succeeded)
+            {
+                _logger.LogError(
+                    "Falha ao criar conta via Google pro e-mail {Email}: {Erros}.",
+                    email, string.Join("; ", criarResult.Errors.Select(e => e.Description)));
+
+                ToastHelper.Error(TempData, "Não foi possível criar sua conta agora. Tente novamente.");
+                return RedirectToAction("Index", "Home");
+            }
+
+            await _userManager.AddToRoleAsync(novoUsuario, "Empresa");
+
+            var empresa = new Empresa
+            {
+                Nome = string.IsNullOrWhiteSpace(nome) ? "Minha Empresa" : nome,
+                EmailContato = email,
+                TipoPlanoEscolhido = "mensal",
+                NomePlanoEscolhido = "Start"
+            };
+
+            _context.Empresas.Add(empresa);
+            await _context.SaveChangesAsync();
+
+            novoUsuario.EmpresaId = empresa.Id;
+            await _userManager.UpdateAsync(novoUsuario);
+
+            await _userManager.AddLoginAsync(novoUsuario, info);
+            await _signInManager.SignInAsync(novoUsuario, isPersistent: true);
+
+            ToastHelper.Success(TempData, "Conta criada com sucesso! Complete os dados da sua empresa em Configurações.");
+            return RedirectToAction("Dashboard", "Empresas");
         }
 
         [HttpGet("registro")]

@@ -10,8 +10,15 @@
 
 	var empresaInfo = await _context.Users
 		.Where(u => u.Id == userId)
-		.Select(u => new { u.EmpresaId, u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus, u.Empresa.VipAcesso })
+		.Select(u => new {
+			u.EmpresaId, u.Empresa.Nome, u.Empresa.LogoUrl, u.Empresa.AssinaturaStatus, u.Empresa.VipAcesso,
+			u.Empresa.SimpliAiBetaAtivo,
+			SimpliAiPermitidoPeloPlano = u.Empresa.Plano != null && u.Empresa.Plano.PermiteIA
+		})
 		.FirstOrDefaultAsync();
+
+	var simpliAiAtivo = empresaInfo?.EmpresaId != null &&
+		(empresaInfo.SimpliAiBetaAtivo || empresaInfo.SimpliAiPermitidoPeloPlano);
 
 	var nomeUsuario = empresaInfo?.Nome;
 	var logoEmpresa = empresaInfo?.LogoUrl;
@@ -155,6 +162,34 @@
 		</a>
 	}
 
+	@if (simpliAiAtivo && ViewData["OcultarSimpliAiBolha"] == null)
+	{
+		<form id="simpli-ai-token-form" style="display:none">
+			@Html.AntiForgeryToken()
+		</form>
+
+		<button type="button" class="simpli-ai-bolha" id="simpliAiBolha" title="Simpli AI">
+			<i class="bi bi-stars"></i>
+		</button>
+
+		<div class="simpli-ai-painel" id="simpliAiPainel">
+			<div class="simpli-ai-painel-header">
+				<div>
+					Simpli AI
+					<small>beta — pode errar</small>
+				</div>
+				<button type="button" id="simpliAiFechar">✕</button>
+			</div>
+			<div class="simpli-ai-mensagens" id="simpliAiMensagens">
+				<div class="simpli-ai-msg model">Oi! Como posso te ajudar hoje? Pergunte sobre seus agendamentos ou financeiro.</div>
+			</div>
+			<form class="simpli-ai-painel-form" id="simpliAiForm">
+				<input type="text" id="simpliAiInput" placeholder="Digite sua pergunta..." autocomplete="off" />
+				<button type="submit"><i class="bi bi-send"></i></button>
+			</form>
+		</div>
+	}
+
 	<!-- SIDEBAR -->
 	<div class="sidebar" id="sidebar">
 		@if (!string.IsNullOrEmpty(logoEmpresa))
@@ -183,6 +218,17 @@
 					<a class="nav-link" asp-controller="Empresas" asp-action="Dashboard">
 						<i class="bi bi-bar-chart"></i>
 						<span class="link-text">Dashboard</span>
+					</a>
+				</li>
+			}
+
+			@if (simpliAiAtivo)
+			{
+				<!-- SIMPLI AI -->
+				<li class="nav-item">
+					<a class="nav-link" asp-controller="SimpliAi" asp-action="Index">
+						<i class="bi bi-stars"></i>
+						<span class="link-text">Simpli AI</span>
 					</a>
 				</li>
 			}
@@ -583,6 +629,59 @@
 					toast.remove();
 				}, 300);
 			}, 3000);
+		}
+
+		const simpliAiBolha = document.getElementById('simpliAiBolha');
+
+		if (simpliAiBolha) {
+			const painel = document.getElementById('simpliAiPainel');
+			const fechar = document.getElementById('simpliAiFechar');
+			const form = document.getElementById('simpliAiForm');
+			const input = document.getElementById('simpliAiInput');
+			const mensagens = document.getElementById('simpliAiMensagens');
+
+			simpliAiBolha.addEventListener('click', () => painel.classList.toggle('show'));
+			fechar.addEventListener('click', () => painel.classList.remove('show'));
+
+			function adicionarMensagem(texto, role) {
+				const div = document.createElement('div');
+				div.className = 'simpli-ai-msg ' + role;
+				div.textContent = texto;
+				mensagens.appendChild(div);
+				mensagens.scrollTop = mensagens.scrollHeight;
+			}
+
+			form.addEventListener('submit', function (e) {
+				e.preventDefault();
+
+				const texto = input.value.trim();
+				if (!texto) return;
+
+				adicionarMensagem(texto, 'user');
+				input.value = '';
+
+				const token = document.querySelector('#simpli-ai-token-form input[name="__RequestVerificationToken"]').value;
+
+				fetch('/simpli-ai/mensagem', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						'RequestVerificationToken': token
+					},
+					body: JSON.stringify({ mensagem: texto })
+				})
+					.then(async response => {
+						const data = await response.json().catch(() => ({}));
+
+						if (!response.ok) {
+							adicionarMensagem(data.erro || 'Não consegui responder agora.', 'model');
+							return;
+						}
+
+						adicionarMensagem(data.resposta, 'model');
+					})
+					.catch(() => adicionarMensagem('Não consegui falar com o Simpli AI agora.', 'model'));
+			});
 		}
 	</script>
 </body>

@@ -5,18 +5,22 @@ using System.Text.Json;
 namespace EmpresaAgendamento.Services
 {
     // WhatsApp Cloud API (Meta) — https://developers.facebook.com/docs/whatsapp/cloud-api.
-    // Modo atual: mensagem de texto livre. Isso só é aceito pela Meta em duas
-    // situações: (1) número de TESTE do painel Meta for Developers, mandando
-    // pros até 5 números verificados; ou (2) dentro da janela de 24h depois
-    // do cliente ter mandado mensagem pra esse número antes. Um lembrete de
-    // verdade (a empresa manda primeiro, sem o cliente ter escrito) exige um
-    // "message template" pré-aprovado pela Meta — quando isso for criado e
-    // aprovado no Business Manager, troca o payload de "text" pra "template"
-    // aqui, só nesse método (o resto do pipeline não muda).
+    // Uma WABA (WhatsApp Business Account) só, com um token de acesso só —
+    // cada empresa tem seu próprio "Phone number ID", registrado nessa mesma
+    // WABA, então os templates aprovados valem pra todos os números.
+    //
+    // Duas formas de mandar mensagem:
+    //   - EnviarMensagemAsync: texto livre. Só aceito pela Meta em modo TESTE
+    //     do painel (até 5 números verificados) ou dentro da janela de 24h
+    //     depois do cliente ter escrito primeiro.
+    //   - EnviarTemplateAsync: "message template" pré-aprovado no Business
+    //     Manager — único jeito válido de a empresa iniciar a conversa
+    //     (confirmação de agendamento, lembrete).
     //
     // Configuração (User Secrets / variável de ambiente, nunca appsettings.json):
-    //   WhatsApp:CloudApi:PhoneNumberId  — o "Phone number ID" do painel da Meta
-    //   WhatsApp:CloudApi:AccessToken    — o token de acesso (temporário no modo teste)
+    //   WhatsApp:CloudApi:PhoneNumberId  — número global (fallback quando a
+    //                                      empresa ainda não tem o dela)
+    //   WhatsApp:CloudApi:AccessToken    — token da WABA, vale pra todo número
     //   WhatsApp:CloudApi:ApiVersion     — opcional, padrão "v21.0"
     // Sem essas chaves configuradas, cai de volta pro comportamento antigo
     // (só grava no log) — não trava o app enquanto não estiver pronto.
@@ -33,17 +37,55 @@ namespace EmpresaAgendamento.Services
             _logger = logger;
         }
 
-        public async Task EnviarMensagemAsync(string telefoneDestino, string mensagem)
+        public Task EnviarMensagemAsync(string telefoneDestino, string mensagem, string? phoneNumberIdEmpresa = null)
         {
-            var phoneNumberId = _configuration["WhatsApp:CloudApi:PhoneNumberId"];
+            return EnviarAsync(telefoneDestino, phoneNumberIdEmpresa, numero => new
+            {
+                messaging_product = "whatsapp",
+                to = numero,
+                type = "text",
+                text = new { body = mensagem }
+            });
+        }
+
+        public Task EnviarTemplateAsync(
+            string telefoneDestino,
+            string? phoneNumberIdEmpresa,
+            string templateName,
+            string idioma,
+            IReadOnlyList<string> parametros)
+        {
+            return EnviarAsync(telefoneDestino, phoneNumberIdEmpresa, numero => new
+            {
+                messaging_product = "whatsapp",
+                to = numero,
+                type = "template",
+                template = new
+                {
+                    name = templateName,
+                    language = new { code = idioma },
+                    components = new object[]
+                    {
+                        new
+                        {
+                            type = "body",
+                            parameters = parametros.Select(p => new { type = "text", text = p }).ToArray()
+                        }
+                    }
+                }
+            });
+        }
+
+        private async Task EnviarAsync(string telefoneDestino, string? phoneNumberIdEmpresa, Func<string, object> montarPayload)
+        {
+            var phoneNumberId = phoneNumberIdEmpresa ?? _configuration["WhatsApp:CloudApi:PhoneNumberId"];
             var accessToken = _configuration["WhatsApp:CloudApi:AccessToken"];
 
             if (string.IsNullOrWhiteSpace(phoneNumberId) || string.IsNullOrWhiteSpace(accessToken))
             {
                 _logger.LogInformation(
-                    "[WhatsApp - Cloud API não configurada] Para {Telefone}: {Mensagem}",
-                    telefoneDestino,
-                    mensagem);
+                    "[WhatsApp - Cloud API não configurada] Para {Telefone}",
+                    telefoneDestino);
 
                 return;
             }
@@ -59,13 +101,7 @@ namespace EmpresaAgendamento.Services
             var apiVersion = _configuration["WhatsApp:CloudApi:ApiVersion"];
             apiVersion = string.IsNullOrWhiteSpace(apiVersion) ? "v21.0" : apiVersion;
 
-            var payload = new
-            {
-                messaging_product = "whatsapp",
-                to = numero,
-                type = "text",
-                text = new { body = mensagem }
-            };
+            var payload = montarPayload(numero);
 
             using var request = new HttpRequestMessage(
                 HttpMethod.Post,

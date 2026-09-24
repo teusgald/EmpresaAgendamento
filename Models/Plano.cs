@@ -30,6 +30,12 @@ namespace EmpresaAgendamento.Models
 
         public bool PermiteAPI { get; set; }
 
+        // Simpli AI — assistente de chat com acesso a dado real da empresa.
+        // 0 em LimiteIAMes = ilimitado, mesma convenção de LimiteAgendamentosMes.
+        public bool PermiteIA { get; set; }
+
+        public int LimiteIAMes { get; set; }
+
         // ─────────────────────────────────────────────
         // 💳 STRIPE (mapeamento do plano local para o Stripe)
         // ─────────────────────────────────────────────

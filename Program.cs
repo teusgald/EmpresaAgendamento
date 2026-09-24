@@ -54,6 +54,31 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<ApplicationDbContext>()
 .AddDefaultTokenProviders();
 
+// =========================
+// 🔥 LOGIN COM GOOGLE (Empresa e Cliente)
+// =========================
+// Duas schemes separadas — cada uma com seu próprio CallbackPath — em vez de
+// uma só com discriminador: deixa fisicamente impossível o fluxo Empresa
+// acabar criando um Cliente (ou vice-versa). Client ID/Secret são o mesmo
+// app OAuth no Google Cloud Console, só com os dois redirect URIs
+// autorizados. Configuração via User Secrets/env var, nunca appsettings.json
+// (mesmo padrão do WhatsApp:CloudApi:* e AiAssistant:Gemini:ApiKey).
+builder.Services.AddAuthentication()
+    .AddGoogle("GoogleEmpresa", options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+        options.CallbackPath = "/empresa/signin-google";
+        options.SignInScheme = IdentityConstants.ExternalScheme;
+    })
+    .AddGoogle("GoogleCliente", options =>
+    {
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? "";
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? "";
+        options.CallbackPath = "/cliente/signin-google";
+        options.SignInScheme = IdentityConstants.ExternalScheme;
+    });
+
 // Sem isso, um usuário logado que tenta acessar algo fora da role dele
 // (ex.: Funcionário tentando abrir /Servicos) cai no /Account/AccessDenied
 // padrão do Identity, que não existe nesse projeto.
@@ -113,6 +138,8 @@ builder.Services.AddScoped<IComandaService, ComandaService>();
 builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<LembreteAgendamentoBackgroundService>();
+builder.Services.AddScoped<ISimpliAiToolsService, SimpliAiToolsService>();
+builder.Services.AddHttpClient<IAiAssistantService, GeminiAssistantService>();
 
 // =========================
 // 🔥 STRIPE

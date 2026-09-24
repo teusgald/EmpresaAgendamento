@@ -10,6 +10,9 @@ namespace EmpresaAgendamento.Services
     // pra reduzir falta — só pra empresas cujo plano permite (Plano.PermiteWhatsapp).
     public class LembreteAgendamentoBackgroundService : BackgroundService
     {
+        private const string TemplateLembrete = "lembrete_agendamento";
+        private const string IdiomaTemplate = "pt_BR";
+
         private static readonly TimeSpan IntervaloVarredura = TimeSpan.FromMinutes(15);
 
         private readonly IServiceScopeFactory _scopeFactory;
@@ -86,14 +89,21 @@ namespace EmpresaAgendamento.Services
 
                 var nomeCliente = agendamento.Cliente?.Nome ?? agendamento.NomeClienteAvulso ?? "Cliente";
 
-                var mensagem =
-                    $"Olá {nomeCliente}! Passando pra lembrar do seu horário na " +
-                    $"{agendamento.Empresa.Nome}: {agendamento.Servico.Nome} em " +
-                    $"{agendamento.DataHora:dd/MM} às {agendamento.DataHora:HH:mm}. Até lá!";
-
                 try
                 {
-                    await whatsApp.EnviarMensagemAsync(telefone, mensagem);
+                    await whatsApp.EnviarTemplateAsync(
+                        telefone,
+                        agendamento.Empresa.WhatsAppPhoneNumberId,
+                        TemplateLembrete,
+                        IdiomaTemplate,
+                        new[]
+                        {
+                            nomeCliente,
+                            agendamento.Empresa.Nome,
+                            agendamento.Servico.Nome,
+                            agendamento.DataHora.ToString("dd/MM"),
+                            agendamento.DataHora.ToString("HH:mm")
+                        });
                     agendamento.LembreteEnviado = true;
                 }
                 catch (Exception ex)

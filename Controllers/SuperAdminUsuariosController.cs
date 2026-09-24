@@ -118,6 +118,8 @@ namespace EmpresaAgendamento.Controllers
                     EmpresaNome = empresa.Nome,
                     PlanoId = empresa.PlanoId,
                     VipAcesso = empresa.VipAcesso,
+                    WhatsAppPhoneNumberId = empresa.WhatsAppPhoneNumberId,
+                    SimpliAiBetaAtivo = empresa.SimpliAiBetaAtivo,
                     PlanosDisponiveis = planos
                 };
 
@@ -146,6 +148,10 @@ namespace EmpresaAgendamento.Controllers
 
                 empresa.PlanoId = model.PlanoId;
                 empresa.VipAcesso = model.VipAcesso;
+                empresa.WhatsAppPhoneNumberId = string.IsNullOrWhiteSpace(model.WhatsAppPhoneNumberId)
+                    ? null
+                    : model.WhatsAppPhoneNumberId.Trim();
+                empresa.SimpliAiBetaAtivo = model.SimpliAiBetaAtivo;
 
                 await _context.SaveChangesAsync();
 

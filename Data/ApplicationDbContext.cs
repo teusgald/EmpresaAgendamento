@@ -54,6 +54,8 @@ namespace EmpresaAgendamento.Data
         public DbSet<Produto> Produtos { get; set; }
         public DbSet<ItemComanda> ItensComanda { get; set; }
 
+        public DbSet<InteracaoIA> InteracoesIA { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

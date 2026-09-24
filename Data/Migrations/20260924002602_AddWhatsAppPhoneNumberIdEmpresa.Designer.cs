@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmpresaAgendamento.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924002602_AddWhatsAppPhoneNumberIdEmpresa")]
+    partial class AddWhatsAppPhoneNumberIdEmpresa
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -739,9 +742,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<string>("SegmentoAtuacao")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("SimpliAiBetaAtivo")
-                        .HasColumnType("bit");
-
                     b.Property<string>("Site")
                         .HasColumnType("nvarchar(max)");
 
@@ -1050,36 +1050,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.ToTable("FuncionariosServicos");
                 });
 
-            modelBuilder.Entity("EmpresaAgendamento.Models.InteracaoIA", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CriadoEm")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("EmpresaId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Mensagem")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmpresaId");
-
-                    b.ToTable("InteracoesIA");
-                });
-
             modelBuilder.Entity("EmpresaAgendamento.Models.ItemComanda", b =>
                 {
                     b.Property<int>("Id")
@@ -1267,9 +1237,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Property<int>("LimiteFuncionarios")
                         .HasColumnType("int");
 
-                    b.Property<int>("LimiteIAMes")
-                        .HasColumnType("int");
-
                     b.Property<string>("Nome")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -1279,9 +1246,6 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("PermiteFinanceiro")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("PermiteIA")
                         .HasColumnType("bit");
 
                     b.Property<bool>("PermiteLandingPage")
@@ -1970,17 +1934,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("Funcionario");
 
                     b.Navigation("Servico");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.InteracaoIA", b =>
-                {
-                    b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
-                        .WithMany()
-                        .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Empresa");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.ItemComanda", b =>

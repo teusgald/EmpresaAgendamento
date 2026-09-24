@@ -29,7 +29,10 @@
         body {
             background: #F8F9FA;
             color: #111111;
-            padding-top: 80px;
+            /* Acompanha o respiro adicionado em .navbar-custom — senão o
+               conteúdo da página fica escondido atrás da navbar, que ficou
+               mais alta pra caber a barra de status. */
+            padding-top: calc(80px + env(safe-area-inset-top, 0px));
         }
 
         @@media (max-width: 991px) {
@@ -50,6 +53,11 @@
             background: rgba(255, 255, 255, 0.85);
             backdrop-filter: blur(10px);
             border-bottom: 1px solid #e5e7eb;
+            /* No celular (instalado como PWA ou não), a barra de status
+               (bateria/relógio/notificação) fica por cima do topo da tela —
+               sem esse respiro, ela sobrepõe a logo/hambúrguer e o clique
+               nem chega no botão. */
+            padding-top: env(safe-area-inset-top, 0px);
         }
 
         /* LINKS */

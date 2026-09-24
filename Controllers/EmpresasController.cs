@@ -74,9 +74,15 @@ namespace EmpresaAgendamento.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
+                var phoneNumberIdEmpresa = await _context.Empresas
+                    .Where(e => e.Id == user.EmpresaId)
+                    .Select(e => e.WhatsAppPhoneNumberId)
+                    .FirstOrDefaultAsync();
+
                 await _whatsAppService.EnviarMensagemAsync(
                     telefone,
-                    "Simpli Time: essa é uma mensagem de teste da integração com o WhatsApp. Se você recebeu, está tudo funcionando!");
+                    "Simpli Time: essa é uma mensagem de teste da integração com o WhatsApp. Se você recebeu, está tudo funcionando!",
+                    phoneNumberIdEmpresa);
 
                 ToastHelper.Success(
                     TempData,

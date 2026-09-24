@@ -33,6 +33,8 @@ namespace EmpresaAgendamento.Models.ViewModels
 
         public int? PlanoId { get; set; }
         public bool VipAcesso { get; set; }
+        public string? WhatsAppPhoneNumberId { get; set; }
+        public bool SimpliAiBetaAtivo { get; set; }
 
         public List<Plano> PlanosDisponiveis { get; set; } = new();
     }

@@ -41,6 +41,25 @@
                     </label>
                 </div>
 
+                <div class="mb-4">
+                    <label class="form-label small fw-semibold">WhatsApp — Phone number ID</label>
+                    <input type="text" class="form-control" asp-for="WhatsAppPhoneNumberId" placeholder="Ex.: 109876543210987" />
+                    <div class="form-text">
+                        Copiado do Meta Business Manager (WhatsApp &gt; Configuração da API), depois
+                        de registrar o número dessa empresa na WABA. Em branco = usa o número
+                        global enquanto não for provisionado.
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-4">
+                    <input class="form-check-input" type="checkbox" asp-for="SimpliAiBetaAtivo" id="simpliAiBetaCheck" />
+                    <label class="form-check-label" for="simpliAiBetaCheck">
+                        Simpli AI (beta) — libera o assistente de chat mesmo sem o plano permitir.
+                        Só marcar em empresa de teste: o provedor de IA está no tier gratuito
+                        enquanto isso (dado pode ser usado pelo provedor pra treinar modelo).
+                    </label>
+                </div>
+
                 <button type="submit" class="btn btn-dark w-100">Salvar</button>
 
             </form>

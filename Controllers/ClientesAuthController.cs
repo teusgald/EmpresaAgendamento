@@ -3,10 +3,12 @@ using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.ViewModels;
 using EmpresaAgendamento.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 [Route("cliente")]
 public class ClientesAuthController : Controller
@@ -35,6 +37,142 @@ public class ClientesAuthController : Controller
         _configuration = configuration;
         _clienteUnificacaoService = clienteUnificacaoService;
         _logger = logger;
+    }
+
+    // =========================
+    // 🔥 LOGIN COM GOOGLE
+    // =========================
+    [HttpGet("login/google")]
+    public IActionResult LoginGoogle()
+    {
+        var redirectUrl = Url.Action(nameof(GoogleCallback), "ClientesAuth");
+        var properties = _signInManager.ConfigureExternalAuthenticationProperties("GoogleCliente", redirectUrl);
+        return Challenge(properties, "GoogleCliente");
+    }
+
+    [HttpGet("login/google-callback")]
+    public async Task<IActionResult> GoogleCallback()
+    {
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+
+        if (info == null)
+        {
+            ToastHelper.Error(TempData, "Não foi possível entrar com o Google. Tente novamente.");
+            return RedirectToAction("Index", "Home");
+        }
+
+        // Login repetido — conta já linkada ao Google.
+        var signInResult = await _signInManager.ExternalLoginSignInAsync(
+            info.LoginProvider, info.ProviderKey, isPersistent: true, bypassTwoFactor: true);
+
+        if (signInResult.Succeeded)
+        {
+            return RedirectToAction("Index", "ClienteInicio");
+        }
+
+        var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+        var emailVerificado = info.Principal.FindFirstValue("email_verified");
+        var nome = info.Principal.FindFirstValue(ClaimTypes.Name);
+
+        if (string.IsNullOrWhiteSpace(email) || emailVerificado == "false")
+        {
+            ToastHelper.Error(TempData, "Não conseguimos confirmar seu e-mail do Google. Tente novamente.");
+            return RedirectToAction("Index", "Home");
+        }
+
+        // Já existe conta local (senha) com esse e-mail — só linka o Google a ela.
+        var usuarioExistente = await _userManager.Users
+            .FirstOrDefaultAsync(u => u.Email == email && u.Cliente != null);
+
+        if (usuarioExistente != null)
+        {
+            await _userManager.AddLoginAsync(usuarioExistente, info);
+            await _signInManager.SignInAsync(usuarioExistente, isPersistent: true);
+            return RedirectToAction("Index", "ClienteInicio");
+        }
+
+        // Cadastro "órfão" (feito manualmente por alguma empresa, sem login
+        // próprio) com esse e-mail — ativa em vez de duplicar, mesma lógica
+        // do "Esqueci minha senha" (ClientesAuthController.Forgot).
+        var clienteParaAtivar = await _clienteUnificacaoService.UnificarOrfaosAsync(email);
+
+        ApplicationUser novoUsuario;
+
+        if (clienteParaAtivar != null)
+        {
+            novoUsuario = new ApplicationUser
+            {
+                UserName = $"cliente-{Guid.NewGuid()}",
+                Email = email,
+                NomeCompleto = clienteParaAtivar.Nome,
+                EmailConfirmed = true
+            };
+
+            var criarResult = await _userManager.CreateAsync(novoUsuario);
+
+            if (!criarResult.Succeeded)
+            {
+                _logger.LogError(
+                    "Falha ao ativar conta via Google pro cliente {ClienteId} (e-mail {Email}): {Erros}.",
+                    clienteParaAtivar.Id, email, string.Join("; ", criarResult.Errors.Select(e => e.Description)));
+
+                ToastHelper.Error(TempData, "Não foi possível entrar agora. Tente novamente.");
+                return RedirectToAction("Index", "Home");
+            }
+
+            await _userManager.AddToRoleAsync(novoUsuario, "Cliente");
+
+            clienteParaAtivar.UserId = novoUsuario.Id;
+            novoUsuario.ClienteId = clienteParaAtivar.Id;
+
+            await _context.SaveChangesAsync();
+            await _userManager.UpdateAsync(novoUsuario);
+        }
+        else
+        {
+            // Pessoa nova de verdade — cria Cliente igual ao Register local,
+            // só que sem senha (login é só via Google) e já com e-mail
+            // confirmado (o Google já provou a posse da caixa de entrada).
+            novoUsuario = new ApplicationUser
+            {
+                UserName = $"cliente-{Guid.NewGuid()}",
+                Email = email,
+                NomeCompleto = nome,
+                EmailConfirmed = true
+            };
+
+            var criarResult = await _userManager.CreateAsync(novoUsuario);
+
+            if (!criarResult.Succeeded)
+            {
+                _logger.LogError(
+                    "Falha ao criar conta via Google pro e-mail {Email}: {Erros}.",
+                    email, string.Join("; ", criarResult.Errors.Select(e => e.Description)));
+
+                ToastHelper.Error(TempData, "Não foi possível criar sua conta agora. Tente novamente.");
+                return RedirectToAction("Index", "Home");
+            }
+
+            await _userManager.AddToRoleAsync(novoUsuario, "Cliente");
+
+            var cliente = new Cliente
+            {
+                Nome = string.IsNullOrWhiteSpace(nome) ? "Cliente" : nome,
+                Email = email,
+                UserId = novoUsuario.Id
+            };
+
+            _context.Clientes.Add(cliente);
+            await _context.SaveChangesAsync();
+
+            novoUsuario.ClienteId = cliente.Id;
+            await _userManager.UpdateAsync(novoUsuario);
+        }
+
+        await _userManager.AddLoginAsync(novoUsuario, info);
+        await _signInManager.SignInAsync(novoUsuario, isPersistent: true);
+
+        return RedirectToAction("Index", "ClienteInicio");
     }
 
     // =========================

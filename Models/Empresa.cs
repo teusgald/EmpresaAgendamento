@@ -84,6 +84,13 @@ namespace EmpresaAgendamento.Models
         public string? Telefone { get; set; }
         public string? WhatsApp { get; set; }
 
+        // "Phone number ID" do WhatsApp Business (Meta Cloud API) dedicado
+        // dessa empresa — todas compartilham a mesma WABA/token (User Secrets),
+        // só o remetente muda. Nulo = ainda não provisionado; envio cai pro
+        // número global enquanto isso (ver WhatsAppService).
+        [StringLength(40)]
+        public string? WhatsAppPhoneNumberId { get; set; }
+
         public string? Email { get; set; }
         public string? EmailContato { get; set; }
 
@@ -182,6 +189,11 @@ namespace EmpresaAgendamento.Models
         // para testers/parceiros iniciais — nunca é bloqueado pelo paywall,
         // independente do status da assinatura no Stripe.
         public bool VipAcesso { get; set; }
+
+        // Libera o Simpli AI mesmo sem o plano permitir — allowlist manual do
+        // SuperAdmin pra empresa de teste, enquanto o provedor de IA estiver
+        // no tier gratuito (não pode expor cliente pagante de verdade a ele).
+        public bool SimpliAiBetaAtivo { get; set; }
 
         // ─────────────────────────────────────────────
         // 🔗 RELACIONAMENTOS
