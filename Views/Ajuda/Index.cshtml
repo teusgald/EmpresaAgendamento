@@ -87,6 +87,22 @@
             </div>
         }
 
+        <h5 class="fw-bold mt-4 mb-2">Simpli AI <span class="badge bg-dark">beta</span></h5>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">O que é o Simpli AI e como uso?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p>O <strong>Simpli AI</strong> é um assistente de chat que consulta dado real da sua empresa pra responder pergunta e ajudar com conteúdo — não é só um gerador de texto genérico. Ele aparece de duas formas: a bolha flutuante no canto inferior direito (em qualquer tela) e o módulo <strong>Simpli AI</strong> no menu lateral, com histórico completo da conversa e sugestões prontas (relatório semanal, texto pra post, clientes ativos).</p>
+                    <p>Exemplos de pergunta que ele responde consultando o banco de verdade: <em>"quantos agendamentos tive essa semana?"</em>, <em>"como foi meu faturamento esse mês?"</em>.</p>
+                    <p class="mb-0">Ainda não gera imagem — se você pedir uma imagem pra post, ele avisa e oferece escrever a legenda em texto no lugar. Disponível só pra quem tiver liberado no plano ou pela nossa equipe (fase de testes).</p>
+                </div>
+            </div>
+        </div>
+
         <h5 class="fw-bold mt-4 mb-2">Calendário e Agendamentos</h5>
 
         <div class="card mb-2 faq-item">
@@ -105,6 +121,18 @@
                     </ol>
                     <p>O sistema recusa o agendamento se o funcionário já tiver outro horário conflitante (considerando a duração do serviço) ou se a empresa já tiver atingido o limite de agendamentos por mês do plano contratado. Ao salvar, o agendamento nasce com status <strong>Agendado</strong> e já entra no Financeiro como uma previsão de receita (Contas a Receber pendente).</p>
                     <p class="mb-0">Um Funcionário logado só enxerga e só cria agendamentos em nome dele mesmo — nunca de um colega.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">O cliente recebe confirmação e lembrete por WhatsApp?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">Se o seu plano permitir e o número da empresa estiver configurado, o sistema manda automaticamente uma mensagem de <strong>confirmação</strong> no WhatsApp assim que o agendamento é criado, e um <strong>lembrete</strong> cerca de 24 horas antes do horário — pra reduzir falta. Não precisa fazer nada manualmente: os dois envios rodam sozinhos, usando o telefone cadastrado do cliente.</p>
                 </div>
             </div>
         </div>
@@ -223,6 +251,20 @@
                 </div>
             </div>
 
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">O que são os Perfis de acesso?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p>Em <strong>Perfis de acesso</strong> você cria perfis próprios (ex.: "Recepção", "Financeiro Jr") e escolhe, tela por tela, se aquele perfil pode <strong>ver</strong>, <strong>criar</strong>, <strong>editar</strong> e/ou <strong>excluir</strong> — é mais fino que o Nível de acesso (Padrão/Gerente) sozinho.</p>
+                        <p>No cadastro do funcionário, atribua o perfil no campo <strong>Perfil de acesso</strong>. Hoje o perfil já controla a tela de <strong>Clientes</strong> (as demais telas ainda seguem só pelo Nível de acesso, e vão migrar aos poucos).</p>
+                        <p class="mb-0"><strong>Atenção:</strong> funcionário sem nenhum perfil atribuído não acessa as telas já migradas, mesmo sendo Gerente — se um funcionário perder acesso a Clientes depois de criado, confira se ele tem um perfil escolhido.</p>
+                    </div>
+                </div>
+            </div>
+
             <h5 class="fw-bold mt-4 mb-2">Planos</h5>
 
             <div class="card mb-2 faq-item">
@@ -294,6 +336,20 @@
                     </div>
                 </div>
             </div>
+
+            <h5 class="fw-bold mt-4 mb-2">Auditoria</h5>
+
+            <div class="card mb-2 faq-item">
+                <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                    <span class="fw-semibold">Pra que serve a tela de Auditoria?</span>
+                    <i class="bi bi-chevron-down small faq-chevron"></i>
+                </a>
+                <div class="collapse" id="faq@(contador)">
+                    <div class="card-body pt-0 text-muted">
+                        <p class="mb-0">Toda vez que um cliente é <strong>criado</strong>, <strong>editado</strong> ou <strong>ativado/desativado</strong>, o sistema registra quem fez, quando e o que mudou (ex.: "Telefone: (11) 9999-... → (11) 8888-..."). A tela <strong>Auditoria</strong> lista e permite buscar esse histórico — importante pra rastrear alteração em dado de cliente, inclusive pra fins de LGPD.</p>
+                    </div>
+                </div>
+            </div>
         }
 
         @if (!ehFuncionario)
@@ -329,6 +385,20 @@
                 </div>
             </div>
         }
+
+        <h5 class="fw-bold mt-4 mb-2">Login</h5>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Dá pra entrar com a conta do Google?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">Sim — na tela de login da empresa, o botão <strong>Continuar com Google</strong> cria a conta na hora (se for seu primeiro acesso) ou entra direto, se o e-mail do Google já bater com um cadastro existente. Não precisa confirmar e-mail depois, porque o Google já garante que ele é seu.</p>
+                </div>
+            </div>
+        </div>
 
         <h5 class="fw-bold mt-4 mb-2">Notificações</h5>
 
@@ -408,6 +478,18 @@
             <div class="collapse" id="faq@(contador)">
                 <div class="card-body pt-0 text-muted">
                     <p class="mb-0">Nome, e-mail e telefone são os informados no seu cadastro (tela de <strong>Registro</strong>) — hoje não existe uma tela própria pra alterar esses dados depois de criada a conta. Se precisar corrigir alguma informação, fale com o <strong>Atendimento</strong>.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-2 faq-item">
+            <a class="faq-question d-flex justify-content-between align-items-center p-3 text-decoration-none" data-bs-toggle="collapse" href="#@ProximoId()" role="button" aria-expanded="false">
+                <span class="fw-semibold">Dá pra entrar com a conta do Google?</span>
+                <i class="bi bi-chevron-down small faq-chevron"></i>
+            </a>
+            <div class="collapse" id="faq@(contador)">
+                <div class="card-body pt-0 text-muted">
+                    <p class="mb-0">Sim — na tela de login, o botão <strong>Continuar com Google</strong> cria sua conta na hora (se for seu primeiro acesso) ou entra direto, se o e-mail do Google já bater com um cadastro existente. Se alguma empresa já tinha te cadastrado manualmente antes (sem você ter login), entrar com esse mesmo e-mail no Google já une automaticamente ao seu histórico de agendamentos com ela.</p>
                 </div>
             </div>
         </div>
