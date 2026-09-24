@@ -1,4 +1,5 @@
 @using EmpresaAgendamento.Models.ViewModels
+@using EmpresaAgendamento.Helpers
 @model EmpresaRegisterViewModel
 
 <div class="auth-card">
@@ -36,16 +37,12 @@
 
             <div class="col-md-5 mb-3">
                 <label class="form-label small fw-semibold">Segmento</label>
-                <select asp-for="SegmentoAtuacao" class="form-select">
+                <select asp-for="Categoria" class="form-select">
                     <option value="">Selecione</option>
-                    <option>Barbearia</option>
-                    <option>Salão de Beleza</option>
-                    <option>Clínica de Estética</option>
-                    <option>Manicure e Pedicure</option>
-                    <option>Estúdio de Tatuagem</option>
-                    <option>Academia / Personal Trainer</option>
-                    <option>Consultório / Clínica</option>
-                    <option>Outro</option>
+                    @foreach (var opcao in CategoriaEmpresaHelper.Opcoes)
+                    {
+                        <option value="@opcao.Valor">@opcao.Nome</option>
+                    }
                 </select>
             </div>
         </div>

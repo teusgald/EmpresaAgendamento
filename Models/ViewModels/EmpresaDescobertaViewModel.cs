@@ -1,3 +1,5 @@
+using EmpresaAgendamento.Models.Enums;
+
 namespace EmpresaAgendamento.Models.ViewModels
 {
     // Tela pública de descoberta de empresas (PublicoController.Empresas,
@@ -6,7 +8,7 @@ namespace EmpresaAgendamento.Models.ViewModels
     public class EmpresaDescobertaViewModel
     {
         public List<EmpresaSugestaoViewModel> Empresas { get; set; } = new();
-        public List<string> Categorias { get; set; } = new();
+        public List<(CategoriaEmpresa Valor, string Nome)> Categorias { get; set; } = new();
         public EmpresaDescobertaFiltro Filtro { get; set; } = new();
     }
 }

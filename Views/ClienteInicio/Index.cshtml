@@ -1,4 +1,5 @@
 @model EmpresaAgendamento.Models.ViewModels.ClienteInicioViewModel
+@using EmpresaAgendamento.Helpers
 
 @{
     ViewData["Title"] = "Início";
@@ -17,13 +18,17 @@
     <div class="card shadow-sm mb-3">
         <div class="card-body">
             <form method="get" class="row g-2 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label">Buscar pelo nome</label>
+                    <input type="text" name="nome" class="form-control" value="@Model.NomeBuscado" placeholder="Nome do estabelecimento" />
+                </div>
                 <div class="col-6 col-md-3">
                     <label class="form-label">Categoria</label>
                     <select name="categoria" class="form-select">
                         <option value="">Todas as categorias</option>
                         @foreach (var cat in Model.Categorias)
                         {
-                            <option value="@cat" selected="@(Model.CategoriaSelecionada == cat)">@cat</option>
+                            <option value="@cat.Valor" selected="@(Model.CategoriaSelecionada == cat.Valor)">@cat.Nome</option>
                         }
                     </select>
                 </div>
@@ -33,7 +38,13 @@
                 </div>
                 <div class="col-6 col-md-1">
                     <label class="form-label">UF</label>
-                    <input type="text" name="uf" class="form-control" value="@Model.UF" maxlength="2" placeholder="SP" />
+                    <select name="uf" class="form-select">
+                        <option value="">Qualquer</option>
+                        @foreach (var uf in EstadoBrasilHelper.Estados)
+                        {
+                            <option value="@uf.Sigla" selected="@(Model.UF == uf.Sigla)">@uf.Sigla</option>
+                        }
+                    </select>
                 </div>
                 <div class="col-6 col-md-2">
                     <label class="form-label">Avaliação mínima</label>
@@ -108,9 +119,9 @@
             <div class="empty-state">
                 <i class="bi bi-search"></i>
                 <p>
-                    @if (!string.IsNullOrWhiteSpace(Model.CategoriaSelecionada))
+                    @if (Model.CategoriaSelecionada.HasValue)
                     {
-                        @:Nenhuma empresa encontrada em "@Model.CategoriaSelecionada" ainda.
+                        @:Nenhuma empresa encontrada em "@EmpresaAgendamento.Helpers.CategoriaEmpresaHelper.NomeExibicao(Model.CategoriaSelecionada)" ainda.
                     }
                     else
                     {

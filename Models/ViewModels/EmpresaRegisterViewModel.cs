@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EmpresaAgendamento.Models.Enums;
 
 namespace EmpresaAgendamento.Models.ViewModels
 {
@@ -13,8 +14,7 @@ namespace EmpresaAgendamento.Models.ViewModels
         public string NomeEmpresa { get; set; } = null!;
 
         [Required(ErrorMessage = "Selecione o segmento do seu negócio.")]
-        [StringLength(100)]
-        public string SegmentoAtuacao { get; set; } = null!;
+        public CategoriaEmpresa? Categoria { get; set; }
 
         [Required(ErrorMessage = "Informe seu telefone/WhatsApp.")]
         [StringLength(25)]

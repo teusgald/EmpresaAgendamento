@@ -909,19 +909,19 @@ namespace EmpresaAgendamento.Controllers
                     filtro.Limite = LimitePadraoDescoberta;
                 }
 
-                var categorias = await _context.Empresas
-                    .Where(e => e.Ativo && e.SegmentoAtuacao != null && e.SegmentoAtuacao != "")
-                    .Select(e => e.SegmentoAtuacao!)
-                    .Distinct()
-                    .OrderBy(c => c)
-                    .ToListAsync();
+                // Lista fixa do enum (CategoriaEmpresaHelper), não mais um
+                // SELECT DISTINCT do texto livre que cada empresa digitava —
+                // era isso que deixava esse menu gigante e com duplicata
+                // ("Salão de beleza" vs "Salão De Beleza" como opções
+                // diferentes).
+                var categorias = CategoriaEmpresaHelper.Opcoes;
 
                 var empresas = await _empresaDescobertaService.BuscarAsync(filtro);
 
                 var viewModel = new EmpresaDescobertaViewModel
                 {
                     Empresas = empresas,
-                    Categorias = categorias,
+                    Categorias = categorias.ToList(),
                     Filtro = filtro
                 };
 

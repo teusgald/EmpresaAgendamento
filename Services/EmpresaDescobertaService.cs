@@ -1,4 +1,5 @@
 using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models.ViewModels;
 using Microsoft.EntityFrameworkCore;
 
@@ -34,9 +35,16 @@ namespace EmpresaAgendamento.Services
                     TotalAvaliacoes = avaliacoesDaEmpresa.Count()
                 };
 
-            if (!string.IsNullOrWhiteSpace(filtro.Categoria))
+            if (filtro.Categoria.HasValue)
             {
-                query = query.Where(x => x.Empresa.SegmentoAtuacao == filtro.Categoria);
+                query = query.Where(x => x.Empresa.Categoria == filtro.Categoria.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filtro.Nome))
+            {
+                query = query.Where(x =>
+                    EF.Functions.Like(x.Empresa.Nome, $"%{filtro.Nome}%") ||
+                    (x.Empresa.NomeFantasia != null && EF.Functions.Like(x.Empresa.NomeFantasia, $"%{filtro.Nome}%")));
             }
 
             if (!string.IsNullOrWhiteSpace(filtro.Cidade))
@@ -65,29 +73,52 @@ namespace EmpresaAgendamento.Services
                 query = query.Where(x => x.NotaMedia != null && x.NotaMedia >= filtro.AvaliacaoMinima.Value);
             }
 
-            var resultado = await query
+            // Dois passos: a projeção do EF Core materializa os campos crus
+            // (SQL de verdade), e só DEPOIS — já em memória — entra
+            // CategoriaEmpresaHelper.NomeExibicao. EF não sabe traduzir uma
+            // chamada de método C# arbitrária pra SQL; colocar isso dentro do
+            // .Select() que ainda vira IQueryable derruba em runtime.
+            var brutos = await query
                 .OrderByDescending(x => x.NotaMedia ?? 0)
                 .ThenByDescending(x => x.TotalAvaliacoes)
                 .ThenByDescending(x => x.Empresa.DataCadastro)
-                .Select(x => new EmpresaSugestaoViewModel
+                .Select(x => new
                 {
-                    Id = x.Empresa.Id,
+                    x.Empresa.Id,
                     Nome = x.Empresa.NomeFantasia ?? x.Empresa.Nome,
-                    LogoUrl = x.Empresa.LogoUrl,
+                    x.Empresa.LogoUrl,
                     CapaOuFotoUrl = x.Empresa.CapaBannerUrl ?? x.Empresa.Fotos
                         .OrderBy(f => f.DataUpload)
                         .Select(f => f.Url)
                         .FirstOrDefault(),
-                    Categoria = x.Empresa.SegmentoAtuacao,
-                    Cidade = x.Empresa.Cidade,
-                    UF = x.Empresa.UF,
-                    NotaMedia = x.NotaMedia,
-                    TotalAvaliacoes = x.TotalAvaliacoes,
+                    x.Empresa.Categoria,
+                    x.Empresa.Cidade,
+                    x.Empresa.UF,
+                    x.NotaMedia,
+                    x.TotalAvaliacoes,
                     Slug = x.Empresa.Slug!,
-                    Latitude = x.Empresa.Latitude,
-                    Longitude = x.Empresa.Longitude
+                    x.Empresa.Latitude,
+                    x.Empresa.Longitude
                 })
                 .ToListAsync();
+
+            var resultado = brutos
+                .Select(x => new EmpresaSugestaoViewModel
+                {
+                    Id = x.Id,
+                    Nome = x.Nome,
+                    LogoUrl = x.LogoUrl,
+                    CapaOuFotoUrl = x.CapaOuFotoUrl,
+                    Categoria = CategoriaEmpresaHelper.NomeExibicao(x.Categoria),
+                    Cidade = x.Cidade,
+                    UF = x.UF,
+                    NotaMedia = x.NotaMedia,
+                    TotalAvaliacoes = x.TotalAvaliacoes,
+                    Slug = x.Slug,
+                    Latitude = x.Latitude,
+                    Longitude = x.Longitude
+                })
+                .ToList();
 
             // Distância (Haversine) calculada em memória — depende de
             // latitude/longitude do usuário E da empresa. Empresa sem as duas

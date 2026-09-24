@@ -26,6 +26,11 @@
           href="~/css/publico.css"
           asp-append-version="true" />
 
+    <!-- Todo <select class="form-select"> vira um dropdown estilizado (com
+         busca quando tem mais de 10 opções) — ver wwwroot/js/realceSelect.js. -->
+    <link rel="stylesheet" href="~/css/realceSelect.css" asp-append-version="true" />
+    <script src="~/js/realceSelect.js" asp-append-version="true"></script>
+
     <script src="~/js/masks.js" asp-append-version="true"></script>
 
     @RenderSection("Styles", required: false)

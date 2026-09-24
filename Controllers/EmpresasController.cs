@@ -31,6 +31,7 @@ namespace EmpresaAgendamento.Controllers
         private static readonly string[] ExtensoesPermitidas = { ".png", ".jpg", ".jpeg", ".webp", ".gif" };
 
         private const long TamanhoMaximoLogoBytes = 2 * 1024 * 1024; // 2 MB
+        private const long TamanhoMaximoBannerBytes = 5 * 1024 * 1024; // 5 MB — imagem larga, pesa mais que a logo
 
         private const int LimiteFotosGaleria = 5;
 
@@ -318,7 +319,7 @@ namespace EmpresaAgendamento.Controllers
         // =========================
         [HttpPost("index")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Index(Empresa model, IFormFile? logoFile)
+        public async Task<IActionResult> Index(Empresa model, IFormFile? logoFile, IFormFile? bannerFile)
         {
             try
             {
@@ -344,7 +345,7 @@ namespace EmpresaAgendamento.Controllers
                 empresa.NomeFantasia = model.NomeFantasia;
                 empresa.Slogan = model.Slogan;
                 empresa.Descricao = model.Descricao;
-                empresa.SegmentoAtuacao = model.SegmentoAtuacao;
+                empresa.Categoria = model.Categoria;
                 empresa.AnoFundacao = model.AnoFundacao;
 
                 empresa.DocumentoNumero = model.DocumentoNumero;
@@ -368,7 +369,25 @@ namespace EmpresaAgendamento.Controllers
                     }
                 }
 
-                empresa.CapaBannerUrl = model.CapaBannerUrl;
+                // Banner é upload agora, igual a logo (era um <input> de texto
+                // esperando uma URL pronta — a empresa não tinha como enviar
+                // uma foto de verdade, por isso a capa nunca aparecia na
+                // página pública). Sem arquivo novo, mantém o banner atual.
+                string? avisoBanner = null;
+
+                if (bannerFile != null && bannerFile.Length > 0)
+                {
+                    var (sucesso, caminhoOuErro) = await SalvarBannerAsync(empresa.Id, bannerFile);
+
+                    if (sucesso)
+                    {
+                        empresa.CapaBannerUrl = caminhoOuErro;
+                    }
+                    else
+                    {
+                        avisoBanner = caminhoOuErro;
+                    }
+                }
 
                 // ENDEREÇO
                 empresa.Endereco = model.Endereco;
@@ -458,6 +477,11 @@ namespace EmpresaAgendamento.Controllers
                 if (avisoLogo != null)
                 {
                     avisos.Add($"a logo não foi atualizada: {avisoLogo}");
+                }
+
+                if (avisoBanner != null)
+                {
+                    avisos.Add($"o banner não foi atualizado: {avisoBanner}");
                 }
 
                 if (avisosCor.Any())
@@ -832,6 +856,54 @@ namespace EmpresaAgendamento.Controllers
             using (var stream = new FileStream(caminhoFisico, FileMode.Create))
             {
                 await logoFile.CopyToAsync(stream);
+            }
+
+            var caminhoPublico = $"/uploads/empresas/{empresaId}/{nomeArquivo}?v={DateTime.UtcNow.Ticks}";
+
+            return (true, caminhoPublico);
+        }
+
+        // Mesmo esquema do SalvarLogoAsync acima (mesma pasta, mesmas
+        // extensões/tamanho, nome fixo — reenviar substitui o banner
+        // anterior). Existia só como campo de texto (CapaBannerUrl esperando
+        // uma URL já pronta) — a empresa não tinha como fazer upload de
+        // verdade, por isso a capa nunca aparecia na página pública.
+        private async Task<(bool Sucesso, string CaminhoOuErro)> SalvarBannerAsync(int empresaId, IFormFile bannerFile)
+        {
+            if (!ExtensaoPorContentType.TryGetValue(bannerFile.ContentType ?? "", out var extensao))
+            {
+                var extensaoArquivo = Path.GetExtension(bannerFile.FileName).ToLowerInvariant();
+
+                if (extensaoArquivo == ".jpeg")
+                    extensaoArquivo = ".jpg";
+
+                if (!ExtensoesPermitidas.Contains(extensaoArquivo))
+                {
+                    return (false, "Formato de imagem inválido. Use PNG, JPG, WEBP ou GIF.");
+                }
+
+                extensao = extensaoArquivo;
+            }
+
+            if (bannerFile.Length > TamanhoMaximoBannerBytes)
+            {
+                return (false, "A imagem deve ter no máximo 5 MB.");
+            }
+
+            var pastaEmpresa = Path.Combine(_env.WebRootPath, "uploads", "empresas", empresaId.ToString());
+            Directory.CreateDirectory(pastaEmpresa);
+
+            foreach (var arquivoAntigo in Directory.GetFiles(pastaEmpresa, "banner.*"))
+            {
+                try { System.IO.File.Delete(arquivoAntigo); } catch { /* não bloqueia o upload por isso */ }
+            }
+
+            var nomeArquivo = $"banner{extensao}";
+            var caminhoFisico = Path.Combine(pastaEmpresa, nomeArquivo);
+
+            using (var stream = new FileStream(caminhoFisico, FileMode.Create))
+            {
+                await bannerFile.CopyToAsync(stream);
             }
 
             var caminhoPublico = $"/uploads/empresas/{empresaId}/{nomeArquivo}?v={DateTime.UtcNow.Ticks}";

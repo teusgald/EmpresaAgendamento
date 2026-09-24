@@ -1,10 +1,23 @@
 @model EmpresaAgendamento.Models.ViewModels.EmpresaDescobertaViewModel
+@using EmpresaAgendamento.Helpers
 @{
     // Página pública (sem login), rota "/empresas" — usa o mesmo layout das
     // páginas públicas de empresa (_LayoutPublico, tema escuro/claro,
     // publico.css), não o layout da Home nem o do portal autenticado. É a
     // página de descoberta do cliente, faz parte da experiência pública.
     ViewData["Title"] = "Encontre uma empresa";
+
+    // Painel de filtros avançados começa aberto só se algum desses já
+    // estiver ativo (ex.: cliente voltou de um resultado filtrado) — senão
+    // fica escondido, estilo iFood: categoria + busca por nome primeiro,
+    // o resto é "avançado" de propósito ("não precisa mostrar muita coisa").
+    var temFiltroAvancado =
+        !string.IsNullOrWhiteSpace(Model.Filtro.Cidade) ||
+        !string.IsNullOrWhiteSpace(Model.Filtro.UF) ||
+        Model.Filtro.PrecoMinimo.HasValue ||
+        Model.Filtro.PrecoMaximo.HasValue ||
+        Model.Filtro.AvaliacaoMinima.HasValue ||
+        Model.Filtro.DistanciaMaximaKm.HasValue;
 }
 
 @section Styles {
@@ -31,6 +44,118 @@
             margin: 1.25rem auto 0;
             padding: 0 1.5rem;
         }
+
+        /* Busca por nome — a barra mais em destaque, igual iFood/Booksy:
+           busca é a ação principal, o resto é filtro secundário. */
+        .descoberta-busca-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .descoberta-busca-input {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            border-radius: 50px;
+            padding: 0 16px;
+            height: 48px;
+        }
+
+            .descoberta-busca-input i {
+                color: var(--text3);
+                flex-shrink: 0;
+            }
+
+            .descoberta-busca-input input {
+                background: none;
+                border: none;
+                outline: none;
+                color: var(--text);
+                font-family: 'DM Sans', sans-serif;
+                font-size: 14.5px;
+                width: 100%;
+            }
+
+        .descoberta-busca-row .btn-cta {
+            flex-shrink: 0;
+            height: 48px;
+            padding: 0 26px;
+        }
+
+        /* Categorias — chips com rolagem horizontal, não um <select>. É o
+           filtro principal (estilo iFood: categoria primeiro, o resto vem
+           depois, escondido). */
+        .descoberta-categorias {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+            margin-bottom: .75rem;
+            scrollbar-width: thin;
+        }
+
+        .descoberta-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            background: var(--bg2);
+            border: 1px solid var(--border2);
+            color: var(--text2);
+            border-radius: 50px;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+
+            .descoberta-chip:hover {
+                border-color: var(--accent);
+                color: var(--text);
+            }
+
+            .descoberta-chip.ativo {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: var(--accent-contrast);
+                font-weight: 700;
+            }
+
+        /* Filtros avançados — escondidos por padrão atrás de um botão, não
+           uma tela cheia de campo logo de cara ("não precisa mostrar muita
+           coisa"). */
+        .descoberta-avancado-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            border: none;
+            color: var(--text2);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 0;
+            margin-bottom: .75rem;
+            cursor: pointer;
+        }
+
+            .descoberta-avancado-toggle:hover {
+                color: var(--text);
+            }
+
+            .descoberta-avancado-toggle i.bi-chevron-down {
+                transition: transform .2s;
+                font-size: .8em;
+            }
+
+            .descoberta-avancado-toggle[aria-expanded="true"] i.bi-chevron-down {
+                transform: rotate(180deg);
+            }
 
         .descoberta-filtros-card {
             background: var(--bg2);
@@ -190,69 +315,101 @@
 </div>
 
 <div class="descoberta-filtros">
-    <form method="get" class="descoberta-filtros-card">
-        <div>
-            <label>Categoria</label>
-            <select name="categoria">
-                <option value="">Todas</option>
-                @foreach (var cat in Model.Categorias)
-                {
-                    <option value="@cat" selected="@(Model.Filtro.Categoria == cat)">@cat</option>
-                }
-            </select>
+    <form method="get" id="formDescoberta">
+
+        <!-- Busca por nome — ação principal, igual iFood/Booksy -->
+        <div class="descoberta-busca-row">
+            <div class="descoberta-busca-input">
+                <i class="bi bi-search"></i>
+                <input type="text" name="nome" value="@Model.Filtro.Nome" placeholder="Buscar pelo nome do estabelecimento" />
+            </div>
+            <button type="submit" class="btn-cta">Buscar</button>
         </div>
 
-        <div>
-            <label>Cidade</label>
-            <input type="text" name="cidade" value="@Model.Filtro.Cidade" placeholder="Ex.: São Paulo" />
-        </div>
-
-        <div>
-            <label>UF</label>
-            <input type="text" name="uf" value="@Model.Filtro.UF" maxlength="2" placeholder="SP" />
-        </div>
-
-        <div>
-            <label>Avaliação mínima</label>
-            <select name="avaliacaoMinima">
-                <option value="">Qualquer</option>
-                @foreach (var nota in new[] { 5, 4, 3, 2, 1 })
-                {
-                    <option value="@nota" selected="@(Model.Filtro.AvaliacaoMinima == nota)">@nota+ estrelas</option>
-                }
-            </select>
-        </div>
-
-        <div>
-            <label>Preço mín.</label>
-            <input name="precoMinimo" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.Filtro.PrecoMinimo" />
-        </div>
-
-        <div>
-            <label>Preço máx.</label>
-            <input name="precoMaximo" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.Filtro.PrecoMaximo" />
-        </div>
-
-        <div>
-            <label>Distância máx.</label>
-            <select name="distanciaMaximaKm">
-                <option value="">Qualquer</option>
-                @foreach (var km in new[] { 5, 10, 25, 50, 100 })
-                {
-                    <option value="@km" selected="@(Model.Filtro.DistanciaMaximaKm == km)">até @km km</option>
-                }
-            </select>
-        </div>
-
-        <input type="hidden" name="latitudeUsuario" id="latitudeUsuario" value="@Context.Request.Query["latitudeUsuario"]" />
-        <input type="hidden" name="longitudeUsuario" id="longitudeUsuario" value="@Context.Request.Query["longitudeUsuario"]" />
-
-        <div class="descoberta-filtros-actions">
-            <button type="button" id="btnUsarLocalizacao" class="btn-cta" style="background:var(--bg3);color:var(--text);border:1px solid var(--border2);">
-                <i class="bi bi-geo-alt"></i> Perto de mim
+        <!-- Categoria — chips, não dropdown. Clicar já filtra (ver script). -->
+        <div class="descoberta-categorias">
+            <button type="button" class="descoberta-chip @(!Model.Filtro.Categoria.HasValue ? "ativo" : "")" data-categoria="">
+                <i class="bi bi-grid"></i> Todas
             </button>
-            <button type="submit" class="btn-cta">Filtrar</button>
-            <a href="/empresas" style="align-self:center;color:var(--text2);font-size:13px;">Limpar filtros</a>
+            @foreach (var cat in Model.Categorias)
+            {
+                <button type="button" class="descoberta-chip @(Model.Filtro.Categoria == cat.Valor ? "ativo" : "")" data-categoria="@cat.Valor">
+                    <i class="bi @CategoriaEmpresaHelper.Icone(cat.Valor)"></i> @cat.Nome
+                </button>
+            }
+        </div>
+        <input type="hidden" name="categoria" id="categoriaInput" value="@Model.Filtro.Categoria" />
+
+        <!-- Avançado — cidade/UF/preço/avaliação/distância, escondido até pedir -->
+        <button type="button"
+                class="descoberta-avancado-toggle"
+                data-bs-toggle="collapse"
+                data-bs-target="#filtrosAvancados"
+                aria-expanded="@(temFiltroAvancado ? "true" : "false")">
+            <i class="bi bi-sliders"></i> Filtros avançados <i class="bi bi-chevron-down"></i>
+        </button>
+
+        <div class="collapse @(temFiltroAvancado ? "show" : "")" id="filtrosAvancados">
+            <div class="descoberta-filtros-card">
+                <div>
+                    <label>Cidade</label>
+                    <input type="text" name="cidade" value="@Model.Filtro.Cidade" placeholder="Ex.: São Paulo" />
+                </div>
+
+                <div>
+                    <label>UF</label>
+                    <select name="uf" class="form-select">
+                        <option value="">Qualquer</option>
+                        @foreach (var uf in EstadoBrasilHelper.Estados)
+                        {
+                            <option value="@uf.Sigla" selected="@(Model.Filtro.UF == uf.Sigla)">@uf.Nome</option>
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label>Avaliação mínima</label>
+                    <select name="avaliacaoMinima" class="form-select">
+                        <option value="">Qualquer</option>
+                        @foreach (var nota in new[] { 5, 4, 3, 2, 1 })
+                        {
+                            <option value="@nota" selected="@(Model.Filtro.AvaliacaoMinima == nota)">@nota+ estrelas</option>
+                        }
+                    </select>
+                </div>
+
+                <div>
+                    <label>Preço mín.</label>
+                    <input name="precoMinimo" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.Filtro.PrecoMinimo" />
+                </div>
+
+                <div>
+                    <label>Preço máx.</label>
+                    <input name="precoMaximo" data-mask="dinheiro" placeholder="R$ 0,00" value="@Model.Filtro.PrecoMaximo" />
+                </div>
+
+                <div>
+                    <label>Distância máx.</label>
+                    <select name="distanciaMaximaKm" class="form-select">
+                        <option value="">Qualquer</option>
+                        @foreach (var km in new[] { 5, 10, 25, 50, 100 })
+                        {
+                            <option value="@km" selected="@(Model.Filtro.DistanciaMaximaKm == km)">até @km km</option>
+                        }
+                    </select>
+                </div>
+
+                <input type="hidden" name="latitudeUsuario" id="latitudeUsuario" value="@Context.Request.Query["latitudeUsuario"]" />
+                <input type="hidden" name="longitudeUsuario" id="longitudeUsuario" value="@Context.Request.Query["longitudeUsuario"]" />
+
+                <div class="descoberta-filtros-actions">
+                    <button type="button" id="btnUsarLocalizacao" class="btn-cta" style="background:var(--bg3);color:var(--text);border:1px solid var(--border2);">
+                        <i class="bi bi-geo-alt"></i> Perto de mim
+                    </button>
+                    <button type="submit" class="btn-cta">Aplicar filtros</button>
+                    <a href="/empresas" style="align-self:center;color:var(--text2);font-size:13px;">Limpar tudo</a>
+                </div>
+            </div>
         </div>
     </form>
 </div>
@@ -343,6 +500,15 @@
 
 @section Scripts {
     <script>
+        // Chip de categoria — clicar já filtra (define o hidden e reenvia o
+        // form), sem precisar de um <select> pra uma coisa só.
+        document.querySelectorAll(".descoberta-chip").forEach(function (chip) {
+            chip.addEventListener("click", function () {
+                document.getElementById("categoriaInput").value = chip.dataset.categoria;
+                document.getElementById("formDescoberta").submit();
+            });
+        });
+
         // "Perto de mim" — pede a localização do navegador, preenche os
         // campos escondidos de latitude/longitude e reenvia o filtro. Sem
         // permissão de geolocalização, o filtro de distância só não é usado;

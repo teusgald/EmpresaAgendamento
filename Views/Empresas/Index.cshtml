@@ -1,4 +1,5 @@
 ﻿@model EmpresaAgendamento.Models.Empresa
+@using EmpresaAgendamento.Helpers
 
 <div class="container mt-4">
     <div class="card shadow-sm">
@@ -25,11 +26,32 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nome</label>
                         <input asp-for="Nome" class="form-control" />
+                        <small class="text-muted">Razão social — o nome oficial, usado em documentos e recibos.</small>
                     </div>
 
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Nome Fantasia</label>
                         <input asp-for="NomeFantasia" class="form-control" />
+                        <small class="text-muted">Como aparece pro cliente — página pública, portal, notificações. Em branco, usa o Nome ao lado.</small>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Categoria</label>
+                        <select asp-for="Categoria" class="form-select">
+                            <option value="">Selecione</option>
+                            @foreach (var opcao in CategoriaEmpresaHelper.Opcoes)
+                            {
+                                <option value="@opcao.Valor">@opcao.Nome</option>
+                            }
+                        </select>
+                        <small class="text-muted">Tipo de negócio — é o filtro que o cliente usa pra te achar em "Encontrar empresas".</small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">CPF / CNPJ</label>
+                        <input asp-for="DocumentoNumero" class="form-control" />
                     </div>
                 </div>
 
@@ -37,11 +59,7 @@
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Slogan</label>
                         <input asp-for="Slogan" class="form-control" />
-                    </div>
-
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label">CPF / CNPJ</label>
-                        <input asp-for="DocumentoNumero" class="form-control" />
+                        <small class="text-muted">Frase curta embaixo do nome na página pública (opcional).</small>
                     </div>
                 </div>
 
@@ -78,8 +96,26 @@
                     </div>
 
                     <div class="col-md-6 mb-3">
-                        <label class="form-label">Banner URL</label>
-                        <input asp-for="CapaBannerUrl" class="form-control" />
+                        <label class="form-label">Banner da página pública</label>
+
+                        <div class="mb-2">
+                            <img id="bannerPreview"
+                                 src="@Model.CapaBannerUrl"
+                                 alt="Banner"
+                                 style="max-height:64px;width:100%;object-fit:cover;@(string.IsNullOrEmpty(Model.CapaBannerUrl) ? "display:none;" : "")"
+                                 class="border rounded" />
+                        </div>
+
+                        <input type="file"
+                               name="bannerFile"
+                               id="bannerFile"
+                               accept="image/png,image/jpeg,image/webp,image/gif"
+                               class="form-control"
+                               onchange="previewBanner(this)" />
+
+                        <small class="text-muted">
+                            PNG, JPG, WEBP ou GIF — até 5 MB. Imagem larga (ideal 1400x400px) que fica atrás do seu nome na página pública. Sem foto, usa um fundo neutro.
+                        </small>
                     </div>
                 </div>
 
@@ -456,6 +492,14 @@
         if (!input.files || !input.files[0]) return;
 
         const preview = document.getElementById("logoPreview");
+        preview.src = URL.createObjectURL(input.files[0]);
+        preview.style.display = "";
+    }
+
+        function previewBanner(input) {
+        if (!input.files || !input.files[0]) return;
+
+        const preview = document.getElementById("bannerPreview");
         preview.src = URL.createObjectURL(input.files[0]);
         preview.style.display = "";
     }

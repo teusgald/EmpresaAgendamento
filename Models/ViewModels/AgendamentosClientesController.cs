@@ -108,12 +108,7 @@ public class AgendamentosClientesController : Controller
             if (user == null || user.ClienteId == null)
                 return RedirectLogin();
 
-            ViewBag.Segmentos = await _context.Empresas
-                .Where(e => e.Ativo && e.SegmentoAtuacao != null)
-                .Select(e => e.SegmentoAtuacao!)
-                .Distinct()
-                .OrderBy(s => s)
-                .ToListAsync();
+            ViewBag.Segmentos = CategoriaEmpresaHelper.Opcoes;
 
             ViewBag.Empresas = new SelectList(
                 await _context.Empresas.Where(e => e.Ativo).ToListAsync(),
@@ -133,15 +128,15 @@ public class AgendamentosClientesController : Controller
     // AJAX EMPRESAS (filtradas por categoria/segmento)
     // =========================
     [HttpGet("empresas")]
-    public async Task<IActionResult> Empresas(string? segmento)
+    public async Task<IActionResult> Empresas(CategoriaEmpresa? segmento)
     {
         try
         {
             var query = _context.Empresas.Where(e => e.Ativo);
 
-            if (!string.IsNullOrWhiteSpace(segmento))
+            if (segmento.HasValue)
             {
-                query = query.Where(e => e.SegmentoAtuacao == segmento);
+                query = query.Where(e => e.Categoria == segmento.Value);
             }
 
             var empresas = await query

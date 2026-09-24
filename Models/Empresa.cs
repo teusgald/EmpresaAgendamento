@@ -23,7 +23,13 @@ namespace EmpresaAgendamento.Models
 
         [StringLength(5000)]
         public string? Descricao { get; set; }
-        public string? SegmentoAtuacao { get; set; }
+
+        // Tipo de negócio, pra filtro em /empresas — ver
+        // Models/Enums/CategoriaEmpresa.cs. Era texto livre
+        // (SegmentoAtuacao); virou enum fixo pra não gerar um filtro com uma
+        // opção pra cada jeito diferente que uma empresa digitou o segmento.
+        public Enums.CategoriaEmpresa? Categoria { get; set; }
+
         public int? AnoFundacao { get; set; }
         public DateTime DataCadastro { get; set; }
     = DateTime.UtcNow;

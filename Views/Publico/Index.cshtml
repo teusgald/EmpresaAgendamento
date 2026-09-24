@@ -276,9 +276,12 @@
             <div class="hero-name">
                 <h1>@nome</h1>
 
-                <div class="segment">
-                    @empresa.SegmentoAtuacao
-                </div>
+                @if (empresa.Categoria.HasValue)
+                {
+                    <div class="segment">
+                        @CategoriaEmpresaHelper.NomeExibicao(empresa.Categoria)
+                    </div>
+                }
 
                 @if (!string.IsNullOrWhiteSpace(empresa.Slogan))
                 {

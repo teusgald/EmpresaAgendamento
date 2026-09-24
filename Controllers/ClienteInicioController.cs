@@ -49,12 +49,7 @@ namespace EmpresaAgendamento.Controllers
             // entrasse). Gera um automático pra quem não tem, uma vez só.
             await GarantirSlugsAsync();
 
-            var categorias = await _context.Empresas
-                .Where(e => e.Ativo && e.SegmentoAtuacao != null && e.SegmentoAtuacao != "")
-                .Select(e => e.SegmentoAtuacao!)
-                .Distinct()
-                .OrderBy(c => c)
-                .ToListAsync();
+            var categorias = CategoriaEmpresaHelper.Opcoes;
 
             var empresas = await _empresaDescobertaService.BuscarAsync(filtro);
 
@@ -85,8 +80,9 @@ namespace EmpresaAgendamento.Controllers
             var vm = new ClienteInicioViewModel
             {
                 Empresas = empresas,
-                Categorias = categorias,
+                Categorias = categorias.ToList(),
                 CategoriaSelecionada = filtro.Categoria,
+                NomeBuscado = filtro.Nome,
                 Cidade = filtro.Cidade,
                 UF = filtro.UF,
                 PrecoMinimo = filtro.PrecoMinimo,

@@ -65,7 +65,7 @@ namespace EmpresaAgendamento.Services
                 EmailContato = model.Email,
                 Telefone = model.Telefone,
                 WhatsApp = model.Telefone,
-                SegmentoAtuacao = model.SegmentoAtuacao,
+                Categoria = model.Categoria,
                 TipoPlanoEscolhido = tipoPlanoEscolhido is "anual" or "semestral" ? tipoPlanoEscolhido : "mensal",
                 NomePlanoEscolhido = NomesPlanoValidos.Contains(nomePlanoEscolhido) ? nomePlanoEscolhido : "Start"
             };

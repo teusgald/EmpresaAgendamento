@@ -13,9 +13,9 @@
                     <label class="form-label">Categoria</label>
                     <select class="form-select" id="segmentoSelect">
                         <option value="">Todas as categorias</option>
-                        @foreach (var segmento in (List<string>)ViewBag.Segmentos)
+                        @foreach (var opcao in (IReadOnlyList<(EmpresaAgendamento.Models.Enums.CategoriaEmpresa Valor, string Nome)>)ViewBag.Segmentos)
                         {
-                            <option value="@segmento">@segmento</option>
+                            <option value="@opcao.Valor">@opcao.Nome</option>
                         }
                     </select>
                 </div>

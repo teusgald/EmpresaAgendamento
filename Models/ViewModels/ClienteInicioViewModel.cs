@@ -1,3 +1,5 @@
+using EmpresaAgendamento.Models.Enums;
+
 namespace EmpresaAgendamento.Models.ViewModels
 {
     public class EmpresaSugestaoViewModel
@@ -29,12 +31,13 @@ namespace EmpresaAgendamento.Models.ViewModels
     public class ClienteInicioViewModel
     {
         public List<EmpresaSugestaoViewModel> Empresas { get; set; } = new();
-        public List<string> Categorias { get; set; } = new();
-        public string? CategoriaSelecionada { get; set; }
+        public List<(CategoriaEmpresa Valor, string Nome)> Categorias { get; set; } = new();
+        public CategoriaEmpresa? CategoriaSelecionada { get; set; }
 
         // Espelham o EmpresaDescobertaFiltro usado na busca — só pra
         // repopular o formulário de filtro na tela com o que o cliente
         // escolheu.
+        public string? NomeBuscado { get; set; }
         public string? Cidade { get; set; }
         public string? UF { get; set; }
         public decimal? PrecoMinimo { get; set; }

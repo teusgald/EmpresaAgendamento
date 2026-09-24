@@ -1,3 +1,5 @@
+using EmpresaAgendamento.Models.Enums;
+
 namespace EmpresaAgendamento.Models.ViewModels
 {
     // Filtro compartilhado pela busca/descoberta de empresas — usado tanto na
@@ -7,7 +9,10 @@ namespace EmpresaAgendamento.Models.ViewModels
     // que os dois formulários (GET) fazem bind direto pra essa classe.
     public class EmpresaDescobertaFiltro
     {
-        public string? Categoria { get; set; }
+        public CategoriaEmpresa? Categoria { get; set; }
+
+        // Busca por nome do estabelecimento (razão social ou nome fantasia).
+        public string? Nome { get; set; }
 
         public string? Cidade { get; set; }
 
