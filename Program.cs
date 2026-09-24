@@ -139,6 +139,7 @@ builder.Services.AddScoped<IStripeService, StripeService>();
 builder.Services.AddHttpClient<IWhatsAppService, WhatsAppService>();
 builder.Services.AddHostedService<LembreteAgendamentoBackgroundService>();
 builder.Services.AddScoped<ISimpliAiToolsService, SimpliAiToolsService>();
+builder.Services.AddScoped<IAuditoriaService, AuditoriaService>();
 builder.Services.AddHttpClient<IAiAssistantService, GeminiAssistantService>();
 
 // =========================

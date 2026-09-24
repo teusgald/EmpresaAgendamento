@@ -8,7 +8,12 @@ namespace EmpresaAgendamento.Models
     {
         public int Id { get; set; }
 
+        // Mantido como ponte enquanto o Perfil granular (abaixo) não estiver
+        // validado em produção — RequerGerenteFilter ainda lê esse campo.
         public NivelAcessoFuncionario NivelAcesso { get; set; } = NivelAcessoFuncionario.Padrao;
+
+        public int? PerfilId { get; set; }
+        public Perfil? Perfil { get; set; }
 
         [Required]
         [StringLength(150)]

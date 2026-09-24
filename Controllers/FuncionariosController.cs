@@ -46,6 +46,15 @@ public class FuncionariosController : Controller
         }
     }
 
+    private async Task<List<SelectListItem>> GetPerfisDisponiveisAsync(int empresaId)
+    {
+        return await _context.Perfis
+            .Where(p => p.EmpresaId == empresaId && p.Ativo)
+            .OrderBy(p => p.Nome)
+            .Select(p => new SelectListItem { Value = p.Id.ToString(), Text = p.Nome })
+            .ToListAsync();
+    }
+
     // =========================
     // INDEX
     // =========================
@@ -117,6 +126,8 @@ public class FuncionariosController : Controller
                 })
                 .ToListAsync();
 
+            vm.PerfisDisponiveis = await GetPerfisDisponiveisAsync(empresaId.Value);
+
             return View(vm);
         }
         catch (Exception ex)
@@ -156,6 +167,8 @@ public class FuncionariosController : Controller
                     })
                     .ToListAsync();
 
+                vm.PerfisDisponiveis = await GetPerfisDisponiveisAsync(empresaId.Value);
+
                 ToastHelper.Warning(TempData, "Verifique os dados informados.");
                 return View(vm);
             }
@@ -182,6 +195,8 @@ public class FuncionariosController : Controller
                         })
                         .ToListAsync();
 
+                    vm.PerfisDisponiveis = await GetPerfisDisponiveisAsync(empresaId.Value);
+
                     ToastHelper.Warning(
                         TempData,
                         $"Seu plano permite até {limite} funcionário(s) ativo(s). Inative algum ou faça upgrade do plano.");
@@ -201,6 +216,7 @@ public class FuncionariosController : Controller
                 PercentualComissaoPadrao = vm.PercentualComissaoPadrao,
                 ValorComissaoFixa = vm.ValorComissaoFixa,
                 NivelAcesso = vm.NivelAcesso,
+                PerfilId = vm.PerfilId,
                 EmpresaId = empresaId.Value,
                 Ativo = true
             };
@@ -274,6 +290,7 @@ public class FuncionariosController : Controller
                 PercentualComissaoPadrao = funcionario.PercentualComissaoPadrao,
                 ValorComissaoFixa = funcionario.ValorComissaoFixa,
                 NivelAcesso = funcionario.NivelAcesso,
+                PerfilId = funcionario.PerfilId,
                 ServicosSelecionados = funcionario.Servicos.Select(x => x.ServicoId).ToList()
             };
 
@@ -286,6 +303,8 @@ public class FuncionariosController : Controller
                     Text = s.Nome
                 })
                 .ToListAsync();
+
+            vm.PerfisDisponiveis = await GetPerfisDisponiveisAsync(empresaId.Value);
 
             return View(vm);
         }
@@ -344,6 +363,8 @@ public class FuncionariosController : Controller
                     })
                     .ToListAsync();
 
+                vm.PerfisDisponiveis = await GetPerfisDisponiveisAsync(empresaId.Value);
+
                 return View(vm);
             }
 
@@ -356,6 +377,7 @@ public class FuncionariosController : Controller
             funcionario.PercentualComissaoPadrao = vm.PercentualComissaoPadrao;
             funcionario.ValorComissaoFixa = vm.ValorComissaoFixa;
             funcionario.NivelAcesso = vm.NivelAcesso;
+            funcionario.PerfilId = vm.PerfilId;
 
             var antigos = await _context.FuncionariosServicos
                 .Where(x => x.FuncionarioId == funcionario.Id)

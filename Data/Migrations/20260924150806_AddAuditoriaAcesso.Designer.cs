@@ -4,6 +4,7 @@ using EmpresaAgendamento.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace EmpresaAgendamento.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260924150806_AddAuditoriaAcesso")]
+    partial class AddAuditoriaAcesso
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1021,9 +1024,6 @@ namespace EmpresaAgendamento.Data.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("decimal(5,2)");
 
-                    b.Property<int?>("PerfilId")
-                        .HasColumnType("int");
-
                     b.Property<string>("Telefone")
                         .HasMaxLength(25)
                         .HasColumnType("nvarchar(25)");
@@ -1038,8 +1038,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("EmpresaId");
-
-                    b.HasIndex("PerfilId");
 
                     b.HasIndex("UserId")
                         .IsUnique()
@@ -1297,70 +1295,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.HasIndex("EmpresaId", "Lida", "DataCriacao");
 
                     b.ToTable("Notificacoes");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.Perfil", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("Ativo")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("EmpresaId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Nome")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EmpresaId");
-
-                    b.ToTable("Perfis");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.PerfilPermissao", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("EscopoDados")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Modulo")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("nvarchar(40)");
-
-                    b.Property<int>("PerfilId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("PodeCriar")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("PodeEditar")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("PodeExcluir")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("PodeVisualizar")
-                        .HasColumnType("bit");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PerfilId");
-
-                    b.ToTable("PerfilPermissoes");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Plano", b =>
@@ -2045,18 +1979,12 @@ namespace EmpresaAgendamento.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EmpresaAgendamento.Models.Perfil", "Perfil")
-                        .WithMany("Funcionarios")
-                        .HasForeignKey("PerfilId");
-
                     b.HasOne("EmpresaAgendamento.Models.ApplicationUser", "User")
                         .WithOne("Funcionario")
                         .HasForeignKey("EmpresaAgendamento.Models.Funcionario", "UserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Empresa");
-
-                    b.Navigation("Perfil");
 
                     b.Navigation("User");
                 });
@@ -2183,28 +2111,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("Cliente");
 
                     b.Navigation("Empresa");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.Perfil", b =>
-                {
-                    b.HasOne("EmpresaAgendamento.Models.Empresa", "Empresa")
-                        .WithMany()
-                        .HasForeignKey("EmpresaId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Empresa");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.PerfilPermissao", b =>
-                {
-                    b.HasOne("EmpresaAgendamento.Models.Perfil", "Perfil")
-                        .WithMany("Permissoes")
-                        .HasForeignKey("PerfilId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Perfil");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.PlanoServico", b =>
@@ -2403,13 +2309,6 @@ namespace EmpresaAgendamento.Data.Migrations
                     b.Navigation("Horarios");
 
                     b.Navigation("Servicos");
-                });
-
-            modelBuilder.Entity("EmpresaAgendamento.Models.Perfil", b =>
-                {
-                    b.Navigation("Funcionarios");
-
-                    b.Navigation("Permissoes");
                 });
 
             modelBuilder.Entity("EmpresaAgendamento.Models.Plano", b =>

@@ -340,6 +340,13 @@
 							</li>
 
 							<li>
+								<a class="nav-link" asp-controller="Perfis" asp-action="Index">
+									<i class="bi bi-key"></i>
+									<span class="link-text">Perfis de acesso</span>
+								</a>
+							</li>
+
+							<li>
 								<a class="nav-link" asp-controller="PlanosServico" asp-action="Index">
 									<i class="bi bi-card-checklist"></i>
 									<span class="link-text">Planos</span>
@@ -459,6 +466,14 @@
 
 					</div>
 
+				</li>
+
+				<!-- AUDITORIA (dono sempre; funcionário só se for Gerente) -->
+				<li class="nav-item @(menuBloqueado ? "nav-locked" : "")">
+					<a class="nav-link" asp-controller="Auditoria" asp-action="Index">
+						<i class="bi bi-shield-check"></i>
+						<span class="link-text">Auditoria</span>
+					</a>
 				</li>
 			}
 

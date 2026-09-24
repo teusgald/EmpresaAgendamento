@@ -1,0 +1,77 @@
+@model EmpresaAgendamento.Models.ViewModels.PerfilFormViewModel
+@{
+    ViewData["Title"] = "Novo perfil";
+}
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Novo perfil de acesso</h3>
+            <p class="page-subtitle">Escolha o que quem tiver esse perfil pode ver e fazer em cada tela.</p>
+        </div>
+        <a asp-action="Index" class="btn btn-outline-dark btn-sm">
+            <i class="bi bi-arrow-left"></i> Voltar
+        </a>
+    </div>
+
+    <form method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body">
+                <label class="form-label small fw-semibold">Nome do perfil</label>
+                <input asp-for="Nome" class="form-control" placeholder="Ex.: Recepção" style="max-width:360px" />
+                <span asp-validation-for="Nome" class="text-danger small"></span>
+            </div>
+        </div>
+
+        <div class="alert alert-light border small">
+            O campo <b>Escopo</b> já fica salvo, mas hoje nenhuma tela aplica essa regra ainda — pode deixar
+            "Todos" por enquanto. É a próxima entrega.
+        </div>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Módulo</th>
+                                <th class="text-center">Ver</th>
+                                <th class="text-center">Criar</th>
+                                <th class="text-center">Editar</th>
+                                <th class="text-center">Excluir</th>
+                                <th>Escopo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (int i = 0; i < Model.Permissoes.Count; i++)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">
+                                        @Model.Permissoes[i].ModuloLabel
+                                        <input type="hidden" asp-for="Permissoes[i].Modulo" />
+                                        <input type="hidden" asp-for="Permissoes[i].ModuloLabel" />
+                                    </td>
+                                    <td class="text-center"><input type="checkbox" class="form-check-input" asp-for="Permissoes[i].PodeVisualizar" /></td>
+                                    <td class="text-center"><input type="checkbox" class="form-check-input" asp-for="Permissoes[i].PodeCriar" /></td>
+                                    <td class="text-center"><input type="checkbox" class="form-check-input" asp-for="Permissoes[i].PodeEditar" /></td>
+                                    <td class="text-center"><input type="checkbox" class="form-check-input" asp-for="Permissoes[i].PodeExcluir" /></td>
+                                    <td>
+                                        <select asp-for="Permissoes[i].EscopoDados" class="form-select form-select-sm"
+                                                asp-items="Html.GetEnumSelectList<EmpresaAgendamento.Models.Enums.EscopoDadosPerfil>()">
+                                        </select>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-dark mt-3">Salvar perfil</button>
+    </form>
+
+</div>

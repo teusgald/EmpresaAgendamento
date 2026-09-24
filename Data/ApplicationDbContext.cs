@@ -56,6 +56,11 @@ namespace EmpresaAgendamento.Data
 
         public DbSet<InteracaoIA> InteracoesIA { get; set; }
 
+        public DbSet<AuditoriaAcesso> AuditoriasAcesso { get; set; }
+
+        public DbSet<Perfil> Perfis { get; set; }
+        public DbSet<PerfilPermissao> PerfilPermissoes { get; set; }
+
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);

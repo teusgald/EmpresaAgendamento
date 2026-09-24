@@ -11,6 +11,8 @@ namespace EmpresaAgendamento.ViewModels
 
         public NivelAcessoFuncionario NivelAcesso { get; set; } = NivelAcessoFuncionario.Padrao;
 
+        public int? PerfilId { get; set; }
+
         [Required]
         [Display(Name = "Nome")]
         public string Nome { get; set; } = "";
@@ -36,6 +38,9 @@ namespace EmpresaAgendamento.ViewModels
             = new();
 
         public List<SelectListItem> ServicosDisponiveis { get; set; }
+            = new();
+
+        public List<SelectListItem> PerfisDisponiveis { get; set; }
             = new();
     }
 }

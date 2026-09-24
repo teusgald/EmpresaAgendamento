@@ -1,4 +1,5 @@
 ﻿using EmpresaAgendamento.Data;
+using EmpresaAgendamento.Filters;
 using EmpresaAgendamento.Helpers;
 using EmpresaAgendamento.Models;
 using EmpresaAgendamento.Models.Enums;
@@ -15,17 +16,20 @@ public class ClientesController : Controller
     private readonly ApplicationDbContext _context;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly INotificacaoService _notificacaoService;
+    private readonly IAuditoriaService _auditoriaService;
     private readonly ILogger<ClientesController> _logger;
 
     public ClientesController(
         ApplicationDbContext context,
         UserManager<ApplicationUser> userManager,
         INotificacaoService notificacaoService,
+        IAuditoriaService auditoriaService,
         ILogger<ClientesController> logger)
     {
         _context = context;
         _userManager = userManager;
         _notificacaoService = notificacaoService;
+        _auditoriaService = auditoriaService;
         _logger = logger;
     }
 
@@ -39,6 +43,7 @@ public class ClientesController : Controller
     // INDEX
     // =========================
     [HttpGet("/Clientes")]
+    [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Clientes", "Visualizar" })]
     public async Task<IActionResult> Index(int page = 1)
     {
         try
@@ -163,6 +168,7 @@ public class ClientesController : Controller
     // CREATE GET
     // =========================
     [HttpGet]
+    [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Clientes", "Criar" })]
     public async Task<IActionResult> Create()
     {
         try
@@ -190,11 +196,13 @@ public class ClientesController : Controller
     // =========================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Clientes", "Criar" })]
     public async Task<IActionResult> Create(Cliente cliente)
     {
         try
         {
-            var empresaId = await GetEmpresaId();
+            var usuario = await _userManager.GetUserAsync(User);
+            var empresaId = usuario?.EmpresaId;
 
             if (empresaId == null)
             {
@@ -228,6 +236,8 @@ public class ClientesController : Controller
                 $"{cliente.Nome} foi cadastrado(a).",
                 "/Clientes");
 
+            await _auditoriaService.RegistrarAsync(empresaId.Value, usuario!, "Cliente", cliente.Id, "Criado");
+
             ToastHelper.Success(TempData, "Cliente cadastrado com sucesso.");
 
             return RedirectToAction(nameof(Index));
@@ -244,6 +254,7 @@ public class ClientesController : Controller
     // EDIT GET
     // =========================
     [HttpGet]
+    [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Clientes", "Editar" })]
     public async Task<IActionResult> Edit(int id)
     {
         try
@@ -290,11 +301,13 @@ public class ClientesController : Controller
     // =========================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Clientes", "Editar" })]
     public async Task<IActionResult> Edit(int id, Cliente cliente)
     {
         try
         {
-            var empresaId = await GetEmpresaId();
+            var usuario = await _userManager.GetUserAsync(User);
+            var empresaId = usuario?.EmpresaId;
 
             if (empresaId == null)
             {
@@ -333,11 +346,29 @@ public class ClientesController : Controller
                 return RedirectToAction(nameof(Index));
             }
 
+            var camposAlterados = new List<string>();
+
+            if (existente.Nome != cliente.Nome)
+                camposAlterados.Add($"Nome: \"{existente.Nome}\" → \"{cliente.Nome}\"");
+
+            if (existente.Email != cliente.Email)
+                camposAlterados.Add($"E-mail: \"{existente.Email}\" → \"{cliente.Email}\"");
+
+            if (existente.Telefone != cliente.Telefone)
+                camposAlterados.Add($"Telefone: \"{existente.Telefone}\" → \"{cliente.Telefone}\"");
+
             existente.Nome = cliente.Nome;
             existente.Email = cliente.Email;
             existente.Telefone = cliente.Telefone;
 
             await _context.SaveChangesAsync();
+
+            if (camposAlterados.Count > 0)
+            {
+                await _auditoriaService.RegistrarAsync(
+                    empresaId.Value, usuario!, "Cliente", existente.Id, "Editado",
+                    string.Join("; ", camposAlterados));
+            }
 
             ToastHelper.Success(TempData, "Cliente atualizado com sucesso.");
 
@@ -356,11 +387,13 @@ public class ClientesController : Controller
     // =========================
     [HttpPost]
     [ValidateAntiForgeryToken]
+    [TypeFilter(typeof(RequerPermissaoFilter), Arguments = new object[] { "Clientes", "Excluir" })]
     public async Task<IActionResult> ToggleAtivo(int id)
     {
         try
         {
-            var empresaId = await GetEmpresaId();
+            var usuario = await _userManager.GetUserAsync(User);
+            var empresaId = usuario?.EmpresaId;
 
             if (empresaId == null)
             {
@@ -382,6 +415,10 @@ public class ClientesController : Controller
             cliente.Ativo = !cliente.Ativo;
 
             await _context.SaveChangesAsync();
+
+            await _auditoriaService.RegistrarAsync(
+                empresaId.Value, usuario!, "Cliente", cliente.Id,
+                cliente.Ativo ? "Reativado" : "Desativado");
 
             if (cliente.Ativo)
                 ToastHelper.Success(TempData, "Cliente ativado com sucesso.");

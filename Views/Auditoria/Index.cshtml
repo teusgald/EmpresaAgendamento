@@ -1,0 +1,97 @@
+@model List<EmpresaAgendamento.Models.AuditoriaAcesso>
+
+<div class="container-fluid mt-4">
+
+    <div class="page-header">
+        <div>
+            <h3 class="fw-bold mb-0">Auditoria</h3>
+            <p class="page-subtitle">Quem alterou dado de cliente, e quando.</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-3">
+        <div class="card-body">
+            <form method="get" class="d-flex gap-2">
+                <input type="text" name="busca" value="@ViewBag.Busca" class="form-control" placeholder="Buscar por funcionário ou detalhe..." />
+                <button type="submit" class="btn btn-dark">Buscar</button>
+            </form>
+        </div>
+    </div>
+
+    @if (!Model.Any())
+    {
+        <div class="card shadow-sm">
+            <div class="empty-state">
+                <i class="bi bi-shield-check"></i>
+                <p>Nenhum registro de auditoria ainda.</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="card shadow-sm">
+            <div class="card-body">
+
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Quando</th>
+                            <th>Quem</th>
+                            <th>O quê</th>
+                            <th>Ação</th>
+                            <th>Detalhe</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model)
+                        {
+                            <tr>
+                                <td>@item.CriadoEm.ToString("dd/MM/yyyy HH:mm")</td>
+                                <td>@(item.UsuarioNome ?? "—")</td>
+                                <td>@item.Entidade #@item.EntidadeId</td>
+                                <td>
+                                    @{
+                                        var badgeClass = item.Acao switch
+                                        {
+                                            "Criado" => "bg-success",
+                                            "Editado" => "bg-info text-dark",
+                                            "Desativado" => "bg-secondary",
+                                            "Reativado" => "bg-success",
+                                            _ => "bg-light text-dark"
+                                        };
+                                    }
+                                    <span class="badge @badgeClass">@item.Acao</span>
+                                </td>
+                                <td class="text-muted small">@(item.Detalhe ?? "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    }
+
+    @if (ViewBag.TotalPages > 1)
+    {
+        <div class="d-flex justify-content-center mt-4">
+            <nav>
+                <ul class="pagination">
+                    <li class="page-item @(ViewBag.CurrentPage == 1 ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-busca="@ViewBag.Busca" asp-route-page="@(ViewBag.CurrentPage - 1)">Anterior</a>
+                    </li>
+                    @for (int i = 1; i <= ViewBag.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == ViewBag.CurrentPage ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-busca="@ViewBag.Busca" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                    <li class="page-item @(ViewBag.CurrentPage == ViewBag.TotalPages ? "disabled" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-busca="@ViewBag.Busca" asp-route-page="@(ViewBag.CurrentPage + 1)">Próximo</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    }
+
+</div>
